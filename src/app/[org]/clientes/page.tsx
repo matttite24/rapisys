@@ -1,9 +1,5 @@
-import { PageSection } from "@/components/page-section";
+import { PartyListPage } from "@/components/party-pages";
 
-export default function Page() {
-  return (
-    <PageSection>
-      <h1 className="text-3xl font-semibold tracking-tight">Clientes</h1>
-    </PageSection>
-  );
+export default function Page({ params }: PageProps<"/[org]/clientes">) {
+  return <PartyListPage kind="clients" params={params} />;
 }
