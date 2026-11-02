@@ -9,9 +9,8 @@ import {
 } from "@/components/contract-lines";
 import { ContractForm } from "@/components/contract-form";
 import { CellGrid, PageSection } from "@/components/page-section";
-import { PHASE_LABEL, PHASE_ORDER, type Phase } from "@/lib/contracts";
 import { addDaysIso, formatIso } from "@/lib/dates";
-import { formatCents, lineAmounts } from "@/lib/money";
+import { formatCents } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -102,54 +101,17 @@ async function Detail({ params }: { params: IdParams }) {
     supabase.from("contract_managers").select("name, ruc").eq("id", c.manager_id).maybeSingle(),
     supabase
       .from("contract_items")
-      .select("id, item_id, quantity, unit_price_cents, vat_rate, phase, received_qty")
+      .select("id, description, quantity, unit")
       .eq("contract_id", id)
       .order("created_at"),
   ]);
 
-  type LineRow = {
-    id: string;
-    item_id: string;
-    quantity: number;
-    unit_price_cents: number;
-    vat_rate: number;
-    phase: Phase;
-    received_qty: number;
-  };
-  const lineRows = (linesRes.data ?? []) as LineRow[];
+  const lines: LineView[] = (
+    (linesRes.data ?? []) as { id: string; description: string; quantity: number; unit: string }[]
+  ).map((l) => ({ id: l.id, description: l.description, quantity: Number(l.quantity), unit: l.unit }));
 
-  // Solo los items de este contrato (activos o no), nunca el catálogo completo.
-  const { data: itemRows } = lineRows.length
-    ? await supabase.from("items").select("id, sku, name").in("id", lineRows.map((l) => l.item_id))
-    : { data: [] };
-  const itemsById = new Map(
-    ((itemRows ?? []) as { id: string; sku: string | null; name: string }[]).map((i) => [i.id, i]),
-  );
-
-  const lines: LineView[] = lineRows.map((l) => ({
-    id: l.id,
-    name: itemsById.get(l.item_id)?.name ?? "Item eliminado",
-    sku: itemsById.get(l.item_id)?.sku ?? null,
-    quantity: Number(l.quantity),
-    unitCents: Number(l.unit_price_cents),
-    vatRate: Number(l.vat_rate),
-    phase: l.phase,
-    received: Number(l.received_qty),
-  }));
-
-  // Cada línea se redondea una vez; los totales son sumas de enteros (centavos).
-  const amounts = lines.map((l) => lineAmounts(l.quantity, l.unitCents, l.vatRate));
-  const subtotal = amounts.reduce((s, a) => s + a.subtotal, 0);
-  const vat = amounts.reduce((s, a) => s + a.vat, 0);
-  const linesTotal = subtotal + vat;
   const contractTotal = Number(c.total_cents);
-  const diff = contractTotal - linesTotal;
-
   const end = deliveryIso;
-
-  const byPhase = PHASE_ORDER.map((p) => ({ p, n: lines.filter((l) => l.phase === p).length })).filter(
-    (x) => x.n > 0,
-  );
 
   return (
     <>
@@ -178,46 +140,23 @@ async function Detail({ params }: { params: IdParams }) {
       </PageSection>
 
       <PageSection
-        label={`${lines.length} ${lines.length === 1 ? "línea" : "líneas"}`}
-        meta={
-          byPhase.length > 0
-            ? byPhase.map((x) => `${x.n} ${PHASE_LABEL[x.p].toLowerCase()}`).join(" · ")
-            : undefined
-        }
+        label={`${lines.length} ${lines.length === 1 ? "línea" : "líneas"} de referencia`}
         className="p-0"
       >
         {lines.length === 0 ? (
           <p className="p-6 text-muted-foreground">
             {c.status === "in_progress"
-              ? "Aún no hay items en este contrato. Agrega el primero abajo."
+              ? "Aún no hay items en la lista del contrato. Agrega el primero abajo."
               : "Este contrato no tiene items."}
           </p>
         ) : (
-          <>
-            <LinesTable org={org} contractId={id} lines={lines} />
-            <div className="grid gap-px border-t bg-border md:grid-cols-4 [&>*]:bg-background [&>*]:p-4">
-              <Cell label="Subtotal">
-                <span className="num">{formatCents(subtotal)}</span>
-              </Cell>
-              <Cell label="IVA">
-                <span className="num">{formatCents(vat)}</span>
-              </Cell>
-              <Cell label="Total de líneas (IVA incl.)">
-                <span className="num font-medium">{formatCents(linesTotal)}</span>
-              </Cell>
-              <Cell label="Frente al monto del contrato">
-                <span className="num">
-                  {diff === 0 ? "Coincide" : diff > 0 ? `Faltan ${formatCents(diff)}` : `Excede en ${formatCents(-diff)}`}
-                </span>
-              </Cell>
-            </div>
-          </>
+          <LinesTable org={org} contractId={id} lines={lines} />
         )}
       </PageSection>
 
       {c.status === "in_progress" && (
         <PageSection label="Agregar item">
-          <AddLineForm org={org} contractId={id} vatRate={Number(c.vat_rate)} />
+          <AddLineForm org={org} contractId={id} />
         </PageSection>
       )}
     </>

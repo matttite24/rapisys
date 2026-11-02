@@ -9,4 +9,8 @@ select
   exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'contracts' and column_name = 'total_cents'
-  )                                                                        as "6_cents_and_hardening";
+  )                                                                        as "6_cents_and_hardening",
+  exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'contract_items' and column_name = 'description'
+  )                                                                        as "7_contract_reference_lines";

@@ -8,10 +8,7 @@ const setContractStatus = vi.fn(async () => undefined);
 vi.mock("@/lib/contract-actions", () => ({
   addLine: vi.fn(),
   removeLine: vi.fn(),
-  searchCatalog: vi.fn(async () => []),
   setContractStatus: (...args: unknown[]) => setContractStatus(...(args as [])),
-  setPhase: vi.fn(),
-  setReceived: vi.fn(),
 }));
 
 import { StatusControl } from "./contract-lines";
