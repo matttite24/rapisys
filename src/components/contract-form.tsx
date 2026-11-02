@@ -4,7 +4,8 @@ import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { createContract } from "@/app/[org]/contratos/nuevo/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { FormField } from "@/components/form-field";
+import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -13,42 +14,6 @@ import { VAT_RATE, formatMoney, parseMoney, splitVat } from "@/lib/contracts";
 type Option = { id: string; name: string };
 type Errors = Record<string, string>;
 const NEW = "__new__";
-
-// Campo con etiqueta, error junto al campo y vínculo accesible entre ambos.
-function FormField({
-  name,
-  label,
-  error,
-  hint,
-  children,
-}: {
-  name: string;
-  label: string;
-  error?: string;
-  hint?: React.ReactNode;
-  children: (a11y: Record<string, string | boolean | undefined>) => React.ReactNode;
-}) {
-  const describedBy = [error && `${name}-error`, hint && `${name}-hint`]
-    .filter(Boolean)
-    .join(" ");
-  return (
-    <Field data-invalid={error ? true : undefined}>
-      <FieldLabel htmlFor={name}>{label}</FieldLabel>
-      {children({
-        id: name,
-        name,
-        "aria-invalid": error ? true : undefined,
-        "aria-describedby": describedBy || undefined,
-      })}
-      {hint && (
-        <FieldDescription id={`${name}-hint`} className="font-mono text-xs">
-          {hint}
-        </FieldDescription>
-      )}
-      {error && <FieldError id={`${name}-error`}>{error}</FieldError>}
-    </Field>
-  );
-}
 
 // Selector de un registro existente, o alta rápida con nombre, RUC y dirección.
 function PartyPicker({
