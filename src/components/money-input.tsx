@@ -11,16 +11,16 @@ type Props = Omit<ComponentProps<typeof Input>, "type" | "value" | "onChange" | 
   onChange: (canonical: string) => void;
 };
 
-// Campo de monto: separa miles y millones mientras se escribe ("1.250.000,50") y solo
-// admite números. Al servidor viaja el valor canónico en un campo oculto, así que
-// "1.250" nunca se confunde con 1,25.
+// Campo de monto: separa miles y millones con espacios mientras se escribe ("1 250 000,50") y solo
+// admite números, alineado a la derecha. Al servidor viaja el valor canónico en un campo
+// oculto ("1250000.50"), así que nunca se confunden miles con decimales.
 export function MoneyInput({ name, value, onChange, ...props }: Props) {
   const ref = useRef<HTMLInputElement>(null);
   const caret = useRef<number | null>(null);
   const [text, setText] = useState(() => formatTyped(fromCanonical(value)));
 
   // Si el valor cambia desde fuera (otra fila, otro item), el texto lo sigue.
-  // Un cambio hecho al escribir no lo toca: así se conserva la coma final ("1.250,").
+  // Un cambio hecho al escribir no lo toca: así se conserva la coma final ("1 250,").
   if (canonicalOf(parseTyped(text)) !== value) setText(formatTyped(fromCanonical(value)));
 
   // Tras reformatear, el cursor vuelve a quedar junto al dígito que se estaba escribiendo.
@@ -37,7 +37,7 @@ export function MoneyInput({ name, value, onChange, ...props }: Props) {
         ref={ref}
         inputMode="decimal"
         autoComplete="off"
-        className={`font-mono ${props.className ?? ""}`}
+        className={`text-right font-mono ${props.className ?? ""}`}
         value={text}
         onChange={(e) => {
           const raw = e.target.value;
