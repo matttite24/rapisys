@@ -1,9 +1,12 @@
-import { PageSection } from "@/components/page-section";
+import { ContractListPage } from "@/components/contract-list";
 
-export default function Page() {
+export default function Page({ params }: PageProps<"/[org]/contratos/cierre">) {
   return (
-    <PageSection>
-      <h1 className="text-3xl font-semibold tracking-tight">Cierre y cobro</h1>
-    </PageSection>
+    <ContractListPage
+      title="Cierre y cobro"
+      params={params}
+      statuses={["finished", "invoiced", "pending_payment", "paid"]}
+      empty="No hay contratos en cierre o cobro."
+    />
   );
 }

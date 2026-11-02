@@ -9,6 +9,41 @@ export const STATUS_LABEL: Record<string, string> = {
   paid: "Cobrado",
 };
 
+// Orden del ciclo de vida del contrato.
+export const STATUS_ORDER = [
+  "new",
+  "in_progress",
+  "finished",
+  "invoiced",
+  "pending_payment",
+  "paid",
+] as const;
+
+// Fases de cada línea (item) dentro del contrato, en orden.
+export const PHASE_ORDER = [
+  "pending",
+  "quoted",
+  "purchased",
+  "received",
+  "in_stock",
+  "ready",
+  "delivered",
+] as const;
+export type Phase = (typeof PHASE_ORDER)[number];
+
+export const PHASE_LABEL: Record<Phase, string> = {
+  pending: "Pendiente",
+  quoted: "Proformado",
+  purchased: "Comprado",
+  received: "Recibido",
+  in_stock: "En stock",
+  ready: "Listo para entrega",
+  delivered: "Entregado",
+};
+
+// Desde "En stock" en adelante deben estar recibidas todas las unidades.
+export const NEEDS_FULL_RECEIPT: Phase[] = ["in_stock", "ready", "delivered"];
+
 // Punto de color por fase; el texto siempre acompaña, el color no va solo.
 export const STATUS_DOT: Record<string, string> = {
   new: "bg-muted-foreground",

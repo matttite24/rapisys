@@ -1,9 +1,12 @@
-import { PageSection } from "@/components/page-section";
+import { ContractListPage } from "@/components/contract-list";
 
-export default function Page() {
+export default function Page({ params }: PageProps<"/[org]/contratos/ejecucion">) {
   return (
-    <PageSection>
-      <h1 className="text-3xl font-semibold tracking-tight">En ejecución</h1>
-    </PageSection>
+    <ContractListPage
+      title="Contratos en ejecución"
+      params={params}
+      statuses={["in_progress"]}
+      empty="No hay contratos en ejecución."
+    />
   );
 }
