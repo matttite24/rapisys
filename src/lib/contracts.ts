@@ -22,8 +22,8 @@ export const STATUS_DOT: Record<string, string> = {
 const money = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 export const formatMoney = (n: number) => money.format(n);
 
-// Acepta "1.234,56", "1,234.56", "1234,56" o "$ 1234.56".
-export function parseMoney(raw: string): number | null {
+// Acepta "1.234,56", "1,234.56", "1234,56" o "$ 1234.56". `decimals` fija el redondeo.
+export function parseMoney(raw: string, decimals = 2): number | null {
   let s = raw.replace(/[\s$]/g, "");
   if (!s) return null;
   if (s.includes(",") && s.includes(".")) {
@@ -35,7 +35,8 @@ export function parseMoney(raw: string): number | null {
     s = s.replace(",", ".");
   }
   const n = Number(s);
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+  const f = 10 ** decimals;
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * f) / f : null;
 }
 
 // El total incluye IVA: se desglosa en subtotal e IVA.

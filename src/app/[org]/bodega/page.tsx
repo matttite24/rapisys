@@ -1,9 +1,5 @@
-import { PageSection } from "@/components/page-section";
+import { ItemListPage } from "@/components/item-pages";
 
-export default function Page() {
-  return (
-    <PageSection>
-      <h1 className="text-3xl font-semibold tracking-tight">Items</h1>
-    </PageSection>
-  );
+export default function Page({ params, searchParams }: PageProps<"/[org]/bodega">) {
+  return <ItemListPage params={params} searchParams={searchParams} />;
 }

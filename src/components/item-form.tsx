@@ -1,0 +1,446 @@
+"use client";
+
+import Link from "next/link";
+import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { FormField } from "@/components/form-field";
+import { CellGrid, PageSection } from "@/components/page-section";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { formatMoney, parseMoney } from "@/lib/contracts";
+import { deleteItem, saveItem, type ItemState } from "@/lib/item-actions";
+import {
+  ASSET_KIND_LABEL,
+  DEFAULT_VAT,
+  MARGIN_PRESETS,
+  salePrice,
+  withVat,
+  type AssetKind,
+  type PriceRow,
+  type SpecRow,
+} from "@/lib/items";
+
+type Option = { id: string; name: string };
+export type AssetOption = { id: string; name: string; kind: AssetKind; detail: string };
+
+export type ItemData = {
+  id: string;
+  name: string;
+  sku: string | null;
+  line: string | null;
+  description: string | null;
+  category_id: string | null;
+  part_numbers: string[];
+  specs: Record<string, string>;
+  margin_percent: number;
+  is_active: boolean;
+  prices: PriceRow[];
+  asset_ids: string[];
+};
+
+const NEW = "__new__";
+const ROW_BTN = "size-10 shrink-0 text-muted-foreground";
+
+export function ItemForm({
+  org,
+  item,
+  categories,
+  suppliers,
+  assets,
+  canDelete,
+}: {
+  org: string;
+  item?: ItemData;
+  categories: Option[];
+  suppliers: Option[];
+  assets: AssetOption[];
+  canDelete?: boolean;
+}) {
+  const [state, action, pending] = useActionState(
+    saveItem.bind(null, org, item?.id ?? null),
+    undefined,
+  );
+  const formRef = useRef<HTMLFormElement>(null);
+  const errors = state?.fields ?? {};
+
+  const [category, setCategory] = useState(item?.category_id ?? "");
+  const [specs, setSpecs] = useState<SpecRow[]>(
+    Object.entries(item?.specs ?? {}).map(([key, value]) => ({ key, value })),
+  );
+  const [prices, setPrices] = useState<PriceRow[]>(item?.prices ?? []);
+  const [assetIds, setAssetIds] = useState<string[]>(item?.asset_ids ?? []);
+  const inPresets = item ? (MARGIN_PRESETS as readonly number[]).includes(item.margin_percent) : true;
+  const [margin, setMargin] = useState(inPresets ? String(item?.margin_percent ?? 40) : "custom");
+  const [customMargin, setCustomMargin] = useState(inPresets ? "" : String(item?.margin_percent));
+
+  const marginValue = parseMoney(margin === "custom" ? customMargin : margin);
+  // Se vende sobre el costo más bajo entre los proveedores.
+  const bestCost = useMemo(() => {
+    const costs = prices
+      .map((p) => parseMoney(p.unit_cost, 4))
+      .filter((n): n is number => n !== null);
+    return costs.length ? Math.min(...costs) : null;
+  }, [prices]);
+
+  useEffect(() => {
+    if (!state) return;
+    formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [state]);
+
+  const setPrice = (i: number, patch: Partial<PriceRow>) =>
+    setPrices((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const setSpec = (i: number, patch: Partial<SpecRow>) =>
+    setSpecs((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+
+  const byKind = (Object.keys(ASSET_KIND_LABEL) as AssetKind[])
+    .map((kind) => ({ kind, list: assets.filter((a) => a.kind === kind) }))
+    .filter((g) => g.list.length);
+
+  return (
+    <form
+      ref={formRef}
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        startTransition(() => action(data));
+      }}
+    >
+      <input type="hidden" name="specs" value={JSON.stringify(specs)} />
+      <input type="hidden" name="prices" value={JSON.stringify(prices)} />
+      <input type="hidden" name="asset_ids" value={JSON.stringify(assetIds)} />
+
+      <PageSection index="01" label="Identificación" className="p-0">
+        <CellGrid className="border-0 md:grid-cols-3">
+          <FormField name="name" label="Nombre" error={errors.name}>
+            {(a11y) => <Input {...a11y} required autoFocus defaultValue={item?.name} />}
+          </FormField>
+          <FormField name="sku" label="SKU (opcional)" error={errors.sku}>
+            {(a11y) => <Input {...a11y} className="font-mono" defaultValue={item?.sku ?? ""} />}
+          </FormField>
+          <FormField name="line" label="Línea de producto (opcional)">
+            {(a11y) => <Input {...a11y} defaultValue={item?.line ?? ""} />}
+          </FormField>
+          <div className="flex flex-col gap-4">
+            <FormField name="category_id" label="Categoría">
+              {(a11y) => (
+                <NativeSelect
+                  {...a11y}
+                  className="w-full"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                >
+                  <option value="">Sin categoría</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                  <option value={NEW}>+ Crear nueva…</option>
+                </NativeSelect>
+              )}
+            </FormField>
+            {category === NEW && (
+              <FormField name="new_category" label="Nombre de la categoría" error={errors.new_category}>
+                {(a11y) => <Input {...a11y} required />}
+              </FormField>
+            )}
+          </div>
+          <FormField name="is_active" label="Estado">
+            {(a11y) => (
+              <NativeSelect {...a11y} className="w-full" defaultValue={item?.is_active === false ? "inactive" : "active"}>
+                <option value="active">Activo</option>
+                <option value="inactive">Inactivo</option>
+              </NativeSelect>
+            )}
+          </FormField>
+        </CellGrid>
+      </PageSection>
+
+      <PageSection index="02" label="Referencias" className="p-0">
+        <CellGrid className="border-0 md:grid-cols-3">
+          {[1, 2, 3].map((n) => (
+            <FormField key={n} name={`part_${n}`} label={`Número de parte ${n}`}>
+              {(a11y) => (
+                <Input {...a11y} className="font-mono" defaultValue={item?.part_numbers[n - 1] ?? ""} />
+              )}
+            </FormField>
+          ))}
+          <div className="md:col-span-3">
+            <FormField name="description" label="Descripción (opcional)">
+              {(a11y) => <Input {...a11y} defaultValue={item?.description ?? ""} />}
+            </FormField>
+          </div>
+        </CellGrid>
+      </PageSection>
+
+      <PageSection index="03" label="Especificación técnica" className="flex flex-col gap-3">
+        {specs.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Sin campos. Agrega los que describan al item: marca, medida, material…
+          </p>
+        )}
+        {specs.map((row, i) => (
+          <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+            <Input
+              aria-label={`Nombre de la especificación ${i + 1}`}
+              placeholder="Campo (p. ej. Medida)"
+              value={row.key}
+              onChange={(e) => setSpec(i, { key: e.target.value })}
+            />
+            <Input
+              aria-label={`Valor de la especificación ${i + 1}`}
+              placeholder="Valor"
+              value={row.value}
+              onChange={(e) => setSpec(i, { value: e.target.value })}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={ROW_BTN}
+              aria-label={`Quitar especificación ${i + 1}`}
+              onClick={() => setSpecs((rows) => rows.filter((_, j) => j !== i))}
+            >
+              <HugeiconsIcon icon={Delete02Icon} className="size-4" />
+            </Button>
+          </div>
+        ))}
+        {errors.specs && <FieldError>{errors.specs}</FieldError>}
+        <div>
+          <Button type="button" variant="outline" onClick={() => setSpecs((r) => [...r, { key: "", value: "" }])}>
+            <HugeiconsIcon icon={Add01Icon} data-icon="inline-start" /> Agregar campo
+          </Button>
+        </div>
+      </PageSection>
+
+      <PageSection index="04" label="Costo por proveedor" className="flex flex-col gap-3">
+        {suppliers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aún no hay proveedores.{" "}
+            <Link href={`/${org}/proveedores/nuevo`} className="underline underline-offset-4">
+              Crea el primero
+            </Link>{" "}
+            para registrar costos.
+          </p>
+        ) : (
+          <>
+            {prices.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Sin costos. Agrega un proveedor con su costo sin IVA y la tarifa de IVA por separado.
+              </p>
+            )}
+            {prices.map((row, i) => {
+              const cost = parseMoney(row.unit_cost, 4);
+              const vat = parseMoney(row.vat_rate);
+              return (
+                <div key={i} className="grid gap-2 md:grid-cols-[1.4fr_1fr_6rem_1fr_9rem_auto] md:items-center">
+                  <NativeSelect
+                    aria-label={`Proveedor ${i + 1}`}
+                    className="w-full"
+                    value={row.supplier_id}
+                    onChange={(e) => setPrice(i, { supplier_id: e.target.value })}
+                  >
+                    <option value="">Proveedor…</option>
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                  <Input
+                    aria-label={`Costo sin IVA ${i + 1}`}
+                    placeholder="Costo sin IVA"
+                    inputMode="decimal"
+                    className="font-mono"
+                    value={row.unit_cost}
+                    onChange={(e) => setPrice(i, { unit_cost: e.target.value })}
+                  />
+                  <Input
+                    aria-label={`IVA % ${i + 1}`}
+                    placeholder="IVA %"
+                    inputMode="decimal"
+                    className="font-mono"
+                    value={row.vat_rate}
+                    onChange={(e) => setPrice(i, { vat_rate: e.target.value })}
+                  />
+                  <Input
+                    aria-label={`Código del proveedor ${i + 1}`}
+                    placeholder="Cód. proveedor"
+                    className="font-mono"
+                    value={row.supplier_sku}
+                    onChange={(e) => setPrice(i, { supplier_sku: e.target.value })}
+                  />
+                  <span className="num text-sm text-muted-foreground" aria-label="Costo con IVA">
+                    {cost !== null && vat !== null ? `${formatMoney(withVat(cost, vat))} c/IVA` : "—"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={ROW_BTN}
+                    aria-label={`Quitar costo ${i + 1}`}
+                    onClick={() => setPrices((rows) => rows.filter((_, j) => j !== i))}
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} className="size-4" />
+                  </Button>
+                </div>
+              );
+            })}
+            {errors.prices && <FieldError>{errors.prices}</FieldError>}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setPrices((r) => [...r, { supplier_id: "", unit_cost: "", vat_rate: DEFAULT_VAT, supplier_sku: "" }])
+                }
+              >
+                <HugeiconsIcon icon={Add01Icon} data-icon="inline-start" /> Agregar proveedor
+              </Button>
+            </div>
+          </>
+        )}
+      </PageSection>
+
+      <PageSection index="05" label="Precio de venta" className="p-0">
+        <CellGrid className="border-0 md:grid-cols-3">
+          <div className="flex flex-col gap-4">
+            <FormField name="margin" label="Margen de utilidad" error={errors.margin}>
+              {(a11y) => (
+                <NativeSelect {...a11y} className="w-full" value={margin} onChange={(e) => setMargin(e.target.value)}>
+                  {MARGIN_PRESETS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}%
+                    </option>
+                  ))}
+                  <option value="custom">Otro…</option>
+                </NativeSelect>
+              )}
+            </FormField>
+            {margin === "custom" && (
+              <FormField name="margin_custom" label="Margen (%)">
+                {(a11y) => (
+                  <Input
+                    {...a11y}
+                    inputMode="decimal"
+                    className="font-mono"
+                    value={customMargin}
+                    onChange={(e) => setCustomMargin(e.target.value)}
+                  />
+                )}
+              </FormField>
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
+              Costo más bajo (sin IVA)
+            </span>
+            <span className="num text-lg">{bestCost !== null ? formatMoney(bestCost) : "—"}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
+              Venta sin IVA
+            </span>
+            <span className="num text-lg">
+              {bestCost !== null && marginValue !== null ? formatMoney(salePrice(bestCost, marginValue)) : "—"}
+            </span>
+          </div>
+        </CellGrid>
+      </PageSection>
+
+      <PageSection index="06" label="Compatibilidad con activos" className="flex flex-col gap-4">
+        {assets.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aún no hay activos.{" "}
+            <Link href={`/${org}/bodega/activos/nuevo`} className="underline underline-offset-4">
+              Registra vehículos o maquinaria
+            </Link>{" "}
+            para asociarlos al item.
+          </p>
+        ) : (
+          byKind.map((g) => (
+            <fieldset key={g.kind} className="flex flex-col gap-2">
+              <legend className="mb-1 font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
+                {ASSET_KIND_LABEL[g.kind]}
+              </legend>
+              <div className="grid gap-x-6 gap-y-1 md:grid-cols-2">
+                {g.list.map((a) => (
+                  <label key={a.id} className="flex min-h-10 cursor-pointer items-center gap-3 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-[var(--brand)]"
+                      checked={assetIds.includes(a.id)}
+                      onChange={(e) =>
+                        setAssetIds((ids) => (e.target.checked ? [...ids, a.id] : ids.filter((x) => x !== a.id)))
+                      }
+                    />
+                    <span>
+                      {a.name}
+                      {a.detail && <span className="ml-2 font-mono text-xs text-muted-foreground">{a.detail}</span>}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ))
+        )}
+      </PageSection>
+
+      <div className="flex flex-col gap-4 p-6">
+        {state?.error && <FieldError>{state.error}</FieldError>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" disabled={pending} className="min-h-11 sm:min-h-10">
+            {pending ? "Guardando…" : item ? "Guardar cambios" : "Crear item"}
+          </Button>
+          <Link href={`/${org}/bodega`} className={buttonVariants({ variant: "outline" }) + " min-h-11 sm:min-h-10"}>
+            Cancelar
+          </Link>
+          {item && canDelete && <DeleteItem org={org} id={item.id} />}
+        </div>
+      </div>
+    </form>
+  );
+}
+
+// Eliminar en dos pasos, sin diálogos del navegador.
+function DeleteItem({ org, id }: { org: string; id: string }) {
+  const [confirming, setConfirming] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [state, setState] = useState<ItemState>();
+
+  if (!confirming) {
+    return (
+      <Button type="button" variant="destructive" className="min-h-11 sm:ml-auto sm:min-h-10" onClick={() => setConfirming(true)}>
+        Eliminar
+      </Button>
+    );
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-2 sm:ml-auto">
+      <span className="text-sm">¿Eliminar definitivamente?</span>
+      <Button
+        type="button"
+        variant="destructive"
+        disabled={pending}
+        className="min-h-11 sm:min-h-10"
+        onClick={async () => {
+          setPending(true);
+          const res = await deleteItem(org, id);
+          setPending(false);
+          setState(res);
+          if (res?.error) setConfirming(false);
+        }}
+      >
+        Sí, eliminar
+      </Button>
+      <Button type="button" variant="outline" className="min-h-11 sm:min-h-10" onClick={() => setConfirming(false)}>
+        No
+      </Button>
+      {state?.error && <FieldError>{state.error}</FieldError>}
+    </span>
+  );
+}

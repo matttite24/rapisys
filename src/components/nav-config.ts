@@ -1,6 +1,7 @@
 import type { IconSvgElement } from "@hugeicons/react";
 import {
   Building03Icon,
+  Car01Icon,
   ContractsIcon,
   DashboardSquare01Icon,
   DeliveryTruck01Icon,
@@ -51,7 +52,14 @@ export const modules: NavModule[] = [
     title: "Bodega",
     href: "/bodega",
     icon: WarehouseIcon,
-    groups: [{ items: [{ title: "Items", href: "/bodega", icon: Package01Icon }] }],
+    groups: [
+      {
+        items: [
+          { title: "Items", href: "/bodega", icon: Package01Icon },
+          { title: "Activos", href: "/bodega/activos", icon: Car01Icon },
+        ],
+      },
+    ],
   },
   {
     title: "Clientes",

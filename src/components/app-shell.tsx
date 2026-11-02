@@ -36,6 +36,14 @@ function useActiveModule() {
   return { org, path, active, to: (href: string) => `/${org}${href}` };
 }
 
+// La opción activa es la de ruta más larga que contiene la actual (p. ej.
+// /bodega/123 marca "Items", y /bodega/activos/nuevo marca "Activos").
+function activeHref(path: string, hrefs: string[]) {
+  return hrefs
+    .filter((h) => path === h || path.startsWith(h + "/"))
+    .sort((a, b) => b.length - a.length)[0];
+}
+
 function RailLink({ module: m }: { module: NavModule }) {
   const { active, to } = useActiveModule();
   const label = m.label ?? m.title;
@@ -140,6 +148,7 @@ function Panel({
   onNavigate?: () => void;
 }) {
   const { path, active, to } = useActiveModule();
+  const current = activeHref(path, active.groups.flatMap((g) => g.items.map((i) => i.href)));
 
   return (
     <div className="flex w-60 shrink-0 flex-col border-r bg-muted/50">
@@ -160,15 +169,15 @@ function Panel({
                 onClick={onNavigate}
                 className={cn(
                   "flex min-h-10 items-center gap-2.5 rounded-none px-2 py-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                  path === item.href &&
+                  current === item.href &&
                     "bg-foreground/[0.06] font-medium text-foreground",
                 )}
-                aria-current={path === item.href ? "page" : undefined}
+                aria-current={current === item.href ? "page" : undefined}
               >
                 {item.icon && (
                   <HugeiconsIcon
                     icon={item.icon}
-                    className={cn("size-4.5", path === item.href && "text-brand")}
+                    className={cn("size-4.5", current === item.href && "text-brand")}
                   />
                 )}
                 {item.title}
@@ -195,6 +204,7 @@ function MobileNav({
 }) {
   const { path, active, to } = useActiveModule();
   const options = active.groups.flatMap((g) => g.items);
+  const current = activeHref(path, options.map((o) => o.href));
   const on = "bg-foreground/[0.06] font-medium text-foreground";
   // Cada botón de la fila inferior ocupa su celda completa.
   const cell = "[&_button]:h-14! [&_button]:w-full! [&_button]:rounded-none!";
@@ -251,16 +261,16 @@ function MobileNav({
               key={item.href}
               href={to(item.href)}
               onClick={onNavigate}
-              aria-current={path === item.href ? "page" : undefined}
+              aria-current={current === item.href ? "page" : undefined}
               className={cn(
                 "flex h-12 items-center gap-3 border-b px-6 font-mono text-xs uppercase tracking-[0.08em] transition-colors hover:bg-accent",
-                path === item.href ? on : "text-muted-foreground",
+                current === item.href ? on : "text-muted-foreground",
               )}
             >
               {item.icon && (
                 <HugeiconsIcon
                   icon={item.icon}
-                  className={cn("size-4.5 shrink-0", path === item.href && "text-brand")}
+                  className={cn("size-4.5 shrink-0", current === item.href && "text-brand")}
                 />
               )}
               {item.title}
