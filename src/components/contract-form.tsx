@@ -4,6 +4,7 @@ import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { createContract } from "@/app/[org]/contratos/nuevo/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { DatePicker } from "@/components/date-picker";
 import { FormField } from "@/components/form-field";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -181,16 +182,7 @@ export function ContractForm({
             error={errors.start_date}
             hint={end ? `Termina el ${end}` : undefined}
           >
-            {(a11y) => (
-              <Input
-                {...a11y}
-                type="date"
-                required
-                className="font-mono"
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-              />
-            )}
+            {(a11y) => <DatePicker {...a11y} name="start_date" value={start} onChange={setStart} />}
           </FormField>
         </CellGrid>
       </PageSection>
