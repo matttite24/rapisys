@@ -9,14 +9,12 @@ import {
 } from "@/components/contract-lines";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { PHASE_LABEL, PHASE_ORDER, type Phase } from "@/lib/contracts";
+import { addDaysIso, formatIso } from "@/lib/dates";
 import { formatCents, lineAmounts } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
 type IdParams = Promise<{ org: string; id: string }>;
-
-const dateFmt = (d: Date) =>
-  d.toLocaleDateString("es-EC", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" });
 
 function Cell({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -92,8 +90,7 @@ async function Detail({ params }: { params: IdParams }) {
   const contractTotal = Number(c.total_cents);
   const diff = contractTotal - linesTotal;
 
-  const start = new Date(`${c.start_date}T00:00:00Z`);
-  const end = new Date(start.getTime() + Number(c.term_days) * 86_400_000);
+  const end = addDaysIso(c.start_date, Number(c.term_days));
 
   const byPhase = PHASE_ORDER.map((p) => ({ p, n: lines.filter((l) => l.phase === p).length })).filter(
     (x) => x.n > 0,
@@ -127,7 +124,7 @@ async function Detail({ params }: { params: IdParams }) {
           <Cell label="Plazo">
             <span className="num">{c.term_days} d</span>
             <span className="block font-mono text-xs text-muted-foreground">
-              {dateFmt(start)} → {dateFmt(end)}
+              {formatIso(c.start_date)} → {end ? formatIso(end) : "—"}
             </span>
           </Cell>
         </CellGrid>

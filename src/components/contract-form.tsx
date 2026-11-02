@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { NativeSelect } from "@/components/ui/native-select";
 import { VAT_RATE } from "@/lib/contracts";
+import { addDaysIso, formatIso } from "@/lib/dates";
 import { formatCents, parseCents, splitVat } from "@/lib/money";
 
 type Option = { id: string; name: string };
@@ -70,15 +71,6 @@ function PartyPicker({
   );
 }
 
-function endDate(start: string, days: string) {
-  const n = Number(days);
-  if (!start || !Number.isInteger(n) || n <= 0) return null;
-  const d = new Date(`${start}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return null;
-  d.setDate(d.getDate() + n);
-  return d.toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" });
-}
-
 export function ContractForm({
   org,
   clients,
@@ -97,7 +89,9 @@ export function ContractForm({
   const errors: Errors = state?.fields ?? {};
   const parsed = parseCents(total);
   const breakdown = parsed.ok ? splitVat(parsed.cents, VAT_RATE) : null;
-  const end = endDate(start, days);
+  const termDays = Number(days);
+  // El plazo debe ser un entero mayor a 0; vacío o inválido no genera fecha.
+  const end = days.trim() && Number.isInteger(termDays) && termDays > 0 ? addDaysIso(start, termDays) : null;
 
   // Lleva el foco al primer campo con error para que no pase desapercibido.
   useEffect(() => {
@@ -139,7 +133,7 @@ export function ContractForm({
       </PageSection>
 
       <PageSection index="03" label="Condiciones" className="p-0">
-        <CellGrid className="border-0 md:grid-cols-3">
+        <CellGrid className="border-0 md:grid-cols-4">
           <FormField
             name="total"
             label="Monto total en USD (incluye IVA)"
@@ -161,6 +155,9 @@ export function ContractForm({
               />
             )}
           </FormField>
+          <FormField name="start_date" label="Fecha de inicio" error={errors.start_date}>
+            {(a11y) => <DatePicker {...a11y} name="start_date" value={start} onChange={setStart} />}
+          </FormField>
           <FormField name="term_days" label="Plazo (días)" error={errors.term_days}>
             {(a11y) => (
               <Input
@@ -176,14 +173,16 @@ export function ContractForm({
               />
             )}
           </FormField>
-          <FormField
-            name="start_date"
-            label="Fecha de inicio"
-            error={errors.start_date}
-            hint={end ? `Termina el ${end}` : undefined}
-          >
-            {(a11y) => <DatePicker {...a11y} name="start_date" value={start} onChange={setStart} />}
-          </FormField>
+          {/* Se calcula sola: fecha de inicio + plazo */}
+          <div className="flex flex-col gap-2" aria-live="polite">
+            <span className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+              Fecha de entrega
+            </span>
+            <span className="num flex h-10 items-center text-lg">{end ? formatIso(end) : "—"}</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {end ? `Inicio + ${termDays} días` : "Elige el inicio y el plazo"}
+            </span>
+          </div>
         </CellGrid>
       </PageSection>
 
