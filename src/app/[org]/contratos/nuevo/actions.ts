@@ -5,6 +5,7 @@ import { VAT_RATE } from "@/lib/contracts";
 import { parseCents } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
+import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
 
 // `fields` asocia cada mensaje con el campo que lo causó; `error` es general.
 export type ContractState =
@@ -75,7 +76,7 @@ export async function createContract(
       .select("id")
       .single();
     if (error) {
-      console.error(`createContract: no se pudo crear en ${table}`, error);
+      logDbError(`createContract: no se pudo crear en ${table}`, error);
       return null;
     }
     return data.id;
@@ -102,7 +103,8 @@ export async function createContract(
     if (error.code === "23505") {
       return { fields: { code: "Ya existe un contrato con ese código. Usa otro." } };
     }
-    console.error("createContract: no se pudo crear el contrato", error);
+    logDbError("createContract: no se pudo crear el contrato", error);
+    if (isSchemaError(error)) return { error: SCHEMA_MESSAGE };
     return {
       error:
         "No se pudo guardar el contrato. Revisa los datos e inténtalo de nuevo; lo que escribiste se conserva.",

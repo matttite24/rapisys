@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
+import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
 
 export type AssetState =
   | { error?: string; fields?: Record<string, string> }
@@ -51,17 +52,19 @@ export async function saveAsset(
       .eq("organization_id", orgId)
       .select("id");
     if (error) {
-      console.error("saveAsset update:", error);
-      return { error: "No se pudo guardar. Inténtalo de nuevo." };
+      logDbError("saveAsset update", error);
+      return { error: isSchemaError(error) ? SCHEMA_MESSAGE : "No se pudo guardar. Inténtalo de nuevo." };
     }
     if (!data?.length) return { error: "No tienes permiso para editar este activo." };
   } else {
     const { error } = await supabase.from("assets").insert({ organization_id: orgId, ...values });
     if (error) {
-      console.error("saveAsset insert:", error);
+      logDbError("saveAsset insert", error);
       return {
         error:
-          error.code === "42501"
+          isSchemaError(error)
+            ? SCHEMA_MESSAGE
+            : error.code === "42501"
             ? "No tienes permiso para crear activos."
             : "No se pudo guardar. Inténtalo de nuevo.",
       };

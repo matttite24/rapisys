@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
+import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
 
 export type MemberState = { error?: string; token?: string; email?: string } | undefined;
 
@@ -16,7 +17,8 @@ function friendly(error: { code?: string; message: string }) {
   }
   if (error.code === "23505") return "Ya hay una invitación pendiente para ese correo.";
   if (error.code === "42501") return "Solo los administradores pueden hacer esto.";
-  console.error("miembros:", error);
+  logDbError("miembros", error);
+  if (isSchemaError(error)) return SCHEMA_MESSAGE;
   return "No se pudo completar la acción. Inténtalo de nuevo.";
 }
 

@@ -5,6 +5,7 @@ import { parseCents, parseDecimal } from "@/lib/money";
 import type { PriceRow, SpecRow } from "@/lib/items";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
+import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
 
 export type ItemState =
   | { error?: string; fields?: Record<string, string> }
@@ -125,7 +126,8 @@ export async function saveItem(
       return { fields: { sku: "Ya existe un item con ese SKU. Usa otro." } };
     }
     if (error.code === "42501") return { error: "No tienes permiso para guardar items." };
-    console.error("saveItem:", error);
+    logDbError("saveItem", error);
+    if (isSchemaError(error)) return { error: SCHEMA_MESSAGE };
     return { error: "No se pudo guardar el item. Revisa los datos e inténtalo de nuevo." };
   }
 

@@ -11,6 +11,7 @@ import { centsToInput, parseCents, parseDecimal, salePriceCents } from "@/lib/mo
 import { cleanSearch } from "@/lib/search";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
+import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
 
 export type LineState = { error?: string; fields?: Record<string, string> } | undefined;
 
@@ -18,9 +19,10 @@ const text = (fd: FormData, key: string) => String(fd.get(key) ?? "").trim();
 const refresh = (org: string, contractId: string) =>
   revalidatePath(`/${org}/contratos/${contractId}`);
 
-function friendly(error: { code?: string }) {
+function friendly(error: DbError) {
   if (error.code === "42501") return "No tienes permiso para hacer esto.";
-  console.error("contrato:", error);
+  logDbError("contrato", error);
+  if (isSchemaError(error)) return SCHEMA_MESSAGE;
   return "No se pudo completar la acción. Inténtalo de nuevo.";
 }
 
