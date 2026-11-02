@@ -7,6 +7,16 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { FormField } from "@/components/form-field";
 import { MoneyInput } from "@/components/money-input";
 import { NumericInput } from "@/components/numeric-input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -49,13 +59,16 @@ export function StatusControl({
   org,
   contractId,
   status,
+  summary,
 }: {
   org: string;
   contractId: string;
   status: string;
+  summary?: string; // resumen del contrato, para confirmar el paso a En ejecución
 }) {
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const idx = STATUS_ORDER.indexOf(status as (typeof STATUS_ORDER)[number]);
   const prev = STATUS_ORDER[idx - 1];
   const next = STATUS_ORDER[idx + 1];
@@ -81,12 +94,38 @@ export function StatusControl({
           </Button>
         )}
         {next && (
-          <Button disabled={pending} onClick={() => go(next)}>
+          // Pasar a En ejecución fija los datos del contrato: pide confirmación.
+          <Button disabled={pending} onClick={() => (next === "in_progress" ? setConfirmOpen(true) : go(next))}>
             {STATUS_LABEL[next]} →
           </Button>
         )}
       </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Pasar el contrato a En ejecución?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {summary && <span className="num mb-2 block text-foreground">{summary}</span>}
+              Desde aquí se cargan y se trabajan los items. Los datos del contrato (nombre, código, cliente,
+              responsable, monto y fechas) quedarán fijos y ya no se podrán corregir. Se usan los datos
+              guardados: si cambiaste algo, guárdalo antes de continuar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmOpen(false);
+                void go("in_progress");
+              }}
+            >
+              Sí, pasar a En ejecución
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

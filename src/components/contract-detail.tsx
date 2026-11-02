@@ -43,6 +43,9 @@ async function Detail({ params }: { params: IdParams }) {
     .maybeSingle();
   if (!c) notFound();
 
+  const deliveryIso = addDaysIso(c.start_date, Number(c.term_days));
+  const summary = `${c.code} · ${formatCents(Number(c.total_cents))} · entrega ${deliveryIso ? formatIso(deliveryIso) : "—"}`;
+
   const header = (
     <PageSection>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -50,7 +53,7 @@ async function Detail({ params }: { params: IdParams }) {
           <p className="font-mono text-sm text-muted-foreground">{c.code}</p>
           <h1 className="text-3xl font-semibold tracking-tight">{c.name}</h1>
         </div>
-        <StatusControl org={org} contractId={id} status={c.status} />
+        <StatusControl org={org} contractId={id} status={c.status} summary={summary} />
       </div>
     </PageSection>
   );
@@ -138,7 +141,7 @@ async function Detail({ params }: { params: IdParams }) {
   const contractTotal = Number(c.total_cents);
   const diff = contractTotal - linesTotal;
 
-  const end = addDaysIso(c.start_date, Number(c.term_days));
+  const end = deliveryIso;
 
   const byPhase = PHASE_ORDER.map((p) => ({ p, n: lines.filter((l) => l.phase === p).length })).filter(
     (x) => x.n > 0,
