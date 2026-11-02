@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Skills de terceros: se restauran desde skills-lock.json
+.claude/skills/
+.agents/
