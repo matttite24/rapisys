@@ -6,6 +6,8 @@ import { createContract } from "@/app/[org]/contratos/nuevo/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { DatePicker } from "@/components/date-picker";
 import { FormField } from "@/components/form-field";
+import { MoneyInput } from "@/components/money-input";
+import { NumericInput } from "@/components/numeric-input";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { CellGrid, PageSection } from "@/components/page-section";
@@ -60,7 +62,7 @@ function PartyPicker({
             {(a11y) => <Input {...a11y} required />}
           </FormField>
           <FormField name={`${prefix}_ruc`} label="RUC (opcional)" hint="13 dígitos">
-            {(a11y) => <Input {...a11y} inputMode="numeric" className="font-mono" />}
+            {(a11y) => <NumericInput {...a11y} maxLength={13} className="font-mono" />}
           </FormField>
           <FormField name={`${prefix}_address`} label="Dirección (opcional)">
             {(a11y) => <Input {...a11y} />}
@@ -144,29 +146,17 @@ export function ContractForm({
                 : `Se desglosa el IVA ${VAT_RATE}% automáticamente`
             }
           >
-            {(a11y) => (
-              <Input
-                {...a11y}
-                inputMode="decimal"
-                required
-                className="font-mono"
-                value={total}
-                onChange={(e) => setTotal(e.target.value)}
-              />
-            )}
+            {(a11y) => <MoneyInput {...a11y} name="total" required value={total} onChange={setTotal} />}
           </FormField>
           <FormField name="start_date" label="Fecha de inicio" error={errors.start_date}>
             {(a11y) => <DatePicker {...a11y} name="start_date" value={start} onChange={setStart} />}
           </FormField>
           <FormField name="term_days" label="Plazo (días)" error={errors.term_days}>
             {(a11y) => (
-              <Input
+              <NumericInput
                 {...a11y}
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step={1}
                 required
+                maxLength={4}
                 className="font-mono"
                 value={days}
                 onChange={(e) => setDays(e.target.value)}

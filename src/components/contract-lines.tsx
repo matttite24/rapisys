@@ -5,6 +5,8 @@ import { useRef, useState } from "react";
 import { Delete02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FormField } from "@/components/form-field";
+import { MoneyInput } from "@/components/money-input";
+import { NumericInput } from "@/components/numeric-input";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -169,9 +171,9 @@ function LineRow({ org, contractId, line: l }: { org: string; contractId: string
           </NativeSelect>
           {canReceive && (
             <div className="flex items-center gap-2">
-              <Input
+              <NumericInput
+                kind="decimal"
                 aria-label={`Unidades recibidas de ${l.name}`}
-                inputMode="decimal"
                 className="font-mono"
                 value={received}
                 onChange={(e) => setReceivedValue(e.target.value)}
@@ -326,7 +328,7 @@ export function AddLineForm({
         )}
       </div>
       <FormField name="quantity" label="Cantidad" error={errors.quantity}>
-        {(a11y) => <Input {...a11y} inputMode="decimal" className="font-mono" defaultValue="1" />}
+        {(a11y) => <NumericInput {...a11y} kind="decimal" className="font-mono" defaultValue="1" />}
       </FormField>
       <FormField
         name="unit_price"
@@ -334,15 +336,7 @@ export function AddLineForm({
         error={errors.unit_price}
         hint={selected && price && price === selected.suggested ? "Sugerido por el catálogo" : undefined}
       >
-        {(a11y) => (
-          <Input
-            {...a11y}
-            inputMode="decimal"
-            className="font-mono"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-        )}
+        {(a11y) => <MoneyInput {...a11y} name="unit_price" value={price} onChange={setPrice} />}
       </FormField>
       <Button type="submit" disabled={pending} className="md:mt-[1.35rem]">
         {pending ? "Agregando…" : "Agregar línea"}

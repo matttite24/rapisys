@@ -6,6 +6,8 @@ import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { FormField } from "@/components/form-field";
+import { MoneyInput } from "@/components/money-input";
+import { NumericInput } from "@/components/numeric-input";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
@@ -252,18 +254,17 @@ export function ItemForm({
                       </option>
                     ))}
                   </NativeSelect>
-                  <Input
+                  <MoneyInput
+                    name={`unit_cost_${i}`}
                     aria-label={`Costo sin IVA ${i + 1}`}
                     placeholder="Costo sin IVA"
-                    inputMode="decimal"
-                    className="font-mono"
                     value={row.unit_cost}
-                    onChange={(e) => setPrice(i, { unit_cost: e.target.value })}
+                    onChange={(v) => setPrice(i, { unit_cost: v })}
                   />
-                  <Input
+                  <NumericInput
+                    kind="decimal"
                     aria-label={`IVA % ${i + 1}`}
                     placeholder="IVA %"
-                    inputMode="decimal"
                     className="font-mono"
                     value={row.vat_rate}
                     onChange={(e) => setPrice(i, { vat_rate: e.target.value })}
@@ -325,9 +326,9 @@ export function ItemForm({
             {margin === "custom" && (
               <FormField name="margin_custom" label="Margen (%)">
                 {(a11y) => (
-                  <Input
+                  <NumericInput
                     {...a11y}
-                    inputMode="decimal"
+                    kind="decimal"
                     className="font-mono"
                     value={customMargin}
                     onChange={(e) => setCustomMargin(e.target.value)}

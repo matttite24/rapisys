@@ -4,6 +4,7 @@ import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef } from "react";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { FormField } from "@/components/form-field";
+import { NumericInput } from "@/components/numeric-input";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
@@ -79,7 +80,7 @@ export function AssetForm({
           </FormField>
           <FormField name="year" label="Año (opcional)" error={errors.year}>
             {(a11y) => (
-              <Input {...a11y} type="number" inputMode="numeric" className="font-mono" defaultValue={asset?.year ?? ""} />
+              <NumericInput {...a11y} maxLength={4} className="font-mono" defaultValue={asset?.year ?? ""} />
             )}
           </FormField>
         </CellGrid>

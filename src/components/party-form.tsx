@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef } from "react";
 import { FormField } from "@/components/form-field";
+import { NumericInput } from "@/components/numeric-input";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageSection } from "@/components/page-section";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -59,7 +60,7 @@ export function PartyForm({
             hint="13 dígitos para un RUC, 10 para una cédula"
           >
             {(a11y) => (
-              <Input {...a11y} inputMode="numeric" className="font-mono" defaultValue={party?.ruc ?? ""} />
+              <NumericInput {...a11y} maxLength={13} className="font-mono" defaultValue={party?.ruc ?? ""} />
             )}
           </FormField>
           <FormField name="address" label="Dirección (opcional)">
