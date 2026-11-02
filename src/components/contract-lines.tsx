@@ -22,9 +22,9 @@ import {
   STATUS_DOT,
   STATUS_LABEL,
   STATUS_ORDER,
-  formatMoney,
   type Phase,
 } from "@/lib/contracts";
+import { formatCents, lineAmounts } from "@/lib/money";
 
 const TH =
   "border-r px-4 py-3 text-left font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground last:border-r-0";
@@ -35,7 +35,7 @@ export type LineView = {
   name: string;
   sku: string | null;
   quantity: number;
-  unitPrice: number;
+  unitCents: number;
   vatRate: number;
   phase: Phase;
   received: number;
@@ -137,7 +137,7 @@ function LineRow({ org, contractId, line: l }: { org: string; contractId: string
     }
   }
 
-  const total = l.quantity * l.unitPrice * (1 + l.vatRate / 100);
+  const amounts = lineAmounts(l.quantity, l.unitCents, l.vatRate);
   // Se registran recepciones mientras la línea está comprada o parcialmente recibida.
   const canReceive = l.phase === "purchased" || l.phase === "received";
 
@@ -149,8 +149,8 @@ function LineRow({ org, contractId, line: l }: { org: string; contractId: string
         {error && <p role="alert" className="mt-1 text-sm text-destructive">{error}</p>}
       </td>
       <td className={`${TD} num text-right`}>{l.quantity}</td>
-      <td className={`${TD} num text-right`}>{formatMoney(l.unitPrice)}</td>
-      <td className={`${TD} num text-right`}>{formatMoney(Math.round(total * 100) / 100)}</td>
+      <td className={`${TD} num text-right`}>{formatCents(l.unitCents)}</td>
+      <td className={`${TD} num text-right`}>{formatCents(amounts.total)}</td>
       <td className={TD}>
         <div className="flex min-w-48 flex-col gap-2">
           <NativeSelect

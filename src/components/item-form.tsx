@@ -10,14 +10,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { formatMoney, parseMoney } from "@/lib/contracts";
+import { formatCents, parseCents, parseDecimal, salePriceCents, withVatCents } from "@/lib/money";
 import { deleteItem, saveItem, type ItemState } from "@/lib/item-actions";
 import {
   ASSET_KIND_LABEL,
   DEFAULT_VAT,
   MARGIN_PRESETS,
-  salePrice,
-  withVat,
   type AssetKind,
   type PriceRow,
   type SpecRow,
@@ -76,12 +74,13 @@ export function ItemForm({
   const [margin, setMargin] = useState(inPresets ? String(item?.margin_percent ?? 40) : "custom");
   const [customMargin, setCustomMargin] = useState(inPresets ? "" : String(item?.margin_percent));
 
-  const marginValue = parseMoney(margin === "custom" ? customMargin : margin);
+  const marginValue = parseDecimal(margin === "custom" ? customMargin : margin);
   // Se vende sobre el costo más bajo entre los proveedores.
   const bestCost = useMemo(() => {
-    const costs = prices
-      .map((p) => parseMoney(p.unit_cost, 4))
-      .filter((n): n is number => n !== null);
+    const costs = prices.flatMap((p) => {
+      const c = parseCents(p.unit_cost);
+      return c.ok ? [c.cents] : [];
+    });
     return costs.length ? Math.min(...costs) : null;
   }, [prices]);
 
@@ -234,8 +233,8 @@ export function ItemForm({
               </p>
             )}
             {prices.map((row, i) => {
-              const cost = parseMoney(row.unit_cost, 4);
-              const vat = parseMoney(row.vat_rate);
+              const cost = parseCents(row.unit_cost);
+              const vat = parseDecimal(row.vat_rate);
               return (
                 <div key={i} className="grid gap-2 md:grid-cols-[1.4fr_1fr_6rem_1fr_9rem_auto] md:items-center">
                   <NativeSelect
@@ -275,7 +274,7 @@ export function ItemForm({
                     onChange={(e) => setPrice(i, { supplier_sku: e.target.value })}
                   />
                   <span className="num text-sm text-muted-foreground" aria-label="Costo con IVA">
-                    {cost !== null && vat !== null ? `${formatMoney(withVat(cost, vat))} c/IVA` : "—"}
+                    {cost.ok && vat !== null ? `${formatCents(withVatCents(cost.cents, vat))} c/IVA` : "—"}
                   </span>
                   <Button
                     type="button"
@@ -339,14 +338,14 @@ export function ItemForm({
             <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
               Costo más bajo (sin IVA)
             </span>
-            <span className="num text-lg">{bestCost !== null ? formatMoney(bestCost) : "—"}</span>
+            <span className="num text-lg">{bestCost !== null ? formatCents(bestCost) : "—"}</span>
           </div>
           <div className="flex flex-col gap-1">
             <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
               Venta sin IVA
             </span>
             <span className="num text-lg">
-              {bestCost !== null && marginValue !== null ? formatMoney(salePrice(bestCost, marginValue)) : "—"}
+              {bestCost !== null && marginValue !== null ? formatCents(salePriceCents(bestCost, marginValue)) : "—"}
             </span>
           </div>
         </CellGrid>

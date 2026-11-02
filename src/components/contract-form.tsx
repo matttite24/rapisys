@@ -9,7 +9,8 @@ import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { NativeSelect } from "@/components/ui/native-select";
-import { VAT_RATE, formatMoney, parseMoney, splitVat } from "@/lib/contracts";
+import { VAT_RATE } from "@/lib/contracts";
+import { formatCents, parseCents, splitVat } from "@/lib/money";
 
 type Option = { id: string; name: string };
 type Errors = Record<string, string>;
@@ -93,8 +94,8 @@ export function ContractForm({
   const [days, setDays] = useState("");
 
   const errors: Errors = state?.fields ?? {};
-  const parsed = parseMoney(total);
-  const breakdown = parsed === null ? null : splitVat(parsed);
+  const parsed = parseCents(total);
+  const breakdown = parsed.ok ? splitVat(parsed.cents, VAT_RATE) : null;
   const end = endDate(start, days);
 
   // Lleva el foco al primer campo con error para que no pase desapercibido.
@@ -143,7 +144,7 @@ export function ContractForm({
             error={errors.total}
             hint={
               breakdown
-                ? `Subtotal ${formatMoney(breakdown.subtotal)} · IVA ${VAT_RATE}% ${formatMoney(breakdown.vat)}`
+                ? `Subtotal ${formatCents(breakdown.subtotal)} · IVA ${VAT_RATE}% ${formatCents(breakdown.vat)}`
                 : `Se desglosa el IVA ${VAT_RATE}% automáticamente`
             }
           >

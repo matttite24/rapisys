@@ -9,8 +9,8 @@ import {
   type LineView,
 } from "@/components/contract-lines";
 import { CellGrid, PageSection } from "@/components/page-section";
-import { PHASE_LABEL, PHASE_ORDER, formatMoney, type Phase } from "@/lib/contracts";
-import { salePrice } from "@/lib/items";
+import { PHASE_LABEL, PHASE_ORDER, type Phase } from "@/lib/contracts";
+import { centsToInput, formatCents, lineAmounts, salePriceCents } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -50,7 +50,7 @@ async function Detail({ params }: { params: IdParams }) {
     supabase.from("contract_managers").select("name, ruc").eq("id", c.manager_id).maybeSingle(),
     supabase
       .from("contract_items")
-      .select("id, item_id, quantity, unit_price, vat_rate, phase, received_qty")
+      .select("id, item_id, quantity, unit_price_cents, vat_rate, phase, received_qty")
       .eq("contract_id", id)
       .order("created_at"),
     supabase
@@ -59,7 +59,7 @@ async function Detail({ params }: { params: IdParams }) {
       .eq("organization_id", orgId)
       .eq("is_active", true)
       .order("name"),
-    supabase.from("item_supplier_prices").select("item_id, unit_cost").eq("organization_id", orgId),
+    supabase.from("item_supplier_prices").select("item_id, unit_cost_cents").eq("organization_id", orgId),
   ]);
 
   const itemsById = new Map(
@@ -83,7 +83,7 @@ async function Detail({ params }: { params: IdParams }) {
       id: string;
       item_id: string;
       quantity: number;
-      unit_price: number;
+      unit_price_cents: number;
       vat_rate: number;
       phase: Phase;
       received_qty: number;
@@ -93,7 +93,7 @@ async function Detail({ params }: { params: IdParams }) {
     name: itemsById.get(l.item_id)?.name ?? "Item eliminado",
     sku: itemsById.get(l.item_id)?.sku ?? null,
     quantity: Number(l.quantity),
-    unitPrice: Number(l.unit_price),
+    unitCents: Number(l.unit_price_cents),
     vatRate: Number(l.vat_rate),
     phase: l.phase,
     received: Number(l.received_qty),
@@ -101,8 +101,8 @@ async function Detail({ params }: { params: IdParams }) {
 
   // Precio sugerido por item: costo más bajo + margen. Solo items aún no agregados.
   const best = new Map<string, number>();
-  for (const p of (pricesRes.data ?? []) as { item_id: string; unit_cost: number }[]) {
-    const cost = Number(p.unit_cost);
+  for (const p of (pricesRes.data ?? []) as { item_id: string; unit_cost_cents: number }[]) {
+    const cost = Number(p.unit_cost_cents);
     if (!best.has(p.item_id) || cost < best.get(p.item_id)!) best.set(p.item_id, cost);
   }
   const inContract = new Set(((linesRes.data ?? []) as { item_id: string }[]).map((l) => l.item_id));
@@ -113,14 +113,16 @@ async function Detail({ params }: { params: IdParams }) {
       id: i.id,
       name: i.name,
       sku: i.sku,
-      suggested: best.has(i.id) ? String(salePrice(best.get(i.id)!, Number(i.margin_percent))) : "",
+      suggested: best.has(i.id) ? centsToInput(salePriceCents(best.get(i.id)!, Number(i.margin_percent))) : "",
     }));
 
-  const subtotal = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
-  const vat = lines.reduce((s, l) => s + l.quantity * l.unitPrice * (l.vatRate / 100), 0);
-  const linesTotal = Math.round((subtotal + vat) * 100) / 100;
-  const contractTotal = Number(c.total_amount);
-  const diff = Math.round((contractTotal - linesTotal) * 100) / 100;
+  // Cada línea se redondea una vez; los totales son sumas de enteros (centavos).
+  const amounts = lines.map((l) => lineAmounts(l.quantity, l.unitCents, l.vatRate));
+  const subtotal = amounts.reduce((s, a) => s + a.subtotal, 0);
+  const vat = amounts.reduce((s, a) => s + a.vat, 0);
+  const linesTotal = subtotal + vat;
+  const contractTotal = Number(c.total_cents);
+  const diff = contractTotal - linesTotal;
 
   const start = new Date(`${c.start_date}T00:00:00Z`);
   const end = new Date(start.getTime() + Number(c.term_days) * 86_400_000);
@@ -152,7 +154,7 @@ async function Detail({ params }: { params: IdParams }) {
             {managerRes.data?.ruc && <span className="block font-mono text-xs text-muted-foreground">{managerRes.data.ruc}</span>}
           </Cell>
           <Cell label="Monto del contrato (IVA incl.)">
-            <span className="num">{formatMoney(contractTotal)}</span>
+            <span className="num">{formatCents(contractTotal)}</span>
           </Cell>
           <Cell label="Plazo">
             <span className="num">{c.term_days} d</span>
@@ -179,17 +181,17 @@ async function Detail({ params }: { params: IdParams }) {
             <LinesTable org={org} contractId={id} lines={lines} />
             <div className="grid gap-px border-t bg-border md:grid-cols-4 [&>*]:bg-background [&>*]:p-4">
               <Cell label="Subtotal">
-                <span className="num">{formatMoney(subtotal)}</span>
+                <span className="num">{formatCents(subtotal)}</span>
               </Cell>
               <Cell label="IVA">
-                <span className="num">{formatMoney(vat)}</span>
+                <span className="num">{formatCents(vat)}</span>
               </Cell>
               <Cell label="Total de líneas (IVA incl.)">
-                <span className="num font-medium">{formatMoney(linesTotal)}</span>
+                <span className="num font-medium">{formatCents(linesTotal)}</span>
               </Cell>
               <Cell label="Frente al monto del contrato">
                 <span className="num">
-                  {diff === 0 ? "Coincide" : diff > 0 ? `Faltan ${formatMoney(diff)}` : `Excede en ${formatMoney(-diff)}`}
+                  {diff === 0 ? "Coincide" : diff > 0 ? `Faltan ${formatCents(diff)}` : `Excede en ${formatCents(-diff)}`}
                 </span>
               </Cell>
             </div>

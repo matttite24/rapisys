@@ -5,9 +5,9 @@ import {
   NEEDS_FULL_RECEIPT,
   PHASE_ORDER,
   STATUS_ORDER,
-  parseMoney,
   type Phase,
 } from "@/lib/contracts";
+import { parseCents, parseDecimal } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -31,13 +31,17 @@ export async function addLine(
   formData: FormData,
 ): Promise<LineState> {
   const itemId = text(formData, "item_id");
-  const quantity = parseMoney(text(formData, "quantity"));
-  const price = parseMoney(text(formData, "unit_price"), 4);
+  const quantity = parseDecimal(text(formData, "quantity"));
+  const price = parseCents(text(formData, "unit_price"));
 
   const fields: Record<string, string> = {};
   if (!itemId) fields.item_id = "Elige un item del catálogo.";
-  if (quantity === null || quantity <= 0) fields.quantity = "Escribe una cantidad mayor a 0.";
-  if (price === null) fields.unit_price = "Escribe el precio unitario sin IVA.";
+  if (quantity === null || quantity <= 0 || quantity > 10_000_000) {
+    fields.quantity = "Escribe una cantidad mayor a 0, con máximo 2 decimales.";
+  }
+  let priceCents = 0;
+  if (!price.ok) fields.unit_price = price.error;
+  else priceCents = price.cents;
   if (Object.keys(fields).length) return { fields };
 
   const orgId = await getOrgId(org);
@@ -49,7 +53,7 @@ export async function addLine(
     contract_id: contractId,
     item_id: itemId,
     quantity,
-    unit_price: price,
+    unit_price_cents: priceCents,
     vat_rate: vatRate,
   });
   if (error) {
@@ -114,8 +118,8 @@ export async function setReceived(
   lineId: string,
   raw: string,
 ): Promise<LineState> {
-  const qty = parseMoney(raw);
-  if (qty === null) return { error: "Escribe una cantidad válida." };
+  const qty = parseDecimal(raw);
+  if (qty === null) return { error: "Escribe una cantidad válida, con máximo 2 decimales." };
 
   const supabase = await createClient();
   const { data: line } = await supabase
@@ -124,6 +128,9 @@ export async function setReceived(
     .eq("id", lineId)
     .maybeSingle();
   if (!line) return { error: "No encontramos la línea." };
+  if (NEEDS_FULL_RECEIPT.includes(line.phase as Phase) && qty < Number(line.quantity)) {
+    return { error: "La línea ya está en stock: vuelve primero a la fase Recibido." };
+  }
   if (qty > Number(line.quantity)) {
     return { error: `No puedes recibir más de ${Number(line.quantity)} unidades.` };
   }

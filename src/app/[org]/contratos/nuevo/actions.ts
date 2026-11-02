@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { VAT_RATE, parseMoney } from "@/lib/contracts";
+import { VAT_RATE } from "@/lib/contracts";
+import { parseCents } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,7 +22,7 @@ export async function createContract(
   const org = text(formData, "org");
   const name = text(formData, "name");
   const code = text(formData, "code");
-  const total = parseMoney(text(formData, "total"));
+  const total = parseCents(text(formData, "total"));
   const termDays = Number(text(formData, "term_days"));
   const startDate = text(formData, "start_date");
   const clientChoice = text(formData, "client_id");
@@ -39,11 +40,10 @@ export async function createContract(
   if (managerChoice === NEW && !text(formData, "manager_name")) {
     fields.manager_name = "Escribe el nombre del responsable.";
   }
-  if (total === null) {
-    fields.total = "Escribe un monto válido, por ejemplo 12500,00.";
-  } else if (total <= 0) {
-    fields.total = "El monto debe ser mayor a 0.";
-  }
+  let totalCents = 0;
+  if (!total.ok) fields.total = total.error;
+  else if (total.cents <= 0) fields.total = "El monto debe ser mayor a 0.";
+  else totalCents = total.cents;
   if (!Number.isInteger(termDays) || termDays <= 0) {
     fields.term_days = "Escribe los días de plazo como número entero mayor a 0.";
   }
@@ -92,7 +92,7 @@ export async function createContract(
     name,
     client_id: clientId,
     manager_id: managerId,
-    total_amount: total,
+    total_cents: totalCents,
     vat_rate: VAT_RATE,
     term_days: termDays,
     start_date: startDate,

@@ -5,7 +5,8 @@ import { Add01Icon } from "@hugeicons/core-free-icons";
 import { HeaderAction } from "@/components/header-action";
 import { PageSection } from "@/components/page-section";
 import { buttonVariants } from "@/components/ui/button";
-import { STATUS_DOT, STATUS_LABEL, formatMoney } from "@/lib/contracts";
+import { STATUS_DOT, STATUS_LABEL } from "@/lib/contracts";
+import { formatCents } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 
 type Params = Promise<{ org: string }>;
@@ -14,7 +15,7 @@ type Row = {
   id: string;
   code: string;
   name: string;
-  total_amount: number;
+  total_cents: number;
   term_days: number;
   start_date: string;
   status: string;
@@ -42,7 +43,7 @@ async function List({
   let query = supabase
     .from("contracts")
     .select(
-      "id, code, name, total_amount, term_days, start_date, status, clients(name), organizations!inner(slug)",
+      "id, code, name, total_cents, term_days, start_date, status, clients(name), organizations!inner(slug)",
     )
     .eq("organizations.slug", org)
     .order("created_at", { ascending: false });
@@ -92,7 +93,7 @@ async function List({
                     </Link>
                   </td>
                   <td className={TD}>{r.clients?.name}</td>
-                  <td className={`${TD} num text-right`}>{formatMoney(Number(r.total_amount))}</td>
+                  <td className={`${TD} num text-right`}>{formatCents(Number(r.total_cents))}</td>
                   <td className={`${TD} num text-right`}>{r.term_days} d</td>
                   <td className={`${TD} num`}>{r.start_date}</td>
                   <td className={TD}>

@@ -8,8 +8,8 @@ import { ItemForm, type AssetOption, type ItemData } from "@/components/item-for
 import { PageSection } from "@/components/page-section";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatMoney } from "@/lib/contracts";
-import { salePrice, type AssetKind } from "@/lib/items";
+import type { AssetKind } from "@/lib/items";
+import { centsToInput, formatCents, salePriceCents } from "@/lib/money";
 import { getMyRole, getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -54,15 +54,15 @@ async function List({ params, searchParams }: { params: Params; searchParams: Se
   const [itemsRes, catsRes, pricesRes] = await Promise.all([
     query,
     supabase.from("item_categories").select("id, name").eq("organization_id", orgId),
-    supabase.from("item_supplier_prices").select("item_id, unit_cost").eq("organization_id", orgId),
+    supabase.from("item_supplier_prices").select("item_id, unit_cost_cents").eq("organization_id", orgId),
   ]);
 
   const rows = (itemsRes.data ?? []) as ItemRow[];
   const cats = new Map((catsRes.data ?? []).map((c) => [c.id as string, c.name as string]));
   // Costo más bajo (sin IVA) por item.
   const best = new Map<string, number>();
-  for (const p of (pricesRes.data ?? []) as { item_id: string; unit_cost: number }[]) {
-    const cost = Number(p.unit_cost);
+  for (const p of (pricesRes.data ?? []) as { item_id: string; unit_cost_cents: number }[]) {
+    const cost = Number(p.unit_cost_cents);
     if (!best.has(p.item_id) || cost < best.get(p.item_id)!) best.set(p.item_id, cost);
   }
   const newHref = `/${org}/bodega/nuevo`;
@@ -142,10 +142,10 @@ async function List({ params, searchParams }: { params: Params; searchParams: Se
                           <span className="ml-1 text-muted-foreground">+{r.part_numbers.length - 1}</span>
                         )}
                       </td>
-                      <td className={`${TD} num text-right`}>{cost !== undefined ? formatMoney(cost) : "—"}</td>
+                      <td className={`${TD} num text-right`}>{cost !== undefined ? formatCents(cost) : "—"}</td>
                       <td className={`${TD} num text-right`}>{Number(r.margin_percent)}%</td>
                       <td className={`${TD} num text-right`}>
-                        {cost !== undefined ? formatMoney(salePrice(cost, Number(r.margin_percent))) : "—"}
+                        {cost !== undefined ? formatCents(salePriceCents(cost, Number(r.margin_percent))) : "—"}
                       </td>
                     </tr>
                   );
@@ -237,7 +237,7 @@ async function EditForm({ params }: { params: IdParams }) {
     supabase.from("items").select("*").eq("id", id).eq("organization_id", orgId).maybeSingle(),
     supabase
       .from("item_supplier_prices")
-      .select("supplier_id, unit_cost, vat_rate, supplier_sku")
+      .select("supplier_id, unit_cost_cents, vat_rate, supplier_sku")
       .eq("item_id", id)
       .order("created_at"),
     supabase.from("item_assets").select("asset_id").eq("item_id", id),
@@ -260,12 +260,12 @@ async function EditForm({ params }: { params: IdParams }) {
     is_active: row.is_active,
     prices: ((pricesRes.data ?? []) as {
       supplier_id: string;
-      unit_cost: number;
+      unit_cost_cents: number;
       vat_rate: number;
       supplier_sku: string | null;
     }[]).map((p) => ({
       supplier_id: p.supplier_id,
-      unit_cost: String(Number(p.unit_cost)),
+      unit_cost: centsToInput(Number(p.unit_cost_cents)),
       vat_rate: String(Number(p.vat_rate)),
       supplier_sku: p.supplier_sku ?? "",
     })),

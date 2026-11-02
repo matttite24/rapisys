@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { parseMoney } from "@/lib/contracts";
+import { parseCents, parseDecimal } from "@/lib/money";
 import type { PriceRow, SpecRow } from "@/lib/items";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
@@ -60,18 +60,18 @@ export async function saveItem(
   }
 
   // Costos por proveedor.
-  const prices: { supplier_id: string; unit_cost: number; vat_rate: number; supplier_sku: string }[] = [];
+  const prices: { supplier_id: string; unit_cost_cents: number; vat_rate: number; supplier_sku: string }[] = [];
   const seen = new Set<string>();
   for (const row of json<PriceRow[]>(formData, "prices", [])) {
     if (!row.supplier_id && !row.unit_cost) continue;
-    const cost = parseMoney(String(row.unit_cost ?? ""), 4);
-    const vat = parseMoney(String(row.vat_rate ?? ""), 2);
+    const cost = parseCents(String(row.unit_cost ?? ""));
+    const vat = parseDecimal(String(row.vat_rate ?? ""));
     if (!row.supplier_id) {
       fields.prices = "Elige el proveedor en cada costo.";
       break;
     }
-    if (cost === null) {
-      fields.prices = "El costo de cada proveedor debe ser un número válido.";
+    if (!cost.ok) {
+      fields.prices = cost.error;
       break;
     }
     if (vat === null) {
@@ -85,15 +85,15 @@ export async function saveItem(
     seen.add(row.supplier_id);
     prices.push({
       supplier_id: row.supplier_id,
-      unit_cost: cost,
+      unit_cost_cents: cost.cents,
       vat_rate: vat,
       supplier_sku: String(row.supplier_sku ?? "").trim(),
     });
   }
 
   const marginChoice = text(formData, "margin");
-  const margin = parseMoney(marginChoice === "custom" ? text(formData, "margin_custom") : marginChoice);
-  if (margin === null) fields.margin = "Escribe un margen válido, por ejemplo 40.";
+  const margin = parseDecimal(marginChoice === "custom" ? text(formData, "margin_custom") : marginChoice);
+  if (margin === null || margin > 1000) fields.margin = "Escribe un margen válido entre 0 y 1000, por ejemplo 40.";
 
   if (Object.keys(fields).length) return { fields };
 
