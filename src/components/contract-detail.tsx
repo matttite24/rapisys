@@ -44,7 +44,11 @@ async function Detail({ params }: { params: IdParams }) {
   if (!c) notFound();
 
   const deliveryIso = addDaysIso(c.start_date, Number(c.term_days));
-  const summary = `${c.code} · ${formatCents(Number(c.total_cents))} · entrega ${deliveryIso ? formatIso(deliveryIso) : "—"}`;
+  const summary = {
+    code: c.code as string,
+    total: formatCents(Number(c.total_cents)),
+    delivery: deliveryIso ? formatIso(deliveryIso) : "—",
+  };
 
   const header = (
     <PageSection>

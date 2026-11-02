@@ -54,6 +54,9 @@ export type LineView = {
   received: number;
 };
 
+const SUMMARY_LABEL =
+  "mb-1 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground";
+
 // Estado del contrato: un paso adelante o atrás por vez.
 export function StatusControl({
   org,
@@ -64,7 +67,8 @@ export function StatusControl({
   org: string;
   contractId: string;
   status: string;
-  summary?: string; // resumen del contrato, para confirmar el paso a En ejecución
+  // Datos del contrato, para confirmar el paso a En ejecución.
+  summary?: { code: string; total: string; delivery: string };
 }) {
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
@@ -103,16 +107,35 @@ export function StatusControl({
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="data-[size=default]:sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Pasar el contrato a En ejecución?</AlertDialogTitle>
             <AlertDialogDescription>
-              {summary && <span className="num mb-2 block text-foreground">{summary}</span>}
-              Desde aquí se cargan y se trabajan los items. Los datos del contrato (nombre, código, cliente,
-              responsable, monto y fechas) quedarán fijos y ya no se podrán corregir. Se usan los datos
-              guardados: si cambiaste algo, guárdalo antes de continuar.
+              Se habilita la carga de items. Los datos del contrato quedan fijos y ya no se podrán corregir.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {summary && (
+            <dl className="grid grid-cols-2 gap-px border bg-border [&>div]:bg-popover [&>div]:p-3">
+              <div className="col-span-2">
+                <dt className={SUMMARY_LABEL}>Contrato</dt>
+                <dd className="num break-all">{summary.code}</dd>
+              </div>
+              <div>
+                <dt className={SUMMARY_LABEL}>Monto (IVA incl.)</dt>
+                <dd className="num whitespace-nowrap">{summary.total}</dd>
+              </div>
+              <div>
+                <dt className={SUMMARY_LABEL}>Fecha de entrega</dt>
+                <dd className="num whitespace-nowrap">{summary.delivery}</dd>
+              </div>
+            </dl>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Se usan los datos guardados. Si cambiaste algo en el formulario, guárdalo antes de continuar.
+          </p>
+
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
