@@ -7,6 +7,7 @@ import {
   StatusControl,
   type LineView,
 } from "@/components/contract-lines";
+import { ContractForm } from "@/components/contract-form";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { PHASE_LABEL, PHASE_ORDER, type Phase } from "@/lib/contracts";
 import { addDaysIso, formatIso } from "@/lib/dates";
@@ -41,6 +42,53 @@ async function Detail({ params }: { params: IdParams }) {
     .eq("organization_id", orgId)
     .maybeSingle();
   if (!c) notFound();
+
+  const header = (
+    <PageSection>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <p className="font-mono text-sm text-muted-foreground">{c.code}</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{c.name}</h1>
+        </div>
+        <StatusControl org={org} contractId={id} status={c.status} />
+      </div>
+    </PageSection>
+  );
+
+  // En estado Nuevo se corrigen los datos del contrato; los items aún no se cargan.
+  if (c.status === "new") {
+    const [clients, managers] = await Promise.all([
+      supabase.from("clients").select("id, name").eq("organization_id", orgId).order("name"),
+      supabase.from("contract_managers").select("id, name").eq("organization_id", orgId).order("name"),
+    ]);
+    return (
+      <>
+        {header}
+        <PageSection>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            El contrato está en <strong className="text-foreground">Nuevo</strong>: corrige aquí sus datos
+            cuando haga falta. Los items se cargan y se trabajan desde{" "}
+            <strong className="text-foreground">En ejecución</strong>.
+          </p>
+        </PageSection>
+        <ContractForm
+          org={org}
+          clients={clients.data ?? []}
+          managers={managers.data ?? []}
+          contract={{
+            id,
+            name: c.name,
+            code: c.code,
+            clientId: c.client_id,
+            managerId: c.manager_id,
+            totalCents: Number(c.total_cents),
+            startDate: c.start_date,
+            termDays: Number(c.term_days),
+          }}
+        />
+      </>
+    );
+  }
 
   const [clientRes, managerRes, linesRes] = await Promise.all([
     supabase.from("clients").select("name, ruc").eq("id", c.client_id).maybeSingle(),
@@ -98,15 +146,7 @@ async function Detail({ params }: { params: IdParams }) {
 
   return (
     <>
-      <PageSection>
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0">
-            <p className="font-mono text-sm text-muted-foreground">{c.code}</p>
-            <h1 className="text-3xl font-semibold tracking-tight">{c.name}</h1>
-          </div>
-          <StatusControl org={org} contractId={id} status={c.status} />
-        </div>
-      </PageSection>
+      {header}
 
       <PageSection className="p-0">
         <CellGrid className="border-0 md:grid-cols-4">
@@ -140,7 +180,11 @@ async function Detail({ params }: { params: IdParams }) {
         className="p-0"
       >
         {lines.length === 0 ? (
-          <p className="p-6 text-muted-foreground">Aún no hay items en este contrato. Agrega el primero abajo.</p>
+          <p className="p-6 text-muted-foreground">
+            {c.status === "in_progress"
+              ? "Aún no hay items en este contrato. Agrega el primero abajo."
+              : "Este contrato no tiene items."}
+          </p>
         ) : (
           <>
             <LinesTable org={org} contractId={id} lines={lines} />
@@ -164,9 +208,11 @@ async function Detail({ params }: { params: IdParams }) {
         )}
       </PageSection>
 
-      <PageSection label="Agregar item">
-        <AddLineForm org={org} contractId={id} vatRate={Number(c.vat_rate)} />
-      </PageSection>
+      {c.status === "in_progress" && (
+        <PageSection label="Agregar item">
+          <AddLineForm org={org} contractId={id} vatRate={Number(c.vat_rate)} />
+        </PageSection>
+      )}
     </>
   );
 }

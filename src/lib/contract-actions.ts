@@ -51,6 +51,19 @@ export async function addLine(
   if (!orgId) return { error: "No encontramos la organización." };
 
   const supabase = await createClient();
+
+  // Los items se cargan cuando el contrato está En ejecución, no antes ni después.
+  const { data: contract } = await supabase
+    .from("contracts")
+    .select("status")
+    .eq("id", contractId)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (!contract) return { error: "No encontramos el contrato." };
+  if (contract.status !== "in_progress") {
+    return { error: "Los items se cargan cuando el contrato está En ejecución." };
+  }
+
   const { error } = await supabase.from("contract_items").insert({
     organization_id: orgId,
     contract_id: contractId,
@@ -168,6 +181,15 @@ export async function setContractStatus(
     .eq("id", contractId)
     .maybeSingle();
   if (!current) return { error: "No encontramos el contrato." };
+
+  // Un contrato con items no puede volver a Nuevo: ahí los items todavía no se trabajan.
+  if (status === "new") {
+    const { count } = await supabase
+      .from("contract_items")
+      .select("id", { count: "exact", head: true })
+      .eq("contract_id", contractId);
+    if (count) return { error: "Quita los items del contrato antes de volver a Nuevo." };
+  }
 
   // Solo se avanza o retrocede un paso a la vez.
   const delta = STATUS_ORDER.indexOf(status as (typeof STATUS_ORDER)[number]) -

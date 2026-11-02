@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
-import { createContract } from "@/app/[org]/contratos/nuevo/actions";
+import { createContract, updateContract } from "@/lib/contract-form-actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { DatePicker } from "@/components/date-picker";
 import { FormField } from "@/components/form-field";
@@ -14,9 +14,21 @@ import { CellGrid, PageSection } from "@/components/page-section";
 import { NativeSelect } from "@/components/ui/native-select";
 import { VAT_RATE } from "@/lib/contracts";
 import { addDaysIso, formatIso } from "@/lib/dates";
-import { formatCents, parseCents, splitVat } from "@/lib/money";
+import { centsToInput, formatCents, parseCents, splitVat } from "@/lib/money";
 
 type Option = { id: string; name: string };
+
+// Datos de un contrato existente, para corregirlo mientras está en estado Nuevo.
+export type ContractData = {
+  id: string;
+  name: string;
+  code: string;
+  clientId: string;
+  managerId: string;
+  totalCents: number;
+  startDate: string;
+  termDays: number;
+};
 type Errors = Record<string, string>;
 const NEW = "__new__";
 
@@ -26,13 +38,15 @@ function PartyPicker({
   label,
   options,
   errors,
+  initial = "",
 }: {
   prefix: "client" | "manager";
   label: string;
   options: Option[];
   errors: Errors;
+  initial?: string;
 }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initial);
 
   return (
     <div className="flex flex-col gap-4">
@@ -77,16 +91,21 @@ export function ContractForm({
   org,
   clients,
   managers,
+  contract,
 }: {
   org: string;
   clients: Option[];
   managers: Option[];
+  contract?: ContractData;
 }) {
-  const [state, formAction, pending] = useActionState(createContract, undefined);
+  const [state, formAction, pending] = useActionState(
+    contract ? updateContract.bind(null, org, contract.id) : createContract,
+    undefined,
+  );
   const formRef = useRef<HTMLFormElement>(null);
-  const [total, setTotal] = useState("");
-  const [start, setStart] = useState("");
-  const [days, setDays] = useState("");
+  const [total, setTotal] = useState(contract ? centsToInput(contract.totalCents) : "");
+  const [start, setStart] = useState(contract?.startDate ?? "");
+  const [days, setDays] = useState(contract ? String(contract.termDays) : "");
 
   const errors: Errors = state?.fields ?? {};
   const parsed = parseCents(total);
@@ -119,18 +138,18 @@ export function ContractForm({
       <PageSection index="01" label="Identificación" className="p-0">
         <CellGrid className="border-0 border-t-0 md:grid-cols-2">
           <FormField name="name" label="Nombre del contrato" error={errors.name}>
-            {(a11y) => <Input {...a11y} required autoFocus />}
+            {(a11y) => <Input {...a11y} required autoFocus={!contract} defaultValue={contract?.name} />}
           </FormField>
           <FormField name="code" label="Código del contrato" error={errors.code}>
-            {(a11y) => <Input {...a11y} required className="font-mono" />}
+            {(a11y) => <Input {...a11y} required className="font-mono" defaultValue={contract?.code} />}
           </FormField>
         </CellGrid>
       </PageSection>
 
       <PageSection index="02" label="Partes" className="p-0">
         <CellGrid className="border-0 md:grid-cols-2">
-          <PartyPicker prefix="client" label="Cliente (institución)" options={clients} errors={errors} />
-          <PartyPicker prefix="manager" label="Responsable de contrato" options={managers} errors={errors} />
+          <PartyPicker prefix="client" label="Cliente (institución)" options={clients} errors={errors} initial={contract?.clientId} />
+          <PartyPicker prefix="manager" label="Responsable de contrato" options={managers} errors={errors} initial={contract?.managerId} />
         </CellGrid>
       </PageSection>
 
@@ -178,15 +197,22 @@ export function ContractForm({
 
       <div className="flex flex-col gap-4 p-6">
         {state?.error && <FieldError>{state.error}</FieldError>}
+        {state?.saved && (
+          <p role="status" className="font-mono text-xs uppercase tracking-[0.08em]">
+            Cambios guardados
+          </p>
+        )}
         <div className="flex gap-2">
           <Button type="submit" disabled={pending} className="min-h-11 sm:min-h-10">
-            {pending ? "Creando…" : "Crear contrato"}
+            {pending
+              ? contract ? "Guardando…" : "Creando…"
+              : contract ? "Guardar cambios" : "Crear contrato"}
           </Button>
           <Link
             href={`/${org}/contratos`}
             className={buttonVariants({ variant: "outline" }) + " min-h-11 sm:min-h-10"}
           >
-            Cancelar
+            {contract ? "Volver a la lista" : "Cancelar"}
           </Link>
         </div>
       </div>
