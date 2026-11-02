@@ -4,6 +4,7 @@ import Link from "next/link";
 import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { FormField } from "@/components/form-field";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { formatCents, parseCents, parseDecimal, salePriceCents, withVatCents } from "@/lib/money";
-import { deleteItem, saveItem, type ItemState } from "@/lib/item-actions";
+import { deleteItem, saveItem } from "@/lib/item-actions";
 import {
   ASSET_KIND_LABEL,
   DEFAULT_VAT,
@@ -104,6 +105,7 @@ export function ItemForm({
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
+        if (pending) return; // un segundo Enter no debe enviar de nuevo
         const data = new FormData(e.currentTarget);
         startTransition(() => action(data));
       }}
@@ -398,48 +400,9 @@ export function ItemForm({
           <Link href={`/${org}/bodega`} className={buttonVariants({ variant: "outline" }) + " min-h-11 sm:min-h-10"}>
             Cancelar
           </Link>
-          {item && canDelete && <DeleteItem org={org} id={item.id} />}
+          {item && canDelete && <ConfirmDelete onConfirm={() => deleteItem(org, item.id)} />}
         </div>
       </div>
     </form>
-  );
-}
-
-// Eliminar en dos pasos, sin diálogos del navegador.
-function DeleteItem({ org, id }: { org: string; id: string }) {
-  const [confirming, setConfirming] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [state, setState] = useState<ItemState>();
-
-  if (!confirming) {
-    return (
-      <Button type="button" variant="destructive" className="min-h-11 sm:ml-auto sm:min-h-10" onClick={() => setConfirming(true)}>
-        Eliminar
-      </Button>
-    );
-  }
-  return (
-    <span className="flex flex-wrap items-center gap-2 sm:ml-auto">
-      <span className="text-sm">¿Eliminar definitivamente?</span>
-      <Button
-        type="button"
-        variant="destructive"
-        disabled={pending}
-        className="min-h-11 sm:min-h-10"
-        onClick={async () => {
-          setPending(true);
-          const res = await deleteItem(org, id);
-          setPending(false);
-          setState(res);
-          if (res?.error) setConfirming(false);
-        }}
-      >
-        Sí, eliminar
-      </Button>
-      <Button type="button" variant="outline" className="min-h-11 sm:min-h-10" onClick={() => setConfirming(false)}>
-        No
-      </Button>
-      {state?.error && <FieldError>{state.error}</FieldError>}
-    </span>
   );
 }

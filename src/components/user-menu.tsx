@@ -1,13 +1,10 @@
 import { connection } from "next/server";
 import { AccountMenu } from "@/components/account-menu";
-import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/auth";
 
 export async function UserMenu() {
   await connection();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   return <AccountMenu email={user?.email} />;
 }

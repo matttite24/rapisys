@@ -1,5 +1,6 @@
 "use client";
 
+import { TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
 import { useRef, useState } from "react";
 import { Delete02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -11,9 +12,11 @@ import { NativeSelect } from "@/components/ui/native-select";
 import {
   addLine,
   removeLine,
+  searchCatalog,
   setContractStatus,
   setPhase,
   setReceived,
+  type CatalogResult,
   type LineState,
 } from "@/lib/contract-actions";
 import {
@@ -26,9 +29,7 @@ import {
 } from "@/lib/contracts";
 import { formatCents, lineAmounts } from "@/lib/money";
 
-const TH =
-  "border-r px-4 py-3 text-left font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground last:border-r-0";
-const TD = "border-r px-4 py-3 align-top last:border-r-0";
+const TD = `${TABLE_TD} align-top`;
 
 export type LineView = {
   id: string;
@@ -211,32 +212,39 @@ function LineRow({ org, contractId, line: l }: { org: string; contractId: string
   );
 }
 
-export type CatalogItem = { id: string; name: string; sku: string | null; suggested: string };
-
 export function AddLineForm({
   org,
   contractId,
   vatRate,
-  catalog,
 }: {
   org: string;
   contractId: string;
   vatRate: number;
-  catalog: CatalogItem[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [itemId, setItemId] = useState("");
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<CatalogResult[] | null>(null);
+  const [selected, setSelected] = useState<CatalogResult | null>(null);
   const [price, setPrice] = useState("");
   const [pending, setPending] = useState(false);
   const [state, setState] = useState<LineState>();
   const errors = state?.fields ?? {};
 
-  if (catalog.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No hay items activos en el catálogo. Crea items en Bodega para agregarlos al contrato.
-      </p>
-    );
+  // Busca en el servidor con una pausa corta: el catálogo nunca se carga completo.
+  function search(value: string) {
+    setQuery(value);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(async () => {
+      setResults(await searchCatalog(org, contractId, value));
+    }, 250);
+  }
+
+  function choose(item: CatalogResult) {
+    setSelected(item);
+    setPrice(item.suggested); // precio sugerido por el catálogo; se puede cambiar
+    setResults(null);
+    setQuery("");
   }
 
   return (
@@ -246,6 +254,7 @@ export function AddLineForm({
       className="grid gap-4 md:grid-cols-[2fr_8rem_12rem_auto] md:items-start"
       onSubmit={async (e) => {
         e.preventDefault();
+        if (pending) return;
         const data = new FormData(e.currentTarget);
         setPending(true);
         const res = await addLine(org, contractId, vatRate, undefined, data);
@@ -253,33 +262,69 @@ export function AddLineForm({
         setState(res);
         if (!res?.error && !res?.fields) {
           formRef.current?.reset();
-          setItemId("");
+          setSelected(null);
           setPrice("");
         }
       }}
     >
-      <FormField name="item_id" label="Item" error={errors.item_id}>
-        {(a11y) => (
-          <NativeSelect
-            {...a11y}
-            className="w-full"
-            value={itemId}
-            onChange={(e) => {
-              setItemId(e.target.value);
-              // Precio sugerido: costo más bajo + margen del item. Se puede cambiar.
-              setPrice(catalog.find((c) => c.id === e.target.value)?.suggested ?? "");
-            }}
-          >
-            <option value="">Selecciona un item…</option>
-            {catalog.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.sku ? `${c.sku} · ` : ""}
-                {c.name}
-              </option>
-            ))}
-          </NativeSelect>
+      <input type="hidden" name="item_id" value={selected?.id ?? ""} />
+
+      <div className="flex flex-col gap-2">
+        {selected ? (
+          <>
+            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Item</span>
+            <div className="flex items-center justify-between gap-2 border px-3 py-2 text-sm">
+              <span className="min-w-0 truncate">
+                {selected.sku && <span className="mr-2 font-mono text-xs text-muted-foreground">{selected.sku}</span>}
+                {selected.name}
+              </span>
+              <Button type="button" variant="outline" onClick={() => { setSelected(null); setPrice(""); }}>
+                Cambiar
+              </Button>
+            </div>
+          </>
+        ) : (
+          <FormField name="item_search" label="Item" error={errors.item_id}>
+            {(a11y) => (
+              <Input
+                {...a11y}
+                aria-invalid={errors.item_id ? true : undefined}
+                type="search"
+                autoComplete="off"
+                placeholder="Busca por nombre, SKU o número de parte"
+                value={query}
+                onChange={(e) => search(e.target.value)}
+                onFocus={() => results === null && search(query)}
+              />
+            )}
+          </FormField>
         )}
-      </FormField>
+        {!selected && results !== null && (
+          <ul aria-label="Resultados" className="max-h-64 divide-y overflow-y-auto border">
+            {results.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-muted-foreground">
+                {query ? "Ningún item coincide." : "No hay items disponibles para agregar."}
+              </li>
+            ) : (
+              results.map((r) => (
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
+                    onClick={() => choose(r)}
+                  >
+                    {r.sku && <span className="font-mono text-xs text-muted-foreground">{r.sku}</span>}
+                    <span className="truncate">{r.name}</span>
+                    {r.suggested && (
+                      <span className="num ml-auto text-xs text-muted-foreground">${r.suggested}</span>
+                    )}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        )}
+      </div>
       <FormField name="quantity" label="Cantidad" error={errors.quantity}>
         {(a11y) => <Input {...a11y} inputMode="decimal" className="font-mono" defaultValue="1" />}
       </FormField>
@@ -287,7 +332,7 @@ export function AddLineForm({
         name="unit_price"
         label="Precio unitario s/IVA"
         error={errors.unit_price}
-        hint={itemId && price ? "Sugerido por el catálogo" : undefined}
+        hint={selected && price && price === selected.suggested ? "Sugerido por el catálogo" : undefined}
       >
         {(a11y) => (
           <Input

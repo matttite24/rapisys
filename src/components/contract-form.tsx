@@ -110,6 +110,7 @@ export function ContractForm({
   // reinicia los campos al terminar y lo escrito se conserva si hay un error.
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (pending) return; // un segundo Enter no debe enviar de nuevo
     const data = new FormData(e.currentTarget);
     startTransition(() => formAction(data));
   }

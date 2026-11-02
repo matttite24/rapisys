@@ -6,9 +6,8 @@ import { createPortal } from "react-dom";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-// Elemento del encabezado donde las páginas colocan sus acciones.
+// Elemento del encabezado donde las páginas colocan su acción principal.
 export const HeaderSlotContext = createContext<HTMLElement | null>(null);
 
 type Props = {
@@ -16,58 +15,37 @@ type Props = {
   label: string;
   href?: string;
   onClick?: () => void;
-  // Acción principal de la pantalla: botón de acento con texto (solo ícono en móvil).
-  prominent?: boolean;
 };
 
-// Botón de ícono cuadrado con tooltip, para el extremo derecho de un encabezado.
-export function IconAction({ icon, label, href, onClick, prominent }: Props) {
-  const content = <HugeiconsIcon icon={icon} className="size-5" />;
+// Uso desde cualquier página: <HeaderAction icon={Add01Icon} label="Nuevo" href="…" />
+// Se muestra en el encabezado de la sección como una celda al borde derecho: alto
+// completo, pegada a la línea (anula el padding del encabezado). En móvil queda
+// como un cuadrado con solo el ícono; el texto sigue disponible para lectores de pantalla.
+export function HeaderAction({ icon, label, href, onClick }: Props) {
+  const slot = useContext(HeaderSlotContext);
+  if (!slot) return null;
 
-  if (prominent) {
-    // Celda al borde del encabezado: alto completo y pegada a la línea derecha
-    // (anula el padding del encabezado). En móvil queda como un cuadrado de ícono.
-    const className = cn(
-      buttonVariants({ variant: "default" }),
-      "-mr-4 h-full! border-0! bg-clip-border! px-5 max-sm:w-14 max-sm:px-0 sm:gap-2",
-    );
-    const text = <span className="max-sm:sr-only">{label}</span>;
-    return href ? (
+  const className = cn(
+    buttonVariants({ variant: "default" }),
+    "-mr-4 h-full! border-0! bg-clip-border! px-5 max-sm:w-14 max-sm:px-0 sm:gap-2",
+  );
+  const content = (
+    <>
+      <HugeiconsIcon icon={icon} className="size-5" />
+      <span className="max-sm:sr-only">{label}</span>
+    </>
+  );
+
+  return createPortal(
+    href ? (
       <Link href={href} data-slot="button" className={className}>
         {content}
-        {text}
       </Link>
     ) : (
       <Button className={className} onClick={onClick}>
         {content}
-        {text}
       </Button>
-    );
-  }
-
-  const className = buttonVariants({ variant: "ghost", size: "icon" });
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          href ? (
-            <Link href={href} aria-label={label} className={className} />
-          ) : (
-            <Button variant="ghost" size="icon" aria-label={label} onClick={onClick} />
-          )
-        }
-      >
-        {content}
-      </TooltipTrigger>
-      <TooltipContent side="bottom">{label}</TooltipContent>
-    </Tooltip>
+    ),
+    slot,
   );
-}
-
-// Uso desde cualquier página: <HeaderAction icon={Add01Icon} label="Nuevo" href="…" />
-// Se muestra en el encabezado de la sección, a la derecha.
-export function HeaderAction(props: Props) {
-  const slot = useContext(HeaderSlotContext);
-  return slot ? createPortal(<IconAction {...props} />, slot) : null;
 }

@@ -4,42 +4,45 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { HeaderAction } from "@/components/header-action";
-import { PageSection } from "@/components/page-section";
+import { PageSection, TABLE_TH as TH, TABLE_TD as TD } from "@/components/page-section";
 import { PartyForm } from "@/components/party-form";
+import { Pager } from "@/components/pager";
+import { pageRange, readPage } from "@/lib/pagination";
 import { buttonVariants } from "@/components/ui/button";
 import { PARTIES, type Party, type PartyKind } from "@/lib/parties";
 import { getMyRole, getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
 type Params = Promise<{ org: string }>;
+type Search = Promise<Record<string, string | string[] | undefined>>;
 type IdParams = Promise<{ org: string; id: string }>;
 
-const TH =
-  "border-r px-4 py-3 text-left font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground last:border-r-0";
-const TD = "border-r px-4 py-3 last:border-r-0";
 
-async function List({ kind, params }: { kind: PartyKind; params: Params }) {
+async function List({ kind, params, searchParams }: { kind: PartyKind; params: Params; searchParams: Search }) {
   await connection();
   const cfg = PARTIES[kind];
   const { org } = await params;
+  const page = readPage(await searchParams);
   const orgId = await getOrgId(org);
   if (!orgId) notFound();
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, count } = await supabase
     .from(cfg.table)
-    .select("id, name, ruc, address")
+    .select("id, name, ruc, address", { count: "exact" })
     .eq("organization_id", orgId)
-    .order("name");
+    .order("name")
+    .range(...pageRange(page));
   const rows = (data ?? []) as Party[];
+  const total = count ?? 0;
   const newHref = `/${org}/${cfg.path}/nuevo`;
 
   return (
     <PageSection
-      label={`${rows.length} ${rows.length === 1 ? cfg.singular : cfg.plural}`}
+      label={`${total} ${total === 1 ? cfg.singular : cfg.plural}`}
       className="p-0"
     >
-      <HeaderAction icon={Add01Icon} label={cfg.newLabel} href={newHref} prominent />
+      <HeaderAction icon={Add01Icon} label={cfg.newLabel} href={newHref} />
       {rows.length === 0 ? (
         <div className="flex flex-col items-start gap-4 p-6">
           <p className="text-muted-foreground">{cfg.empty}</p>
@@ -76,16 +79,17 @@ async function List({ kind, params }: { kind: PartyKind; params: Params }) {
           </table>
         </div>
       )}
+      <Pager basePath={`/${org}/${cfg.path}`} page={page} total={total} />
     </PageSection>
   );
 }
 
-export function PartyListPage({ kind, params }: { kind: PartyKind; params: Params }) {
+export function PartyListPage({ kind, params, searchParams }: { kind: PartyKind; params: Params; searchParams: Search }) {
   return (
     <>
       <h1 className="sr-only">{PARTIES[kind].heading}</h1>
       <Suspense fallback={<PageSection label="Cargando…" />}>
-        <List kind={kind} params={params} />
+        <List kind={kind} params={params} searchParams={searchParams} />
       </Suspense>
     </>
   );

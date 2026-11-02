@@ -11,6 +11,13 @@ export async function acceptInvitation(
 ): Promise<AuthState> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("accept_invitation", { p_token: token });
-  if (error) return { error: error.message };
+  if (error) {
+    const known = ["Invitación inválida o vencida", "La invitación es para otro correo"];
+    return {
+      error: known.some((k) => error.message.includes(k))
+        ? error.message
+        : "No se pudo aceptar la invitación. Inténtalo de nuevo.",
+    };
+  }
   redirect(`/${data.slug}/inicio`);
 }

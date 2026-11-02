@@ -1,5 +1,6 @@
 "use client";
 
+import { TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
 import { startTransition, useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -19,9 +20,7 @@ import { ROLE_LABEL, type Role } from "@/lib/roles";
 const day = (iso: string) =>
   new Date(iso).toLocaleDateString("es-EC", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" });
 
-const TH =
-  "border-r px-4 py-3 text-left font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground last:border-r-0";
-const TD = "border-r px-4 py-3 align-middle last:border-r-0";
+const TD = `${TABLE_TD} align-middle`;
 
 export type MemberView = {
   userId: string;
@@ -165,6 +164,7 @@ export function InviteForm({ org }: { org: string }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (pending) return;
           const data = new FormData(e.currentTarget);
           setCopied(false);
           startTransition(() => action(data));

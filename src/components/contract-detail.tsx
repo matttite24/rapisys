@@ -5,12 +5,11 @@ import {
   AddLineForm,
   LinesTable,
   StatusControl,
-  type CatalogItem,
   type LineView,
 } from "@/components/contract-lines";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { PHASE_LABEL, PHASE_ORDER, type Phase } from "@/lib/contracts";
-import { centsToInput, formatCents, lineAmounts, salePriceCents } from "@/lib/money";
+import { formatCents, lineAmounts } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -45,7 +44,7 @@ async function Detail({ params }: { params: IdParams }) {
     .maybeSingle();
   if (!c) notFound();
 
-  const [clientRes, managerRes, linesRes, catalogRes, pricesRes] = await Promise.all([
+  const [clientRes, managerRes, linesRes] = await Promise.all([
     supabase.from("clients").select("name, ruc").eq("id", c.client_id).maybeSingle(),
     supabase.from("contract_managers").select("name, ruc").eq("id", c.manager_id).maybeSingle(),
     supabase
@@ -53,42 +52,28 @@ async function Detail({ params }: { params: IdParams }) {
       .select("id, item_id, quantity, unit_price_cents, vat_rate, phase, received_qty")
       .eq("contract_id", id)
       .order("created_at"),
-    supabase
-      .from("items")
-      .select("id, sku, name, margin_percent")
-      .eq("organization_id", orgId)
-      .eq("is_active", true)
-      .order("name"),
-    supabase.from("item_supplier_prices").select("item_id, unit_cost_cents").eq("organization_id", orgId),
   ]);
 
-  const itemsById = new Map(
-    ((catalogRes.data ?? []) as { id: string; sku: string | null; name: string; margin_percent: number }[]).map(
-      (i) => [i.id, i],
-    ),
-  );
-  // Un item inactivo ya agregado al contrato debe seguir mostrando su nombre.
-  const missing = ((linesRes.data ?? []) as { item_id: string }[])
-    .map((l) => l.item_id)
-    .filter((i) => !itemsById.has(i));
-  if (missing.length) {
-    const { data } = await supabase.from("items").select("id, sku, name, margin_percent").in("id", missing);
-    for (const i of (data ?? []) as { id: string; sku: string | null; name: string; margin_percent: number }[]) {
-      itemsById.set(i.id, i);
-    }
-  }
+  type LineRow = {
+    id: string;
+    item_id: string;
+    quantity: number;
+    unit_price_cents: number;
+    vat_rate: number;
+    phase: Phase;
+    received_qty: number;
+  };
+  const lineRows = (linesRes.data ?? []) as LineRow[];
 
-  const lines: LineView[] = (
-    (linesRes.data ?? []) as {
-      id: string;
-      item_id: string;
-      quantity: number;
-      unit_price_cents: number;
-      vat_rate: number;
-      phase: Phase;
-      received_qty: number;
-    }[]
-  ).map((l) => ({
+  // Solo los items de este contrato (activos o no), nunca el catálogo completo.
+  const { data: itemRows } = lineRows.length
+    ? await supabase.from("items").select("id, sku, name").in("id", lineRows.map((l) => l.item_id))
+    : { data: [] };
+  const itemsById = new Map(
+    ((itemRows ?? []) as { id: string; sku: string | null; name: string }[]).map((i) => [i.id, i]),
+  );
+
+  const lines: LineView[] = lineRows.map((l) => ({
     id: l.id,
     name: itemsById.get(l.item_id)?.name ?? "Item eliminado",
     sku: itemsById.get(l.item_id)?.sku ?? null,
@@ -98,23 +83,6 @@ async function Detail({ params }: { params: IdParams }) {
     phase: l.phase,
     received: Number(l.received_qty),
   }));
-
-  // Precio sugerido por item: costo más bajo + margen. Solo items aún no agregados.
-  const best = new Map<string, number>();
-  for (const p of (pricesRes.data ?? []) as { item_id: string; unit_cost_cents: number }[]) {
-    const cost = Number(p.unit_cost_cents);
-    if (!best.has(p.item_id) || cost < best.get(p.item_id)!) best.set(p.item_id, cost);
-  }
-  const inContract = new Set(((linesRes.data ?? []) as { item_id: string }[]).map((l) => l.item_id));
-  const activeIds = new Set((catalogRes.data ?? []).map((a) => a.id as string));
-  const catalog: CatalogItem[] = [...itemsById.values()]
-    .filter((i) => activeIds.has(i.id) && !inContract.has(i.id))
-    .map((i) => ({
-      id: i.id,
-      name: i.name,
-      sku: i.sku,
-      suggested: best.has(i.id) ? centsToInput(salePriceCents(best.get(i.id)!, Number(i.margin_percent))) : "",
-    }));
 
   // Cada línea se redondea una vez; los totales son sumas de enteros (centavos).
   const amounts = lines.map((l) => lineAmounts(l.quantity, l.unitCents, l.vatRate));
@@ -200,7 +168,7 @@ async function Detail({ params }: { params: IdParams }) {
       </PageSection>
 
       <PageSection label="Agregar item">
-        <AddLineForm org={org} contractId={id} vatRate={Number(c.vat_rate)} catalog={catalog} />
+        <AddLineForm org={org} contractId={id} vatRate={Number(c.vat_rate)} />
       </PageSection>
     </>
   );

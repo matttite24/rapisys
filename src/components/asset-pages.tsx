@@ -5,38 +5,41 @@ import { notFound } from "next/navigation";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { AssetForm, type AssetData } from "@/components/asset-form";
 import { HeaderAction } from "@/components/header-action";
-import { PageSection } from "@/components/page-section";
+import { PageSection, TABLE_TH as TH, TABLE_TD as TD } from "@/components/page-section";
+import { Pager } from "@/components/pager";
 import { buttonVariants } from "@/components/ui/button";
 import { ASSET_KIND_LABEL } from "@/lib/items";
+import { pageRange, readPage } from "@/lib/pagination";
 import { getMyRole, getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
 type Params = Promise<{ org: string }>;
+type Search = Promise<Record<string, string | string[] | undefined>>;
 type IdParams = Promise<{ org: string; id: string }>;
 
-const TH =
-  "border-r px-4 py-3 text-left font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground last:border-r-0";
-const TD = "border-r px-4 py-3 last:border-r-0";
 
-async function List({ params }: { params: Params }) {
+async function List({ params, searchParams }: { params: Params; searchParams: Search }) {
   await connection();
   const { org } = await params;
+  const page = readPage(await searchParams);
   const orgId = await getOrgId(org);
   if (!orgId) notFound();
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, count } = await supabase
     .from("assets")
-    .select("id, kind, name, brand, model, year, plate")
+    .select("id, kind, name, brand, model, year, plate", { count: "exact" })
     .eq("organization_id", orgId)
     .order("kind")
-    .order("name");
+    .order("name")
+    .range(...pageRange(page));
   const rows = (data ?? []) as AssetData[];
+  const total = count ?? 0;
   const newHref = `/${org}/bodega/activos/nuevo`;
 
   return (
-    <PageSection label={`${rows.length} ${rows.length === 1 ? "activo" : "activos"}`} className="p-0">
-      <HeaderAction icon={Add01Icon} label="Nuevo activo" href={newHref} prominent />
+    <PageSection label={`${total} ${total === 1 ? "activo" : "activos"}`} className="p-0">
+      <HeaderAction icon={Add01Icon} label="Nuevo activo" href={newHref} />
       {rows.length === 0 ? (
         <div className="flex flex-col items-start gap-4 p-6">
           <p className="text-muted-foreground">
@@ -79,16 +82,17 @@ async function List({ params }: { params: Params }) {
           </table>
         </div>
       )}
+      <Pager basePath={`/${org}/bodega/activos`} page={page} total={total} />
     </PageSection>
   );
 }
 
-export function AssetListPage({ params }: { params: Params }) {
+export function AssetListPage({ params, searchParams }: { params: Params; searchParams: Search }) {
   return (
     <>
       <h1 className="sr-only">Activos</h1>
       <Suspense fallback={<PageSection label="Cargando…" />}>
-        <List params={params} />
+        <List params={params} searchParams={searchParams} />
       </Suspense>
     </>
   );

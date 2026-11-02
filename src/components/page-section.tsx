@@ -62,3 +62,8 @@ export function CellGrid({
     </div>
   );
 }
+
+// Clases de las tablas: una sola definición para todas las pantallas.
+export const TABLE_TH =
+  "border-r px-4 py-3 text-left font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground last:border-r-0";
+export const TABLE_TD = "border-r px-4 py-3 last:border-r-0";

@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { getUser } from "@/lib/auth";
 import type { Role } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,11 +29,9 @@ export const getOrgId = cache(async (slug: string): Promise<string | null> => {
 
 // Rol del usuario actual en la organización (null si no es miembro).
 export const getMyRole = cache(async (orgId: string): Promise<Role | null> => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return null;
+  const supabase = await createClient();
   const { data } = await supabase
     .from("memberships")
     .select("role")

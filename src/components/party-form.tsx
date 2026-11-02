@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef } from "react";
 import { FormField } from "@/components/form-field";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageSection } from "@/components/page-section";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { deleteParty, saveParty, type PartyState } from "@/lib/party-actions";
+import { deleteParty, saveParty } from "@/lib/party-actions";
 import { PARTIES, type Party, type PartyKind } from "@/lib/parties";
 
 export function PartyForm({
@@ -41,6 +42,7 @@ export function PartyForm({
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
+        if (pending) return; // un segundo Enter no debe enviar de nuevo
         const data = new FormData(e.currentTarget);
         startTransition(() => action(data));
       }}
@@ -78,48 +80,9 @@ export function PartyForm({
           >
             Cancelar
           </Link>
-          {party && canDelete && <DeleteParty kind={kind} org={org} id={party.id} />}
+          {party && canDelete && <ConfirmDelete onConfirm={() => deleteParty(kind, org, party.id)} />}
         </div>
       </div>
     </form>
-  );
-}
-
-// Eliminar en dos pasos, sin diálogos del navegador.
-function DeleteParty({ kind, org, id }: { kind: PartyKind; org: string; id: string }) {
-  const [confirming, setConfirming] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [state, setState] = useState<PartyState>();
-
-  if (!confirming) {
-    return (
-      <Button type="button" variant="destructive" className="min-h-11 sm:ml-auto sm:min-h-10" onClick={() => setConfirming(true)}>
-        Eliminar
-      </Button>
-    );
-  }
-  return (
-    <span className="flex flex-wrap items-center gap-2 sm:ml-auto">
-      <span className="text-sm">¿Eliminar definitivamente?</span>
-      <Button
-        type="button"
-        variant="destructive"
-        disabled={pending}
-        className="min-h-11 sm:min-h-10"
-        onClick={async () => {
-          setPending(true);
-          const res = await deleteParty(kind, org, id);
-          setPending(false);
-          setState(res);
-          if (res?.error) setConfirming(false);
-        }}
-      >
-        Sí, eliminar
-      </Button>
-      <Button type="button" variant="outline" className="min-h-11 sm:min-h-10" onClick={() => setConfirming(false)}>
-        No
-      </Button>
-      {state?.error && <FieldError>{state.error}</FieldError>}
-    </span>
   );
 }

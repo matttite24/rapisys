@@ -9,6 +9,7 @@ import {
   type MemberView,
 } from "@/components/members-manager";
 import { PageSection } from "@/components/page-section";
+import { getUser } from "@/lib/auth";
 import { getMyRole, getOrgId } from "@/lib/orgs";
 import type { Role } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
@@ -20,9 +21,7 @@ async function Members({ params }: { params: PageProps<"/[org]/ajustes/miembros"
   if (!orgId) notFound();
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   const role = await getMyRole(orgId);
   const isAdmin = role === "admin";
 

@@ -23,7 +23,15 @@ export async function createOrganization(
       p_slug: slug,
     });
     if (!error) redirect(`/${data.slug}/inicio`);
-    if (error.code !== "23505") return { error: error.message };
+    if (error.code !== "23505") {
+      // Solo se muestran los mensajes que la base escribe para personas.
+      const known = ["Necesitas una invitación", "Ese nombre está reservado"];
+      return {
+        error: known.some((k) => error.message.includes(k))
+          ? error.message
+          : "No se pudo crear la organización. Inténtalo de nuevo.",
+      };
+    }
   }
   return { error: "No se pudo generar un identificador único. Prueba otro nombre." };
 }

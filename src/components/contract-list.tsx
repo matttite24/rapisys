@@ -3,13 +3,16 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { HeaderAction } from "@/components/header-action";
-import { PageSection } from "@/components/page-section";
+import { PageSection, TABLE_TH as TH, TABLE_TD as TD } from "@/components/page-section";
+import { Pager } from "@/components/pager";
 import { buttonVariants } from "@/components/ui/button";
 import { STATUS_DOT, STATUS_LABEL } from "@/lib/contracts";
 import { formatCents } from "@/lib/money";
+import { pageRange, readPage } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 
 type Params = Promise<{ org: string }>;
+type Search = Promise<Record<string, string | string[] | undefined>>;
 
 type Row = {
   id: string;
@@ -22,21 +25,23 @@ type Row = {
   clients: { name: string } | null;
 };
 
-const TH =
-  "border-r px-4 py-3 text-left font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground last:border-r-0";
-const TD = "border-r px-4 py-3 last:border-r-0";
 
 async function List({
   params,
+  searchParams,
   statuses,
   empty,
+  basePath,
 }: {
   params: Params;
+  searchParams: Search;
   statuses?: string[];
   empty: string;
+  basePath: string;
 }) {
   await connection();
   const { org } = await params;
+  const page = readPage(await searchParams);
   const supabase = await createClient();
 
   // organizations!inner filtra por la organización de la URL.
@@ -44,21 +49,24 @@ async function List({
     .from("contracts")
     .select(
       "id, code, name, total_cents, term_days, start_date, status, clients(name), organizations!inner(slug)",
+      { count: "exact" },
     )
     .eq("organizations.slug", org)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(...pageRange(page));
   if (statuses) query = query.in("status", statuses);
 
-  const { data } = await query;
+  const { data, count } = await query;
+  const total = count ?? 0;
   const rows = (data ?? []) as unknown as Row[];
   const newHref = `/${org}/contratos/nuevo`;
 
   return (
     <PageSection
-      label={`${rows.length} ${rows.length === 1 ? "contrato" : "contratos"}`}
+      label={`${total} ${total === 1 ? "contrato" : "contratos"}`}
       className="p-0"
     >
-      <HeaderAction icon={Add01Icon} label="Nuevo contrato" href={newHref} prominent />
+      <HeaderAction icon={Add01Icon} label="Nuevo contrato" href={newHref} />
       {rows.length === 0 ? (
         <div className="flex flex-col items-start gap-4 p-6">
           <p className="text-muted-foreground">{empty}</p>
@@ -111,6 +119,7 @@ async function List({
           </table>
         </div>
       )}
+      <Pager basePath={`/${org}${basePath}`} page={page} total={total} />
     </PageSection>
   );
 }
@@ -118,11 +127,15 @@ async function List({
 export function ContractListPage({
   title,
   params,
+  searchParams,
+  basePath,
   statuses,
   empty = "Todavía no hay contratos.",
 }: {
   title: string;
   params: Params;
+  searchParams: Search;
+  basePath: string;
   statuses?: string[];
   empty?: string;
 }) {
@@ -130,7 +143,7 @@ export function ContractListPage({
     <>
       <h1 className="sr-only">{title}</h1>
       <Suspense fallback={<PageSection label="Cargando…" />}>
-        <List params={params} statuses={statuses} empty={empty} />
+        <List params={params} searchParams={searchParams} statuses={statuses} empty={empty} basePath={basePath} />
       </Suspense>
     </>
   );

@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef } from "react";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { FormField } from "@/components/form-field";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { deleteAsset, saveAsset, type AssetState } from "@/lib/asset-actions";
+import { deleteAsset, saveAsset } from "@/lib/asset-actions";
 import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
 
 export type AssetData = {
@@ -45,6 +46,7 @@ export function AssetForm({
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
+        if (pending) return; // un segundo Enter no debe enviar de nuevo
         const data = new FormData(e.currentTarget);
         startTransition(() => action(data));
       }}
@@ -95,47 +97,14 @@ export function AssetForm({
           >
             Cancelar
           </Link>
-          {asset && canDelete && <DeleteAsset org={org} id={asset.id} />}
+          {asset && canDelete && (
+            <ConfirmDelete
+              message="Se quitará también de los items compatibles. ¿Eliminar?"
+              onConfirm={() => deleteAsset(org, asset.id)}
+            />
+          )}
         </div>
       </div>
     </form>
-  );
-}
-
-function DeleteAsset({ org, id }: { org: string; id: string }) {
-  const [confirming, setConfirming] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [state, setState] = useState<AssetState>();
-
-  if (!confirming) {
-    return (
-      <Button type="button" variant="destructive" className="min-h-11 sm:ml-auto sm:min-h-10" onClick={() => setConfirming(true)}>
-        Eliminar
-      </Button>
-    );
-  }
-  return (
-    <span className="flex flex-wrap items-center gap-2 sm:ml-auto">
-      <span className="text-sm">Se quitará también de los items compatibles. ¿Eliminar?</span>
-      <Button
-        type="button"
-        variant="destructive"
-        disabled={pending}
-        className="min-h-11 sm:min-h-10"
-        onClick={async () => {
-          setPending(true);
-          const res = await deleteAsset(org, id);
-          setPending(false);
-          setState(res);
-          if (res?.error) setConfirming(false);
-        }}
-      >
-        Sí, eliminar
-      </Button>
-      <Button type="button" variant="outline" className="min-h-11 sm:min-h-10" onClick={() => setConfirming(false)}>
-        No
-      </Button>
-      {state?.error && <FieldError>{state.error}</FieldError>}
-    </span>
   );
 }

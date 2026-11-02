@@ -5,11 +5,14 @@ import { notFound } from "next/navigation";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { HeaderAction } from "@/components/header-action";
 import { ItemForm, type AssetOption, type ItemData } from "@/components/item-form";
-import { PageSection } from "@/components/page-section";
+import { PageSection, TABLE_TH as TH, TABLE_TD as TD } from "@/components/page-section";
+import { Pager } from "@/components/pager";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AssetKind } from "@/lib/items";
 import { centsToInput, formatCents, salePriceCents } from "@/lib/money";
+import { pageRange, readPage } from "@/lib/pagination";
+import { cleanSearch } from "@/lib/search";
 import { getMyRole, getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,9 +20,6 @@ type Params = Promise<{ org: string }>;
 type IdParams = Promise<{ org: string; id: string }>;
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
-const TH =
-  "border-r px-4 py-3 text-left font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground last:border-r-0";
-const TD = "border-r px-4 py-3 last:border-r-0";
 
 type ItemRow = {
   id: string;
@@ -32,44 +32,53 @@ type ItemRow = {
   is_active: boolean;
 };
 
-// Quita lo que rompería el filtro de PostgREST.
-const clean = (q: string) => q.replace(/[,()%*{}"\\]/g, " ").trim();
-
 async function List({ params, searchParams }: { params: Params; searchParams: Search }) {
   await connection();
   const { org } = await params;
-  const raw = (await searchParams).q;
-  const q = clean(typeof raw === "string" ? raw : "");
+  const search = await searchParams;
+  const raw = search.q;
+  const q = cleanSearch(typeof raw === "string" ? raw : "");
+  const page = readPage(search);
   const orgId = await getOrgId(org);
   if (!orgId) notFound();
 
   const supabase = await createClient();
   let query = supabase
     .from("items")
-    .select("id, sku, name, line, category_id, part_numbers, margin_percent, is_active")
+    .select("id, sku, name, line, category_id, part_numbers, margin_percent, is_active", {
+      count: "exact",
+    })
     .eq("organization_id", orgId)
-    .order("name");
+    .order("name")
+    .range(...pageRange(page));
   if (q) query = query.or(`name.ilike.%${q}%,sku.ilike.%${q}%,part_numbers.cs.{${q}}`);
 
-  const [itemsRes, catsRes, pricesRes] = await Promise.all([
+  const [itemsRes, catsRes] = await Promise.all([
     query,
     supabase.from("item_categories").select("id, name").eq("organization_id", orgId),
-    supabase.from("item_supplier_prices").select("item_id, unit_cost_cents").eq("organization_id", orgId),
   ]);
 
   const rows = (itemsRes.data ?? []) as ItemRow[];
+  const total = itemsRes.count ?? 0;
   const cats = new Map((catsRes.data ?? []).map((c) => [c.id as string, c.name as string]));
-  // Costo más bajo (sin IVA) por item.
+
+  // Costo más bajo (sin IVA) solo de los items de esta página.
   const best = new Map<string, number>();
-  for (const p of (pricesRes.data ?? []) as { item_id: string; unit_cost_cents: number }[]) {
-    const cost = Number(p.unit_cost_cents);
-    if (!best.has(p.item_id) || cost < best.get(p.item_id)!) best.set(p.item_id, cost);
+  if (rows.length) {
+    const { data: prices } = await supabase
+      .from("item_supplier_prices")
+      .select("item_id, unit_cost_cents")
+      .in("item_id", rows.map((r) => r.id));
+    for (const p of (prices ?? []) as { item_id: string; unit_cost_cents: number }[]) {
+      const cost = Number(p.unit_cost_cents);
+      if (!best.has(p.item_id) || cost < best.get(p.item_id)!) best.set(p.item_id, cost);
+    }
   }
   const newHref = `/${org}/bodega/nuevo`;
 
   return (
     <>
-      <HeaderAction icon={Add01Icon} label="Nuevo item" href={newHref} prominent />
+      <HeaderAction icon={Add01Icon} label="Nuevo item" href={newHref} />
       <PageSection className="p-0">
         <form method="get" className="flex gap-2 p-4" role="search">
           <Input
@@ -89,7 +98,7 @@ async function List({ params, searchParams }: { params: Params; searchParams: Se
         </form>
       </PageSection>
       <PageSection
-        label={`${rows.length} ${rows.length === 1 ? "item" : "items"}${q ? ` para “${q}”` : ""}`}
+        label={`${total} ${total === 1 ? "item" : "items"}${q ? ` para “${q}”` : ""}`}
         className="p-0"
       >
         {rows.length === 0 ? (
@@ -154,6 +163,7 @@ async function List({ params, searchParams }: { params: Params; searchParams: Se
             </table>
           </div>
         )}
+        <Pager basePath={`/${org}/bodega`} page={page} total={total} params={q ? { q } : {}} />
       </PageSection>
     </>
   );
