@@ -1,6 +1,6 @@
 "use client";
 
-import { PageSection, TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
+import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
 import { startTransition, useEffect, useOptimistic, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
@@ -25,6 +25,9 @@ import { addLine, removeLine, setContractStatus, updateLine, type LineState } fr
 import { STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
 import { parseDecimal } from "@/lib/money";
 import { UNITS, isUnit, unitLabel } from "@/lib/units";
+
+// Encabezado de esta lista: negrita y texto pleno, no gris.
+const TH = cn(TABLE_TH, "font-bold text-foreground");
 
 // Prefijo del id de una línea que aún no confirmó el servidor.
 const TEMP_PREFIX = "tmp-";
