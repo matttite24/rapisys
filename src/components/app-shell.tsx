@@ -12,7 +12,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { CELL_ROW as ROW, CellHeader } from "@/components/cell-header";
 import { HeaderSlotContext, HeaderTitleContext } from "@/components/header-action";
-import { modules, type NavModule } from "@/components/nav-config";
+import { CONTRACT_SECTIONS, modules, type NavGroup, type NavModule } from "@/components/nav-config";
 import { OrgLogo } from "@/components/org-switcher-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,43 @@ function activeHref(path: string, hrefs: string[]) {
   return hrefs
     .filter((h) => path === h || path.startsWith(h + "/"))
     .sort((a, b) => b.length - a.length)[0];
+}
+
+// Dentro de un contrato (/contratos/{id}[/parte]) la columna de opciones muestra
+// sus partes en lugar de las opciones del módulo, más un regreso a la vista general.
+function useContractNav(): { groups: NavGroup[]; back: { title: string; href: string } } | null {
+  const { path } = useActiveModule();
+  const m = path.match(/^\/contratos\/([0-9a-f-]{36})(?:\/|$)/i);
+  if (!m) return null;
+  return {
+    groups: [
+      {
+        items: CONTRACT_SECTIONS.map((s) => ({
+          title: s.title,
+          href: `/contratos/${m[1]}${s.slug ? `/${s.slug}` : ""}`,
+          icon: s.icon,
+        })),
+      },
+    ],
+    back: { title: "Vista general", href: "/contratos" },
+  };
+}
+
+function BackLink({ title, href, onNavigate, className }: { title: string; href: string; onNavigate?: () => void; className?: string }) {
+  const { to } = useActiveModule();
+  return (
+    <Link
+      href={to(href)}
+      onClick={onNavigate}
+      className={cn(
+        "flex items-center gap-2.5 px-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+        className,
+      )}
+    >
+      <HugeiconsIcon icon={ArrowLeftDoubleIcon} className="size-4.5" />
+      {title}
+    </Link>
+  );
 }
 
 function RailLink({ module: m }: { module: NavModule }) {
@@ -148,14 +185,16 @@ function Panel({
   onNavigate?: () => void;
 }) {
   const { path, active, to } = useActiveModule();
-  const current = activeHref(path, active.groups.flatMap((g) => g.items.map((i) => i.href)));
+  const contract = useContractNav();
+  const groups = contract?.groups ?? active.groups;
+  const current = activeHref(path, groups.flatMap((g) => g.items.map((i) => i.href)));
 
   return (
     <div className="flex w-60 shrink-0 flex-col border-r bg-muted/50">
       <div className={cn(ROW, "crosshair")}>{orgSwitcher}</div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
-        {active.groups.map((g, i) => (
+        {groups.map((g, i) => (
           <div key={i} className="flex flex-col gap-0.5">
             {g.label && (
               <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
@@ -185,6 +224,9 @@ function Panel({
             ))}
           </div>
         ))}
+        {contract && (
+          <BackLink {...contract.back} onNavigate={onNavigate} className="mt-2 min-h-10 border-t py-2 pt-3" />
+        )}
       </nav>
     </div>
   );
@@ -203,7 +245,8 @@ function MobileNav({
   onNavigate: () => void;
 }) {
   const { path, active, to } = useActiveModule();
-  const options = active.groups.flatMap((g) => g.items);
+  const contract = useContractNav();
+  const options = (contract?.groups ?? active.groups).flatMap((g) => g.items);
   const current = activeHref(path, options.map((o) => o.href));
   const on = "bg-foreground/[0.06] font-medium text-foreground";
   // Cada botón de la fila inferior ocupa su celda completa.
@@ -276,6 +319,9 @@ function MobileNav({
               {item.title}
             </Link>
           ))}
+          {contract && (
+            <BackLink {...contract.back} onNavigate={onNavigate} className="h-12 border-b px-6" />
+          )}
         </nav>
       )}
 
