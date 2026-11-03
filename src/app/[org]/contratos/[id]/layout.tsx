@@ -31,8 +31,12 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
 
   return (
     <>
-      {/* El cliente reemplaza el título del encabezado; estado y pasos van a su derecha. */}
-      <HeaderTitle>{client?.name}</HeaderTitle>
+      {/* Cliente y nombre del contrato reemplazan el título del encabezado; estado y pasos van a su derecha. */}
+      <HeaderTitle>
+        <span className="text-muted-foreground">{client?.name}</span>
+        <span aria-hidden className="mx-3 text-muted-foreground">/</span>
+        {c.name}
+      </HeaderTitle>
       <HeaderSlot>
         <div className="hidden md:block">
           <StatusControl org={org} contractId={id} status={c.status} summary={summary} inHeader />
