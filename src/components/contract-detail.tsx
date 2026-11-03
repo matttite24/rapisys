@@ -23,7 +23,7 @@ function Cell({ label, children }: { label: string; children: React.ReactNode })
       <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
         {label}
       </span>
-      <span className="break-words">{children}</span>
+      <div className="break-words">{children}</div>
     </div>
   );
 }
