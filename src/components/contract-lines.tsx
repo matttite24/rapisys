@@ -173,21 +173,22 @@ type OptimisticAction =
   | { type: "update"; line: LineView }
   | { type: "remove"; id: string };
 
-// Búsqueda dentro de la lista abierta: va al servidor (con una pausa corta al escribir) y vuelve a la página 1.
+// Búsqueda dentro de la lista abierta: ocupa la fila desde el inicio. Va al servidor (con una
+// pausa corta al escribir) y vuelve a la página 1.
 function LineSearch({ q, onSearch }: { q: string; onSearch: (q: string) => void }) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [value, setValue] = useState(q);
   return (
-    <div className="relative">
+    <div className="relative min-w-0 flex-1">
       <HugeiconsIcon
         icon={Search01Icon}
         aria-hidden
-        className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute top-1/2 left-6 size-5 -translate-y-1/2 text-muted-foreground"
       />
       <input
         type="search"
         aria-label="Buscar en la lista"
-        placeholder="Buscar parte o descripción"
+        placeholder="Buscar por número de parte o descripción"
         autoComplete="off"
         value={value}
         onChange={(e) => {
@@ -195,7 +196,7 @@ function LineSearch({ q, onSearch }: { q: string; onSearch: (q: string) => void 
           clearTimeout(timer.current);
           timer.current = setTimeout(() => onSearch(e.target.value.trim()), 350);
         }}
-        className="h-7 w-52 border bg-background pr-2 pl-7 font-sans text-xs normal-case tracking-normal outline-none placeholder:text-muted-foreground focus-visible:border-ring"
+        className="h-full w-full bg-transparent pr-4 pl-14 text-sm outline-none placeholder:text-muted-foreground focus-visible:bg-background"
       />
     </div>
   );
@@ -332,7 +333,7 @@ export function ReferenceList({
   const full = listCount >= MAX_LINES_PER_LIST;
   const label = q
     ? `${total} de ${listCount} ${listCount === 1 ? "línea" : "líneas"}`
-    : `${listCount} ${listCount === 1 ? "línea" : "líneas"} de referencia`;
+    : `${listCount} ${listCount === 1 ? "línea" : "líneas"}`;
 
   return (
     <>
@@ -417,12 +418,12 @@ export function ReferenceList({
       )}
 
       {active && (
-        <PageSection
-          label={label}
-          meta={
-            <span className="flex items-center gap-2">
-              <LineSearch key={active.id} q={q} onSearch={(next) => go({ q: next })} />
-              {canAdd && (
+        <section className="border-b">
+          {/* Fila de búsqueda desde el inicio; la carga masiva queda a la derecha. */}
+          <div className="flex h-12 items-stretch border-b">
+            <LineSearch key={active.id} q={q} onSearch={(next) => go({ q: next })} />
+            {canAdd && (
+              <div className="flex shrink-0 items-center border-l px-3">
                 <BulkImport
                   org={org}
                   contractId={contractId}
@@ -430,11 +431,9 @@ export function ReferenceList({
                   listName={active.name}
                   listCount={listCount}
                 />
-              )}
-            </span>
-          }
-          className="p-0"
-        >
+              </div>
+            )}
+          </div>
           <div className={cn("transition-opacity", navigating && "opacity-50")} aria-busy={navigating}>
             {shown.length === 0 ? (
               <p className="p-6 text-muted-foreground">
@@ -466,8 +465,12 @@ export function ReferenceList({
               size={LINES_PAGE_SIZE}
               params={{ lista: active.id, ...(q ? { q } : {}) }}
             />
+            {/* Al final de la lista: cuántas líneas tiene. */}
+            <p className="border-t px-6 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+              {label}
+            </p>
           </div>
-        </PageSection>
+        </section>
       )}
     </>
   );
