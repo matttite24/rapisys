@@ -2,7 +2,7 @@
 
 import { TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
 import { useRef, useState } from "react";
-import { Delete02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FormField } from "@/components/form-field";
 import { NumericInput } from "@/components/numeric-input";
@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { FieldError } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { addLine, removeLine, setContractStatus, type LineState } from "@/lib/contract-actions";
@@ -279,9 +279,20 @@ export function AddLineForm({ org, contractId }: { org: string; contractId: stri
           </NativeSelect>
         )}
       </FormField>
-      <Button type="submit" disabled={pending} className="md:mt-[1.35rem]">
-        {pending ? "Agregando…" : "Agregar línea"}
-      </Button>
+      {/* Etiqueta vacía del mismo alto que las demás: el botón queda a la altura de los campos. */}
+      <Field>
+        <FieldLabel aria-hidden className="max-md:hidden">&nbsp;</FieldLabel>
+        <Button
+          type="submit"
+          size="icon"
+          disabled={pending}
+          className="size-10 max-md:w-full"
+          aria-label={pending ? "Agregando…" : "Agregar línea"}
+          title="Agregar línea"
+        >
+          <HugeiconsIcon icon={Add01Icon} className="size-5" />
+        </Button>
+      </Field>
       {state?.error && (
         <div className="md:col-span-4">
           <FieldError>{state.error}</FieldError>
