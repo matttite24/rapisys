@@ -303,20 +303,23 @@ export function ReferenceList({
       {/* La función principal de la pantalla: va primero y con fondo propio. */}
       {canAdd && (
         <section className="border-b border-l-4 border-l-brand bg-muted">
-          <div className="flex h-10 items-center justify-between px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
-            <span>{title}</span>
-            {cancellable && (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
-                onClick={resetPanel}
-              >
-                <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
-                Cancelar
-              </button>
-            )}
-          </div>
-          <div className="px-6 pb-6">
+          {/* Agregar una línea es lo habitual: va sin barra de título para ocupar menos alto. */}
+          {(mode !== "line" || editing) && (
+            <div className="flex h-10 items-center justify-between px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
+              <span>{title}</span>
+              {cancellable && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                  onClick={resetPanel}
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+                  Cancelar
+                </button>
+              )}
+            </div>
+          )}
+          <div className={cn("px-6 pb-4", mode === "line" && !editing ? "pt-4" : "pt-0")}>
             {mode === "line" && active ? (
               <LineForm
                 // Al cambiar de línea o de lista el formulario se rearma con sus valores.
