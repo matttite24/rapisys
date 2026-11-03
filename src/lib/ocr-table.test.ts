@@ -57,6 +57,11 @@ describe("parseTable", () => {
     expect(noItem).toMatchObject({ part: "3E-8017", description: "LOCKNUT", review: true });
   });
 
+  it("si el OCR pierde la cantidad, deja la fila para completarla", () => {
+    const { rows } = parseTable([line("9L-2526 V-BELT SET (INCLUDES 3 BELTS) 444210112")]);
+    expect(rows[0]).toMatchObject({ part: "9L-2526", description: "V-BELT SET (INCLUDES 3 BELTS)", quantity: "", cpc: "444210112", review: true });
+  });
+
   it("deja para corregir a mano la fila que empieza con su número pero no calza", () => {
     const { rows } = parseTable([line("5 FILTRO DE ACEITE ILEGIBLE")]);
     expect(rows[0]).toMatchObject({ part: "", description: "FILTRO DE ACEITE ILEGIBLE", quantity: "1", review: true });

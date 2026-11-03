@@ -52,6 +52,8 @@ const FULL = /^(\d{1,3})\s+(\S*\d\S*)\s+(.+?)\s+(\d+(?:[.,]\d{1,2})?)\s+(\d{6,12
 const NO_ITEM = /^(\S*\d\S*)\s+(.+?)\s+(\d+(?:[.,]\d{1,2})?)\s+(\d{6,12})$/;
 // Sin CPC
 const NO_CPC = /^(\d{1,3})\s+(\S*\d\S*)\s+(.+?)\s+(\d+(?:[.,]\d{1,2})?)$/;
+// Sin cantidad (el OCR a veces pierde los números sueltos): la cantidad queda vacía, a completar.
+const NO_QTY = /^(?:\d{1,3}\s+)?(\S*\d\S*)\s+(.+?)\s+(\d{6,12})$/;
 const HEADER = /descrip|cantid|part\.?\s*num/i;
 const LOW_CONFIDENCE = 80;
 
@@ -80,6 +82,11 @@ export function parseTable(lines: OcrLine[]): { rows: ParsedRow[]; skipped: numb
     m = NO_ITEM.exec(text);
     if (m) {
       rows.push({ part: m[1], description: m[2], quantity: m[3].replace(",", "."), cpc: m[4], raw: text, review: true });
+      continue;
+    }
+    m = NO_QTY.exec(text);
+    if (m) {
+      rows.push({ part: m[1], description: m[2], quantity: "", cpc: m[3], raw: text, review: true });
       continue;
     }
     // Parece una fila de la tabla (empieza con su número) pero no calzó: se deja para corregir a mano.

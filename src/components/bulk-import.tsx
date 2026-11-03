@@ -32,16 +32,19 @@ type Row = {
   review: boolean;
 };
 
-// Agranda y pasa a grises la captura: el OCR lee mejor letras de más de ~30 px.
+// Agranda la captura si es chica y la apoya sobre fondo blanco (una imagen con transparencia se
+// lee como negro). No se le aplican filtros de contraste: en pruebas hacían que el OCR perdiera
+// los números chicos (ítem y cantidad).
 async function prepare(file: Blob): Promise<Blob> {
   const bmp = await createImageBitmap(file);
-  const scale = bmp.width < 2000 ? Math.min(3, 2000 / bmp.width) : 1;
+  const scale = bmp.width < 1600 ? Math.min(2, 2000 / bmp.width) : 1;
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bmp.width * scale);
   canvas.height = Math.round(bmp.height * scale);
   const ctx = canvas.getContext("2d");
   if (!ctx) return file;
-  ctx.filter = "grayscale(1) contrast(1.3)"; // si el navegador no lo soporta, se ignora
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b ?? file), "image/png"));
 }
@@ -68,12 +71,12 @@ async function readImage(
       if (m.status === "recognizing text") onProgress(m.progress);
     },
   });
-  let result: Reading = { lines: [], words: [] };
+  let first: Reading | undefined;
   try {
     for (const mode of MODES) {
       await worker.setParameters({ tessedit_pageseg_mode: mode as never });
       const { data } = await worker.recognize(image, {}, { blocks: true });
-      result = { lines: [], words: [] };
+      const result: Reading = { lines: [], words: [] };
       for (const b of data.blocks ?? [])
         for (const p of b.paragraphs)
           for (const l of p.lines) {
@@ -81,9 +84,11 @@ async function readImage(
             for (const w of l.words)
               result.words.push({ text: w.text, confidence: w.confidence, x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1 });
           }
-      if (enough(result)) break;
+      first ??= result;
+      if (enough(result)) return result;
     }
-    return result;
+    // Ningún modo dio filas: se muestra lo del primero (el mejor para tablas), no el último.
+    return first ?? { lines: [], words: [] };
   } finally {
     await worker.terminate();
   }
