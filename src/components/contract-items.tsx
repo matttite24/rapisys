@@ -13,10 +13,14 @@ type IdParams = Promise<{ org: string; id: string }>;
 async function Items({ params }: { params: IdParams }) {
   await connection();
   const { org, id } = await params;
+  const found = await getContract(org, id);
+  if (!found) notFound();
+  const { c } = found;
+  // En Nuevo todavía no se cargan items: se vuelve al detalle.
+  if (c.status === "new") redirect(`/${org}/contratos/${id}`);
+
   const supabase = await createClient();
-  // Las tres consultas salen juntas; RLS limita las líneas y listas a la organización.
-  const [found, linesRes, listsRes] = await Promise.all([
-    getContract(org, id),
+  const [linesRes, listsRes] = await Promise.all([
     supabase
       .from("contract_items")
       .select("id, list_id, part_number, description, quantity, unit, cpc")
@@ -28,10 +32,6 @@ async function Items({ params }: { params: IdParams }) {
       .eq("contract_id", id)
       .order("created_at"),
   ]);
-  if (!found) notFound();
-  const { c } = found;
-  // En Nuevo todavía no se cargan items: se vuelve al detalle.
-  if (c.status === "new") redirect(`/${org}/contratos/${id}`);
 
   const lines: LineView[] = (
     (linesRes.data ?? []) as {

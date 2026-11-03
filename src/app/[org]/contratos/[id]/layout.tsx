@@ -12,7 +12,13 @@ import { createClient } from "@/lib/supabase/server";
 
 // Lo común a todas las partes del contrato: cliente y estado en el encabezado,
 // y el cambiador de partes en la columna de opciones.
-async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contratos/[id]">["params"] }) {
+async function ContractShell({
+  params,
+  children,
+}: {
+  params: LayoutProps<"/[org]/contratos/[id]">["params"];
+  children: React.ReactNode;
+}) {
   await connection();
   const { org, id } = await params;
   const found = await getContract(org, id);
@@ -44,18 +50,15 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
       <PanelTop>
         <ContractSwitcher org={org} id={id} code={c.code} status={c.status} />
       </PanelTop>
+      {children}
     </>
   );
 }
 
 export default function ContractLayout({ children, params }: LayoutProps<"/[org]/contratos/[id]">) {
   return (
-    <>
-      {/* El encabezado y el cambiador cargan aparte: la página no espera por ellos. */}
-      <Suspense>
-        <ContractChrome params={params} />
-      </Suspense>
-      {children}
-    </>
+    <Suspense>
+      <ContractShell params={params}>{children}</ContractShell>
+    </Suspense>
   );
 }
