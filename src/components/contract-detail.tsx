@@ -123,17 +123,17 @@ async function Detail({ params }: { params: IdParams }) {
           <StatusControl org={org} contractId={id} status={c.status} summary={summary} inHeader />
         </div>
       </HeaderSlot>
-      <PageSection className="md:hidden">
+      <div className="border-b p-4 md:hidden">
         <StatusControl org={org} contractId={id} status={c.status} summary={summary} />
-      </PageSection>
+      </div>
 
       {/* Fila 2: el contrato (código + nombre) y sus datos. */}
       <PageSection className="p-0">
-        <CellGrid className="border-0 md:grid-cols-[2fr_1fr_1fr_1fr]">
-          <div className="min-w-0">
-            <p className="font-mono text-sm text-muted-foreground">{c.code}</p>
-            <h1 className="text-2xl font-semibold tracking-tight break-words">{c.name}</h1>
-          </div>
+        <CellGrid className="border-0 md:grid-cols-[2fr_1.2fr_1fr_1.2fr]">
+          <Cell label="Contrato">
+            <h1 className="text-lg leading-snug font-semibold">{c.name}</h1>
+            <span className="block font-mono text-xs text-muted-foreground">{c.code}</span>
+          </Cell>
           <Cell label="Responsable">
             {managerRes.data?.name}
             {managerRes.data?.ruc && <span className="block font-mono text-xs text-muted-foreground">{managerRes.data.ruc}</span>}
