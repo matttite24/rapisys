@@ -243,12 +243,17 @@ export function ReferenceList({
   const [newOpen, setNewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const active = lists.find((l) => l.id === activeId) ?? lists[0] ?? null;
+  // La lista elegida se marca al instante; las líneas llegan cuando responde el servidor.
+  const [shownActiveId, setShownActiveId] = useOptimistic(activeId);
+  const active = lists.find((l) => l.id === shownActiveId) ?? lists[0] ?? null;
+  // Lo que muestra la tabla es de la lista que ya llegó del servidor.
+  const loaded = lists.find((l) => l.id === activeId) ?? lists[0] ?? null;
+  const switching = active?.id !== loaded?.id;
   // Altas y bajas aún sin confirmar: ajustan los contadores al instante.
   const delta = shown.length - lines.length;
   const counts: Record<string, number> = {};
-  for (const l of lists) counts[l.id] = l.count + (l.id === active?.id ? delta : 0);
-  const listCount = active ? counts[active.id] : 0;
+  for (const l of lists) counts[l.id] = l.count + (l.id === loaded?.id ? delta : 0);
+  const listCount = loaded ? counts[loaded.id] : 0;
 
   const editing = shown.find((l) => l.id === editingId) ?? null;
   const mode = panel;
@@ -259,7 +264,10 @@ export function ReferenceList({
     sp.set("lista", next.lista ?? active?.id ?? "");
     if (next.q) sp.set("q", next.q);
     if (next.page && next.page > 1) sp.set("page", String(next.page));
-    startNav(() => router.push(`${basePath}?${sp}`, { scroll: false }));
+    startNav(() => {
+      if (next.lista) setShownActiveId(next.lista);
+      router.push(`${basePath}?${sp}`, { scroll: false });
+    });
   }
 
   function resetPanel() {
@@ -434,7 +442,7 @@ export function ReferenceList({
               </div>
             )}
           </div>
-          <div className={cn("transition-opacity", navigating && "opacity-50")} aria-busy={navigating}>
+          <div className={cn("transition-opacity", (navigating || switching) && "opacity-50")} aria-busy={navigating || switching}>
             {shown.length === 0 ? (
               <p className="p-6 text-muted-foreground">
                 {q

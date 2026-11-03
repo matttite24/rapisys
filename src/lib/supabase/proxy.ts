@@ -21,10 +21,11 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // No ejecutar lógica entre createServerClient y getUser().
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // No ejecutar lógica entre createServerClient y getClaims().
+  // getClaims verifica la firma del token en el servidor, sin ir a Supabase en cada navegación
+  // (renueva la sesión si venció). Solo decide a dónde ir; los datos los protege RLS.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const { pathname } = request.nextUrl;
   const isAuthPage = pathname === "/login" || pathname === "/signup";

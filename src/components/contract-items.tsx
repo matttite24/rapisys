@@ -5,8 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import type { ListView } from "@/components/contract-lists";
 import { ReferenceList, type LineView } from "@/components/contract-lines";
 import { PageSection } from "@/components/page-section";
-import { getContract } from "@/lib/contract-data";
-import { LINES_PAGE_SIZE, MAX_LINES_PER_LIST } from "@/lib/contracts";
+import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { findDuplicates } from "@/lib/duplicates";
 import { pageCount, pageRange, readPage } from "@/lib/pagination";
 import { cleanSearch } from "@/lib/search";
@@ -17,23 +16,60 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-// Items del contrato: una lista por activo. Solo se carga la lista abierta, por páginas;
-// de las demás solo se pide cuántas líneas tienen.
+type View = {
+  status: string;
+  active_id: string | null;
+  total: number;
+  lists: {
+    id: string;
+    asset_id: string | null;
+    name: string;
+    count: number;
+    asset: {
+      kind: string;
+      brand: string | null;
+      model: string | null;
+      serial: string | null;
+      engine: string | null;
+      identifier: string | null;
+    } | null;
+  }[];
+  lines: {
+    id: string;
+    list_id: string;
+    part_number: string | null;
+    description: string;
+    quantity: number;
+    unit: string;
+    cpc: string | null;
+  }[];
+  keys: { id: string; part: string | null; description: string }[];
+};
+
+// Items del contrato: una lista por activo. Solo se carga la lista abierta, por páginas; de las
+// demás solo su conteo. Todo llega en una sola llamada a la base (`contract_items_view`).
 async function Items({ params, searchParams }: { params: IdParams; searchParams: Search }) {
   await connection();
   const { org, id } = await params;
   const sp = await searchParams;
   const supabase = await createClient();
 
-  const [found, listsRes, countsRes] = await Promise.all([
-    getContract(org, id),
-    supabase.from("contract_lists").select("id, asset_id, name").eq("contract_id", id).order("created_at"),
-    supabase.rpc("contract_list_counts", { p_contract_id: id }),
-  ]);
-  if (!found) notFound();
-  const { c } = found;
+  const q = cleanSearch(first(sp.q) ?? "");
+  const page = readPage(sp);
+  const [from] = pageRange(page, LINES_PAGE_SIZE);
+
+  const { data } = await supabase.rpc("contract_items_view", {
+    p_contract_id: id,
+    p_list_id: first(sp.lista) ?? null,
+    p_q: q,
+    p_offset: from,
+    p_limit: LINES_PAGE_SIZE,
+  });
+  const view = data as View | null;
+  if (!view) notFound();
+
   // En Nuevo todavía no se cargan items.
-  if (c.status === "new") {
+  if (view.status === "new") {
     return (
       <PageSection>
         <p className="max-w-xl text-muted-foreground">
@@ -45,67 +81,21 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
     );
   }
 
-  const counts = new Map(
-    ((countsRes.data ?? []) as { list_id: string; n: number }[]).map((r) => [r.list_id, Number(r.n)]),
-  );
-  const listRows = (listsRes.data ?? []) as { id: string; asset_id: string | null; name: string }[];
-  const active = listRows.find((l) => l.id === first(sp.lista)) ?? listRows[0];
-
-  const q = cleanSearch(first(sp.q) ?? "");
-  const page = readPage(sp);
-  const [from, to] = pageRange(page, LINES_PAGE_SIZE);
-
-  // Líneas de la lista abierta: la página pedida, y las claves de toda la lista (máx. 1.000)
-  // para numerarlas y marcar repetidas aunque estén en otra página.
-  let pageQuery = supabase
-    .from("contract_items")
-    .select("id, list_id, part_number, description, quantity, unit, cpc", { count: "exact" })
-    .eq("list_id", active?.id ?? "")
-    .order("created_at")
-    .order("id")
-    .range(from, to);
-  if (q) pageQuery = pageQuery.or(`part_number.ilike.%${q}%,description.ilike.%${q}%`);
-
-  const assetIds = [...new Set(listRows.map((l) => l.asset_id).filter((x): x is string => !!x))];
-  const [pageRes, keysRes, assetsRes] = await Promise.all([
-    active ? pageQuery : Promise.resolve({ data: [], count: 0 }),
-    active
-      ? supabase
-          .from("contract_items")
-          .select("id, part_number, description")
-          .eq("list_id", active.id)
-          .order("created_at")
-          .order("id")
-          .limit(MAX_LINES_PER_LIST)
-      : Promise.resolve({ data: [] }),
-    assetIds.length
-      ? supabase.from("assets").select("id, kind, brand, model, serial, engine, identifier").in("id", assetIds)
-      : Promise.resolve({ data: [] }),
-  ]);
-
-  const total = pageRes.count ?? 0;
+  const total = Number(view.total);
   // Si la página pedida ya no existe (se borraron líneas), se vuelve a la última.
-  if (active && page > pageCount(total, LINES_PAGE_SIZE) && total > 0) {
-    const back = new URLSearchParams({ lista: active.id, page: String(pageCount(total, LINES_PAGE_SIZE)) });
+  if (view.active_id && total > 0 && page > pageCount(total, LINES_PAGE_SIZE)) {
+    const back = new URLSearchParams({ lista: view.active_id, page: String(pageCount(total, LINES_PAGE_SIZE)) });
     if (q) back.set("q", q);
     redirect(`/${org}/contratos/${id}/items?${back}`);
   }
 
-  const keys = (keysRes.data ?? []) as { id: string; part_number: string | null; description: string }[];
-  const dups = findDuplicates(keys.map((k) => ({ part: k.part_number ?? "", description: k.description })), []);
-  const info = new Map(keys.map((k, i) => [k.id, { n: i + 1, dupOf: dups[i]?.kind === "batch" ? dups[i]!.ref : undefined }]));
+  // Posición real de cada línea en su lista y a cuál se parece si está repetida (toda la lista, no solo la página).
+  const dups = findDuplicates(view.keys.map((k) => ({ part: k.part ?? "", description: k.description })), []);
+  const info = new Map(
+    view.keys.map((k, i) => [k.id, { n: i + 1, dupOf: dups[i]?.kind === "batch" ? dups[i]!.ref : undefined }]),
+  );
 
-  const lines: LineView[] = (
-    (pageRes.data ?? []) as {
-      id: string;
-      list_id: string;
-      part_number: string | null;
-      description: string;
-      quantity: number;
-      unit: string;
-      cpc: string | null;
-    }[]
-  ).map((l, i) => ({
+  const lines: LineView[] = view.lines.map((l, i) => ({
     id: l.id,
     listId: l.list_id,
     n: info.get(l.id)?.n ?? from + i + 1,
@@ -117,33 +107,18 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
     cpc: l.cpc ?? "",
   }));
 
-  // Los datos de la máquina son del activo del catálogo; las listas generales no tienen.
-  const assetsById = new Map(
-    ((assetsRes.data ?? []) as {
-      id: string;
-      kind: string;
-      brand: string | null;
-      model: string | null;
-      serial: string | null;
-      engine: string | null;
-      identifier: string | null;
-    }[]).map((a) => [a.id, a]),
-  );
-  const lists: ListView[] = listRows.map((l) => {
-    const a = l.asset_id ? assetsById.get(l.asset_id) : undefined;
-    return {
-      id: l.id,
-      assetId: l.asset_id,
-      name: l.name,
-      count: counts.get(l.id) ?? 0,
-      kind: a?.kind ?? "",
-      brand: a?.brand ?? "",
-      model: a?.model ?? "",
-      serial: a?.serial ?? "",
-      engine: a?.engine ?? "",
-      identifier: a?.identifier ?? "",
-    };
-  });
+  const lists: ListView[] = view.lists.map((l) => ({
+    id: l.id,
+    assetId: l.asset_id,
+    name: l.name,
+    count: Number(l.count),
+    kind: l.asset?.kind ?? "",
+    brand: l.asset?.brand ?? "",
+    model: l.asset?.model ?? "",
+    serial: l.asset?.serial ?? "",
+    engine: l.asset?.engine ?? "",
+    identifier: l.asset?.identifier ?? "",
+  }));
 
   return (
     <ReferenceList
@@ -151,9 +126,9 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
       contractId={id}
       lists={lists}
       lines={lines}
-      canAdd={c.status === "in_progress"}
+      canAdd={view.status === "in_progress"}
       basePath={`/${org}/contratos/${id}/items`}
-      activeId={active?.id ?? null}
+      activeId={view.active_id}
       page={page}
       total={total}
       q={q}
