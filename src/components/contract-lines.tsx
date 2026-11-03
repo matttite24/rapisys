@@ -247,7 +247,14 @@ export function AddLineForm({ org, contractId }: { org: string; contractId: stri
     <form
       ref={formRef}
       noValidate
-      className="grid gap-4 md:grid-cols-[1fr_8rem_11rem_auto] md:items-start [&_input]:bg-background [&_select]:bg-background"
+      // Enter en cualquier campo agrega la línea.
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
+          e.preventDefault();
+          formRef.current?.requestSubmit();
+        }
+      }}
+      className="grid gap-4 md:grid-cols-[1fr_8rem_11rem_3.5rem] md:items-start [&_input]:bg-background [&_select]:bg-background"
       onSubmit={async (e) => {
         e.preventDefault();
         if (pending) return;
@@ -286,11 +293,11 @@ export function AddLineForm({ org, contractId }: { org: string; contractId: stri
           type="submit"
           size="icon"
           disabled={pending}
-          className="size-10 max-md:w-full"
+          className="h-10 w-full"
           aria-label={pending ? "Agregando…" : "Agregar línea"}
           title="Agregar línea"
         >
-          <HugeiconsIcon icon={Add01Icon} className="size-5" />
+          <HugeiconsIcon icon={Add01Icon} className="size-6" strokeWidth={2} />
         </Button>
       </Field>
       {state?.error && (
