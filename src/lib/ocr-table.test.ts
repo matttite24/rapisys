@@ -24,6 +24,22 @@ describe("parseTable", () => {
     expect(skipped).toBe(3); // modelo, encabezado y nombre del activo
   });
 
+  it("lee el resultado real del OCR de la tabla de ejemplo (modo una columna)", () => {
+    const { rows } = parseTable([
+      line("ITEM PART. NUM DESCRIPCION CANTID. CPC", 94),
+      line("1 9L-2526 V-BELT SET (INCLUDES 3 BELTS) 1 444210112", 93),
+      line("2 135-2650 TURBOCHARGER GP 1 444210112", 95),
+      line("3 3E-8017 LOCKNUT 4 444210112", 93),
+      line("7C-7431 GASKET-TURBOCHARGER 1 444210112", 93), // el OCR perdió el número de ítem
+    ]);
+    expect(rows.map((r) => [r.part, r.description, r.quantity, r.review])).toEqual([
+      ["9L-2526", "V-BELT SET (INCLUDES 3 BELTS)", "1", false],
+      ["135-2650", "TURBOCHARGER GP", "1", false],
+      ["3E-8017", "LOCKNUT", "4", false],
+      ["7C-7431", "GASKET-TURBOCHARGER", "1", true],
+    ]);
+  });
+
   it("ignora los bordes de la tabla que el OCR lee como símbolos", () => {
     const { rows } = parseTable([line("| 3 | 3E-8017 | LOCKNUT | 4 | 444210112 |")]);
     expect(rows[0]).toMatchObject({ part: "3E-8017", description: "LOCKNUT", quantity: "4" });

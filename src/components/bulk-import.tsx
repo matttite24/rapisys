@@ -15,7 +15,7 @@ import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { addLines } from "@/lib/contract-actions";
-import { groupWords, parseTable, type OcrWord } from "@/lib/ocr-table";
+import { groupWords, parseTable, type OcrLine, type OcrWord } from "@/lib/ocr-table";
 import { UNITS } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +48,12 @@ async function prepare(file: Blob): Promise<Blob> {
 
 // Lee la imagen con Tesseract, en el navegador: la captura no sale de tu equipo. Los datos
 // de idioma se descargan una vez (unos MB) la primera vez que se usa.
-async function readImage(file: Blob, onProgress: (p: number) => void): Promise<OcrWord[]> {
+// Modo "una columna" (PSM 4): en pruebas con tablas de contrato es el que conserva los números
+// chicos (ítem y cantidad), que el modo de texto disperso descarta.
+async function readImage(
+  file: Blob,
+  onProgress: (p: number) => void,
+): Promise<{ lines: OcrLine[]; words: OcrWord[] }> {
   const image = await prepare(file);
   const mod = await import("tesseract.js");
   const T = (mod as unknown as { default?: typeof mod }).default ?? mod;
@@ -58,15 +63,18 @@ async function readImage(file: Blob, onProgress: (p: number) => void): Promise<O
     },
   });
   try {
-    await worker.setParameters({ tessedit_pageseg_mode: T.PSM.SPARSE_TEXT });
+    await worker.setParameters({ tessedit_pageseg_mode: T.PSM.SINGLE_COLUMN });
     const { data } = await worker.recognize(image, {}, { blocks: true });
+    const lines: OcrLine[] = [];
     const words: OcrWord[] = [];
     for (const b of data.blocks ?? [])
       for (const p of b.paragraphs)
-        for (const l of p.lines)
+        for (const l of p.lines) {
+          lines.push({ text: l.text, confidence: l.confidence });
           for (const w of l.words)
             words.push({ text: w.text, confidence: w.confidence, x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1 });
-    return words;
+        }
+    return { lines, words };
   } finally {
     await worker.terminate();
   }
@@ -117,8 +125,10 @@ export function BulkImport({
     setProgress(0);
     setStep("reading");
     try {
-      const words = await readImage(file, setProgress);
-      const parsed = parseTable(groupWords(words));
+      const { lines, words } = await readImage(file, setProgress);
+      // Primero los renglones que detecta el OCR; si no sale ninguna fila, se reagrupan las palabras por altura.
+      let parsed = parseTable(lines);
+      if (parsed.rows.length === 0) parsed = parseTable(groupWords(words));
       setSkipped(parsed.skipped);
       setRows(
         parsed.rows.map((r) => ({
