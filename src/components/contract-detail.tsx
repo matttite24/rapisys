@@ -142,7 +142,7 @@ async function Detail({ params }: { params: IdParams }) {
             <span className="num">{formatCents(contractTotal)}</span>
           </Cell>
           <Cell label="Plazo">
-            <span className="num">{c.term_days} d</span>
+            <span className="num">{c.term_days} {Number(c.term_days) === 1 ? "día" : "días"}</span>
             <span className="block font-mono text-xs text-muted-foreground">
               {formatIso(c.start_date)} → {end ? formatIso(end) : "—"}
             </span>
