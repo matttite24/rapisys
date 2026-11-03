@@ -250,15 +250,7 @@ export function ReferenceList({
     });
   }
 
-  const title =
-    mode === "list-new"
-      ? lists.length === 0 ? "Crea la primera lista: un activo" : "Nueva lista"
-      : mode === "list-edit"
-        ? "Editar lista"
-        : editing
-          ? `Editar línea ${editingN}`
-          : "Agregar item a la lista";
-  const cancellable = lists.length > 0 && (mode !== "line" || editing !== null);
+  const title = `Editar línea ${editingN}`;
 
   if (lists.length === 0 && !canAdd) {
     return (
@@ -304,10 +296,10 @@ export function ReferenceList({
       {canAdd && (
         <section className="border-b bg-muted">
           {/* Agregar una línea es lo habitual: va sin barra de título para ocupar menos alto. */}
-          {(mode !== "line" || editing) && (
+          {mode === "line" && editing && (
             <div className="flex h-10 items-center justify-between px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
               <span>{title}</span>
-              {cancellable && (
+              {(
                 <button
                   type="button"
                   className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
@@ -319,7 +311,7 @@ export function ReferenceList({
               )}
             </div>
           )}
-          <div className={cn("px-6 pb-4", mode === "line" && !editing ? "pt-4" : "pt-0")}>
+          <div className={cn("px-6 pb-4", editing ? "pt-0" : "pt-4")}>
             {mode === "line" && active ? (
               <LineForm
                 // Al cambiar de línea o de lista el formulario se rearma con sus valores.
@@ -338,6 +330,8 @@ export function ReferenceList({
                 org={org}
                 contractId={contractId}
                 editing={mode === "list-edit" ? active : null}
+                // Con la primera lista por crear no hay a dónde volver.
+                onCancel={lists.length > 0 ? resetPanel : undefined}
                 onDone={(id) => {
                   if (id) setActiveId(id);
                   resetPanel();

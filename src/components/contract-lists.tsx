@@ -322,11 +322,13 @@ export function ListForm({
   contractId,
   editing,
   onDone,
+  onCancel,
 }: {
   org: string;
   contractId: string;
   editing: ListView | null;
   onDone: (id?: string) => void;
+  onCancel?: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState(editing?.name ?? "");
@@ -381,7 +383,7 @@ export function ListForm({
       className="grid gap-x-4 gap-y-5 md:grid-cols-4 md:items-start [&_input]:bg-background"
     >
       <input type="hidden" name="asset_id" value={assetId} />
-      <div className="flex flex-col gap-2 md:col-span-3">
+      <div className="flex flex-col gap-2 md:col-span-2">
         <FormField
           name="name"
           label="Nombre del activo o de la lista"
@@ -417,12 +419,19 @@ export function ListForm({
       <FormField name="identifier" label="Identificador" error={errors.identifier}>
         {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" defaultValue={editing?.identifier} />}
       </FormField>
-      <Field>
+      <Field className="md:col-span-2">
         <FieldLabel aria-hidden className="max-md:hidden">&nbsp;</FieldLabel>
-        <Button type="submit" disabled={saving} className="h-10 w-full gap-2">
-          <HugeiconsIcon icon={editing ? Tick02Icon : Add01Icon} className="size-5" strokeWidth={2} />
-          {saving ? "Guardando…" : editing ? "Guardar lista" : "Crear lista"}
-        </Button>
+        <div className="flex gap-2">
+          <Button type="submit" disabled={saving} className="h-10 gap-2">
+            <HugeiconsIcon icon={editing ? Tick02Icon : Add01Icon} className="size-5" strokeWidth={2} />
+            {saving ? "Guardando…" : editing ? "Guardar lista" : "Crear nueva lista"}
+          </Button>
+          {onCancel && (
+            <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={onCancel}>
+              Cancelar
+            </Button>
+          )}
+        </div>
       </Field>
       {state?.error && (
         <div className="md:col-span-4">
