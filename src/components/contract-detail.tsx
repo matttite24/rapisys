@@ -115,14 +115,24 @@ async function Detail({ params }: { params: IdParams }) {
 
   return (
     <>
-      {header}
-
-      <PageSection className="p-0">
-        <CellGrid className="border-0 md:grid-cols-4">
+      {/* Fila 1: cliente a la izquierda; estado y pasos a la derecha. */}
+      <PageSection>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <Cell label="Cliente">
             {clientRes.data?.name}
             {clientRes.data?.ruc && <span className="block font-mono text-xs text-muted-foreground">{clientRes.data.ruc}</span>}
           </Cell>
+          <StatusControl org={org} contractId={id} status={c.status} summary={summary} />
+        </div>
+      </PageSection>
+
+      {/* Fila 2: el contrato (código + nombre) y sus datos. */}
+      <PageSection className="p-0">
+        <CellGrid className="border-0 md:grid-cols-[2fr_1fr_1fr_1fr]">
+          <div className="min-w-0">
+            <p className="font-mono text-sm text-muted-foreground">{c.code}</p>
+            <h1 className="text-2xl font-semibold tracking-tight break-words">{c.name}</h1>
+          </div>
           <Cell label="Responsable">
             {managerRes.data?.name}
             {managerRes.data?.ruc && <span className="block font-mono text-xs text-muted-foreground">{managerRes.data.ruc}</span>}
