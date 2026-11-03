@@ -448,7 +448,15 @@ function LineRow({
   const saving = l.id.startsWith(TEMP_PREFIX);
 
   return (
-    <tr className={cn("border-b last:border-b-0", saving && "opacity-60", editing && "bg-muted")}>
+    <tr
+      className={cn(
+        "border-b last:border-b-0",
+        saving && "opacity-60",
+        editing && "bg-muted",
+        // Pidiendo confirmar el borrado: los datos que se perderán, en rojo y negrita.
+        confirming && "bg-destructive/5 font-bold text-destructive [&>td]:text-destructive",
+      )}
+    >
       <td className={`${TD} num text-right text-muted-foreground`}>{n}</td>
       <td className={`${TD} whitespace-nowrap font-mono text-xs`}>
         {l.partNumber || "—"}
