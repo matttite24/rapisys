@@ -150,6 +150,18 @@ async function Detail({ params }: { params: IdParams }) {
         </CellGrid>
       </PageSection>
 
+      {/* La función principal de la pantalla: va primero y con fondo propio. */}
+      {c.status === "in_progress" && (
+        <section className="border-b border-l-4 border-l-brand bg-muted">
+          <div className="flex h-10 items-center px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
+            Agregar item a la lista
+          </div>
+          <div className="px-6 pb-6">
+            <AddLineForm org={org} contractId={id} />
+          </div>
+        </section>
+      )}
+
       <PageSection
         label={`${lines.length} ${lines.length === 1 ? "línea" : "líneas"} de referencia`}
         className="p-0"
@@ -165,11 +177,6 @@ async function Detail({ params }: { params: IdParams }) {
         )}
       </PageSection>
 
-      {c.status === "in_progress" && (
-        <PageSection label="Agregar item">
-          <AddLineForm org={org} contractId={id} />
-        </PageSection>
-      )}
     </>
   );
 }

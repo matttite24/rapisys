@@ -247,7 +247,7 @@ export function AddLineForm({ org, contractId }: { org: string; contractId: stri
     <form
       ref={formRef}
       noValidate
-      className="grid gap-4 md:grid-cols-[1fr_8rem_11rem_auto] md:items-start"
+      className="grid gap-4 md:grid-cols-[1fr_8rem_11rem_auto] md:items-start [&_input]:bg-background [&_select]:bg-background"
       onSubmit={async (e) => {
         e.preventDefault();
         if (pending) return;
