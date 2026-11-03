@@ -109,7 +109,7 @@ function AllLists({
       >
         <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-5" />
       </button>
-      <SheetContent className="gap-0 sm:max-w-md">
+      <SheetContent side="left" className="gap-0 sm:max-w-md">
         <SheetHeader className="border-b">
           <SheetTitle>Listas del contrato</SheetTitle>
           <SheetDescription>
