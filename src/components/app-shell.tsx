@@ -412,7 +412,18 @@ export function AppShell({
             panelOpen={panelOpen}
             onTogglePanel={() => setPanelOpen((v) => !v)}
           />
-          {panelOpen && <Panel orgSwitcher={orgSwitcher} panelTop={panelTop} />}
+          {/* Siempre montada: el ancho se anima y la columna conserva su tamaño por dentro, así el
+              contenido no se reacomoda mientras se abre o se cierra. Cerrada, no recibe foco. */}
+          <div
+            inert={!panelOpen}
+            aria-hidden={!panelOpen}
+            className={cn(
+              "shrink-0 overflow-hidden transition-[width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
+              panelOpen ? "w-60" : "w-0",
+            )}
+          >
+            <Panel orgSwitcher={orgSwitcher} panelTop={panelTop} />
+          </div>
         </aside>
 
         {/* Celda de contenido: encabezado de sección + página */}
