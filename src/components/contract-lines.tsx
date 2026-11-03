@@ -3,7 +3,7 @@
 import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
 import { startTransition, useEffect, useOptimistic, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, FileUploadIcon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FormField } from "@/components/form-field";
 import { NumericInput } from "@/components/numeric-input";
@@ -154,6 +154,33 @@ export function StatusControl({
   );
 }
 
+// Maqueta de la carga masiva: ya ocupa su lugar; el flujo real llega después.
+function BulkImport() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5" onClick={() => setOpen(true)}>
+        <HugeiconsIcon icon={FileUploadIcon} className="size-4" />
+        Carga masiva
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Carga masiva de items</AlertDialogTitle>
+            <AlertDialogDescription>
+              Próximamente podrás pegar la lista completa desde Excel, una fila por item, con descripción,
+              cantidad y unidad de medida.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setOpen(false)}>Entendido</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 type OptimisticAction =
   | { type: "add"; line: LineView }
   | { type: "update"; line: LineView }
@@ -228,6 +255,7 @@ export function ReferenceList({
 
       <PageSection
         label={`${shown.length} ${shown.length === 1 ? "línea" : "líneas"} de referencia`}
+        meta={canAdd ? <BulkImport /> : undefined}
         className="p-0"
       >
         {shown.length === 0 ? (
