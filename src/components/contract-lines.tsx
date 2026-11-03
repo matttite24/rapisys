@@ -5,6 +5,7 @@ import { startTransition, useEffect, useOptimistic, useRef, useState } from "rea
 import { cn } from "@/lib/utils";
 import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { findDuplicates } from "@/lib/duplicates";
 import { BulkImport } from "@/components/bulk-import";
 import { ListDetailsForm, ListInfo, ListTabs, NewListDialog, type ListView } from "@/components/contract-lists";
 import { FormField } from "@/components/form-field";
@@ -346,7 +347,7 @@ export function ReferenceList({
       {active && (
         <PageSection
           label={`${listLines.length} ${listLines.length === 1 ? "línea" : "líneas"} de referencia`}
-          meta={canAdd ? <BulkImport org={org} contractId={contractId} listId={active.id} listName={active.name} /> : undefined}
+          meta={canAdd ? <BulkImport org={org} contractId={contractId} listId={active.id} listName={active.name} existing={listLines.map((l) => ({ part: l.partNumber, description: l.description }))} /> : undefined}
           className="p-0"
         >
           {listLines.length === 0 ? (
@@ -387,6 +388,11 @@ function LinesTable({
   onEdit: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
+  // Repetidos dentro de la lista (mismo número de parte, o misma descripción si no lo tiene).
+  const dups = findDuplicates(
+    lines.map((l) => ({ part: l.partNumber, description: l.description })),
+    [],
+  );
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -407,6 +413,7 @@ function LinesTable({
               key={l.id}
               line={l}
               n={i + 1}
+              duplicateOf={dups[i]?.ref}
               editing={l.id === editingId}
               canEdit={canEdit}
               onEdit={onEdit}
@@ -422,6 +429,7 @@ function LinesTable({
 function LineRow({
   line: l,
   n,
+  duplicateOf,
   editing,
   canEdit,
   onEdit,
@@ -429,6 +437,7 @@ function LineRow({
 }: {
   line: LineView;
   n: number;
+  duplicateOf?: number;
   editing: boolean;
   canEdit: boolean;
   onEdit: (id: string) => void;
@@ -441,7 +450,12 @@ function LineRow({
   return (
     <tr className={cn("border-b last:border-b-0", saving && "opacity-60", editing && "bg-muted")}>
       <td className={`${TD} num text-right text-muted-foreground`}>{n}</td>
-      <td className={`${TD} whitespace-nowrap font-mono text-xs`}>{l.partNumber || "—"}</td>
+      <td className={`${TD} whitespace-nowrap font-mono text-xs`}>
+        {l.partNumber || "—"}
+        {duplicateOf && (
+          <span className="block font-sans text-[0.6875rem] font-medium text-destructive">Repetido: igual a la línea {duplicateOf}</span>
+        )}
+      </td>
       <td className={`${TD} break-words`}>{l.description}</td>
       <td className={`${TD} num text-right`}>{l.quantity}</td>
       <td className={`${TD} whitespace-nowrap`}>{unitLabel(l.unit)}</td>

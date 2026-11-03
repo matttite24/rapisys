@@ -24,6 +24,7 @@ import {
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { addLines } from "@/lib/contract-actions";
+import { findDuplicates } from "@/lib/duplicates";
 import { groupWords, parseTable, type OcrLine, type OcrWord, type ParsedRow } from "@/lib/ocr-table";
 import { cn } from "@/lib/utils";
 
@@ -211,11 +212,14 @@ export function BulkImport({
   contractId,
   listId,
   listName,
+  existing,
 }: {
   org: string;
   contractId: string;
   listId: string;
   listName: string;
+  // Lo que la lista ya tiene, para avisar de repetidos al cargar.
+  existing: { part: string; description: string }[];
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("start");
@@ -229,6 +233,7 @@ export function BulkImport({
   const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [onlyDup, setOnlyDup] = useState(false);
   const nextId = useRef(1);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -245,6 +250,7 @@ export function BulkImport({
     setError(undefined);
     setRowErrors({});
     setSaving(false);
+    setOnlyDup(false);
   }
 
   async function start(file: Blob) {
@@ -325,6 +331,20 @@ export function BulkImport({
   }
 
   const toReview = rows.filter((r) => r.review).length;
+  const dups = findDuplicates(rows, existing);
+  const dupCount = dups.filter(Boolean).length;
+  const repeats = dups.filter((d) => d?.kind === "batch").length;
+  // Si ya no quedan duplicados, el filtro "solo duplicados" no tiene sentido.
+  const showOnlyDup = onlyDup && dupCount > 0;
+
+  // Quita lo repetido dentro de lo que se va a cargar (deja la primera aparición).
+  // Lo que ya está en la lista no se toca solo: puede ser a propósito.
+  function removeRepeats() {
+    setRows((rs) => {
+      const d = findDuplicates(rs, existing);
+      return rs.filter((_, i) => d[i]?.kind !== "batch");
+    });
+  }
 
   return (
     <>
@@ -424,7 +444,7 @@ export function BulkImport({
                   )}
                 </div>
                 <div className="flex flex-col justify-center gap-3 p-6">
-                  <dl className="grid grid-cols-3 gap-4 font-mono">
+                  <dl className="grid grid-cols-4 gap-4 font-mono">
                     <div>
                       <dt className="text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Leídas</dt>
                       <dd className="num text-2xl">{rows.length}</dd>
@@ -434,6 +454,10 @@ export function BulkImport({
                       <dd className={cn("num text-2xl", toReview > 0 && "text-amber-600 dark:text-amber-400")}>{toReview}</dd>
                     </div>
                     <div>
+                      <dt className="text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Duplicados</dt>
+                      <dd className={cn("num text-2xl", dupCount > 0 && "text-destructive")}>{dupCount}</dd>
+                    </div>
+                    <div>
                       <dt className="text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Descartados</dt>
                       <dd className="num text-2xl text-muted-foreground">{skipped}</dd>
                     </div>
@@ -441,6 +465,18 @@ export function BulkImport({
                   <p className="text-sm text-muted-foreground">
                     Compara con la captura. Las filas en ámbar son las dudosas; los números de parte son lo más fácil de leer mal.
                   </p>
+                  {dupCount > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" aria-pressed={showOnlyDup} onClick={() => setOnlyDup((v) => !v)}>
+                        {showOnlyDup ? "Ver todas las filas" : "Ver solo duplicados"}
+                      </Button>
+                      {repeats > 0 && (
+                        <Button type="button" variant="outline" size="sm" onClick={removeRepeats}>
+                          Quitar repetidos del lote ({repeats})
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -470,6 +506,8 @@ export function BulkImport({
                       </tr>
                     )}
                     {rows.map((r, i) => {
+                      if (showOnlyDup && !dups[i]) return null;
+                      const dup = dups[i];
                       const err = (f: string) => rowErrors[`${i}.${f}`];
                       return (
                         <tr key={r.id} className={cn("border-b align-top last:border-b-0", r.review && "bg-amber-500/10")}>
@@ -479,6 +517,13 @@ export function BulkImport({
                           </td>
                           <td className="px-2 py-1.5">
                             <Input aria-label={`Descripción, fila ${i + 1}`} aria-invalid={!!err("description") || undefined} className="h-8" value={r.description} onChange={(e) => patch(r.id, { description: e.target.value })} />
+                            {dup && (
+                              <p className="pt-1 text-xs font-medium text-destructive">
+                                {dup.kind === "batch"
+                                  ? `Duplicado: igual a la fila ${dup.ref} de esta carga`
+                                  : `Ya está en la lista (línea ${dup.ref})`}
+                              </p>
+                            )}
                             {r.review && r.raw && <p className="pt-1 font-mono text-[0.6875rem] text-muted-foreground">Leído: {r.raw}</p>}
                             {(err("description") || err("part_number")) && <p className="pt-1 text-xs text-destructive">{err("description") ?? err("part_number")}</p>}
                           </td>
