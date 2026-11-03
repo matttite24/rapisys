@@ -32,19 +32,51 @@ type Row = {
 
 // Agranda la captura si es chica y la apoya sobre fondo blanco (una imagen con transparencia se
 // lee como negro). No se le aplican filtros de contraste: en pruebas hacían que el OCR perdiera
-// los números chicos (ítem y cantidad).
-async function prepare(file: Blob): Promise<Blob> {
+// los números chicos (ítem y cantidad). Devuelve también los píxeles, para ubicar los bordes de la tabla.
+async function prepare(file: Blob): Promise<{ blob: Blob; pixels: ImageData | null }> {
   const bmp = await createImageBitmap(file);
   const scale = bmp.width < 1600 ? Math.min(2, 2000 / bmp.width) : 1;
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bmp.width * scale);
   canvas.height = Math.round(bmp.height * scale);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return file;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return { blob: file, pixels: null };
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b ?? file), "image/png"));
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b ?? file), "image/png"));
+  return { blob, pixels };
+}
+
+// Posiciones (x) de las líneas verticales de la tabla en la franja de un renglón: las columnas
+// cuyo trazo oscuro cubre casi toda la franja. Los caracteres sueltos nunca la cubren.
+function verticalBorders(img: ImageData, y0: number, y1: number): number[] {
+  const top = Math.max(0, Math.floor(y0));
+  const bottom = Math.min(img.height, Math.ceil(y1));
+  const height = bottom - top;
+  if (height <= 0) return [];
+  const xs: number[] = [];
+  for (let x = 0; x < img.width; x++) {
+    let dark = 0;
+    for (let y = top; y < bottom; y++) {
+      const i = (y * img.width + x) * 4;
+      if (img.data[i] * 0.299 + img.data[i + 1] * 0.587 + img.data[i + 2] * 0.114 < 140) dark++;
+    }
+    if (dark / height >= 0.8) xs.push(x);
+  }
+  // Un trazo grueso ocupa varias columnas contiguas: se queda con su centro.
+  const centers: number[] = [];
+  let group: number[] = [];
+  for (const x of xs) {
+    if (group.length && x - group[group.length - 1] > 3) {
+      centers.push(Math.round(group.reduce((s, v) => s + v, 0) / group.length));
+      group = [];
+    }
+    group.push(x);
+  }
+  if (group.length) centers.push(Math.round(group.reduce((s, v) => s + v, 0) / group.length));
+  return centers;
 }
 
 type Reading = { lines: OcrLine[]; words: OcrWord[] };
@@ -59,12 +91,14 @@ type Ocr = {
   read: (enough: (r: Reading) => boolean) => Promise<Reading>;
   // Lee solo dígitos dentro de un recuadro de la imagen.
   digitsAt: (rect: Rect) => Promise<string>;
+  // Líneas verticales de la tabla en una franja de la imagen.
+  bordersAt: (y0: number, y1: number) => number[];
 };
 
 // Abre Tesseract en el navegador (la captura no sale de tu equipo; los datos de idioma se
 // descargan una vez, unos MB) y lo cierra al terminar `run`.
 async function withOcr<T>(file: Blob, onProgress: (p: number) => void, run: (ocr: Ocr) => Promise<T>): Promise<T> {
-  const image = await prepare(file);
+  const { blob: image, pixels } = await prepare(file);
   const mod = await import("tesseract.js");
   const { createWorker } = (mod as unknown as { default?: typeof mod }).default ?? mod;
   const worker = await createWorker(["eng", "spa"], 1, {
@@ -99,6 +133,7 @@ async function withOcr<T>(file: Blob, onProgress: (p: number) => void, run: (ocr
                 confidence: l.confidence,
                 y0: anchor?.y0 ?? l.bbox.y0,
                 y1: anchor?.y1 ?? l.bbox.y1,
+                x0: anchor?.x0,
               });
             }
         first ??= result;
@@ -112,6 +147,7 @@ async function withOcr<T>(file: Blob, onProgress: (p: number) => void, run: (ocr
       const { data } = await worker.recognize(image, { rectangle: rect });
       return data.text.trim();
     },
+    bordersAt: (y0, y1) => (pixels ? verticalBorders(pixels, y0, y1) : []),
   };
 
   try {
@@ -127,22 +163,34 @@ function tableFrom(r: Reading) {
   return byLines.rows.length ? byLines : parseTable(groupWords(r.words));
 }
 
-// Los números sueltos (la cantidad) son lo que el OCR más pierde: las filas sin cantidad se
-// releen con un recuadro angosto bajo el encabezado CANTID., leyendo solo dígitos.
-async function fillQuantities(rows: ParsedRow[], words: OcrWord[], digitsAt: Ocr["digitsAt"]) {
+// Los números sueltos (la cantidad) son lo que el OCR más pierde. Las filas sin cantidad se
+// releen en su celda, leyendo solo dígitos. La celda es la que queda justo a la izquierda de la
+// del CPC, entre dos líneas verticales de la tabla; si no se encuentran, se usa el encabezado CANTID.
+async function fillQuantities(rows: ParsedRow[], words: OcrWord[], ocr: Ocr) {
   const head = words.find((w) => /^cantid/i.test(w.text));
-  if (!head) return;
-  const cx = (head.x0 + head.x1) / 2;
-  const half = (head.x1 - head.x0) / 2 + 10;
+  const pad = 10;
   for (const r of rows) {
     if (r.quantity || r.y0 === undefined || r.y1 === undefined) continue;
-    const pad = 10;
-    const text = await digitsAt({
-      left: Math.max(0, Math.round(cx - half)),
-      top: Math.max(0, Math.round(r.y0 - pad)),
-      width: Math.round(half * 2),
-      height: Math.round(r.y1 - r.y0 + pad * 2),
-    });
+    const top = Math.max(0, Math.round(r.y0 - pad));
+    const height = Math.round(r.y1 - r.y0 + pad * 2);
+
+    let left: number | undefined;
+    let width: number | undefined;
+    if (r.x0 !== undefined) {
+      const borders = ocr.bordersAt(r.y0 - pad, r.y1 + pad).filter((b) => b < r.x0!);
+      if (borders.length >= 2) {
+        left = borders[borders.length - 2] + 4;
+        width = borders[borders.length - 1] - 4 - left;
+      }
+    }
+    if (left === undefined && head) {
+      const half = (head.x1 - head.x0) / 2 + 10;
+      left = Math.max(0, Math.round((head.x0 + head.x1) / 2 - half));
+      width = Math.round(half * 2);
+    }
+    if (left === undefined || !width || width < 10) continue;
+
+    const text = await ocr.digitsAt({ left, top, width, height });
     if (/^\d{1,4}$/.test(text)) r.quantity = text;
   }
 }
@@ -197,7 +245,7 @@ export function BulkImport({
       const { parsed, raw } = await withOcr(file, setProgress, async (ocr) => {
         const reading = await ocr.read((r) => tableFrom(r).rows.length > 0);
         const parsed = tableFrom(reading);
-        await fillQuantities(parsed.rows, reading.words, ocr.digitsAt);
+        await fillQuantities(parsed.rows, reading.words, ocr);
         return { parsed, raw: reading.lines.map((l) => l.text.trim()).filter(Boolean).join("\n") };
       });
       setRawText(raw);

@@ -3,7 +3,8 @@
 
 export type OcrWord = { text: string; confidence: number; x0: number; y0: number; x1: number; y1: number };
 // y0/y1: altura del renglón en la imagen (la usa la segunda pasada que lee las cantidades).
-export type OcrLine = { text: string; confidence: number; y0?: number; y1?: number };
+// x0: borde izquierdo del CPC del renglón, si se conoce.
+export type OcrLine = { text: string; confidence: number; y0?: number; y1?: number; x0?: number };
 
 export type ParsedRow = {
   part: string;
@@ -15,6 +16,7 @@ export type ParsedRow = {
   // Altura del renglón en la imagen, si se conoce.
   y0?: number;
   y1?: number;
+  x0?: number; // borde izquierdo del CPC
   // La fila necesita ojo humano: poca confianza o no calzó con el formato.
   review: boolean;
 };
@@ -42,11 +44,14 @@ export function groupWords(words: OcrWord[]): OcrLine[] {
 
   return rows.map((r) => {
     const inOrder = r.words.sort((a, b) => a.x0 - b.x0);
+    const cpc = inOrder.find((w) => /^\d{6,12}$/.test(w.text));
     return {
       text: inOrder.map((w) => w.text).join(" "),
       confidence: inOrder.reduce((s, w) => s + w.confidence, 0) / inOrder.length,
-      y0: Math.min(...inOrder.map((w) => w.y0)),
-      y1: Math.max(...inOrder.map((w) => w.y1)),
+      // La altura sale del CPC si lo hay: los símbolos sueltos estiran el recuadro del renglón.
+      y0: cpc ? cpc.y0 : Math.min(...inOrder.map((w) => w.y0)),
+      y1: cpc ? cpc.y1 : Math.max(...inOrder.map((w) => w.y1)),
+      x0: cpc?.x0,
     };
   });
 }
@@ -66,7 +71,7 @@ const LOW_CONFIDENCE = 80;
 export function parseTable(lines: OcrLine[]): { rows: ParsedRow[]; skipped: number } {
   const rows: ParsedRow[] = [];
   let skipped = 0;
-  const push = (row: ParsedRow, line: OcrLine) => rows.push({ ...row, y0: line.y0, y1: line.y1 });
+  const push = (row: ParsedRow, line: OcrLine) => rows.push({ ...row, y0: line.y0, y1: line.y1, x0: line.x0 });
 
   for (const line of lines) {
     const text = line.text.replace(CLEAN, " ").replace(/\s+/g, " ").trim();
