@@ -2,10 +2,12 @@
 
 import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
 import { startTransition, useEffect, useOptimistic, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { usePanelBodySlot } from "@/components/panel-slots";
 import { cn } from "@/lib/utils";
 import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, FileUploadIcon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ListForm, ListInfo, ListTabs, type ListView } from "@/components/contract-lists";
+import { ListForm, ListInfo, ListNav, ListSelect, type ListView } from "@/components/contract-lists";
 import { FormField } from "@/components/form-field";
 import { NumericInput } from "@/components/numeric-input";
 import {
@@ -222,6 +224,19 @@ export function ReferenceList({
   const counts: Record<string, number> = {};
   for (const l of shown) counts[l.listId] = (counts[l.listId] ?? 0) + 1;
 
+  const bodySlot = usePanelBodySlot();
+  const nav = {
+    lists,
+    counts,
+    activeId: active?.id ?? null,
+    canAdd,
+    onSelect: select,
+    onNew: () => {
+      setEditingId(null);
+      setPanel("list-new");
+    },
+  };
+
   const editing = listLines.find((l) => l.id === editingId) ?? null;
   const editingN = editing ? listLines.indexOf(editing) + 1 : 0;
   // Sin listas, lo único posible es crear la primera.
@@ -268,17 +283,11 @@ export function ReferenceList({
   return (
     <>
       {lists.length > 0 && (
-        <ListTabs
-          lists={lists}
-          counts={counts}
-          activeId={active?.id ?? null}
-          canAdd={canAdd}
-          onSelect={select}
-          onNew={() => {
-            setEditingId(null);
-            setPanel("list-new");
-          }}
-        />
+        <>
+          {/* Escritorio: las listas viven en la columna de opciones. Móvil o columna oculta: selector. */}
+          {bodySlot && createPortal(<ListNav {...nav} />, bodySlot)}
+          <ListSelect {...nav} className={bodySlot ? "md:hidden" : undefined} />
+        </>
       )}
       {active && (
         <ListInfo
