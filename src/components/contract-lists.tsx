@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Sheet,
   SheetContent,
@@ -38,11 +39,14 @@ import {
 import {
   createList,
   deleteList,
+  quickCreateAsset,
   searchAssets,
   updateList,
   type AssetResult,
   type ListState,
+  type QuickAssetState,
 } from "@/lib/contract-list-actions";
+import { ASSET_KIND_LABEL } from "@/lib/items";
 import { cn } from "@/lib/utils";
 
 // Una lista de referencia del contrato: los datos del activo al que sirve.
@@ -233,17 +237,47 @@ export function ListInfo({
   );
 }
 
-// Cajón para buscar un activo del catálogo: sirve con muchos activos, sin listas dentro del formulario.
+// Cajón para buscar un activo del catálogo (sirve con muchos) o darlo de alta si no existe.
 function AssetPicker({ org, onPick }: { org: string; onPick: (a: AssetResult) => void }) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<AssetResult[] | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [state, setState] = useState<QuickAssetState>();
+  const errors = state?.fields ?? {};
 
   function search(value: string) {
     setQ(value);
     clearTimeout(timer.current);
     timer.current = setTimeout(async () => setResults(await searchAssets(org, value)), 250);
+  }
+
+  function pick(a: AssetResult) {
+    onPick(a);
+    setOpen(false);
+    setCreating(false);
+    setState(undefined);
+  }
+
+  function create(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (saving) return;
+    const data = new FormData(e.currentTarget);
+    setSaving(true);
+    startTransition(async () => {
+      const res = await quickCreateAsset(
+        org,
+        String(data.get("asset_name") ?? ""),
+        String(data.get("asset_kind") ?? ""),
+        String(data.get("asset_model") ?? ""),
+      );
+      setSaving(false);
+      if (res?.asset) pick(res.asset);
+      else setState(res);
+    });
   }
 
   return (
@@ -252,6 +286,10 @@ function AssetPicker({ org, onPick }: { org: string; onPick: (a: AssetResult) =>
       onOpenChange={(next) => {
         setOpen(next);
         if (next) void searchAssets(org, q).then(setResults);
+        else {
+          setCreating(false);
+          setState(undefined);
+        }
       }}
     >
       <Button
@@ -266,57 +304,99 @@ function AssetPicker({ org, onPick }: { org: string; onPick: (a: AssetResult) =>
         <HugeiconsIcon icon={Search01Icon} className="size-5" />
       </Button>
       <SheetContent className="gap-0 sm:max-w-md">
-        <SheetHeader className="border-b">
-          <SheetTitle>Buscar activo en el catálogo</SheetTitle>
-          <SheetDescription>Elige uno para llenar el nombre y el modelo de la lista.</SheetDescription>
-        </SheetHeader>
-        <div className="border-b p-4">
-          <Input
-            type="search"
-            autoFocus
-            autoComplete="off"
-            aria-label="Buscar activo"
-            placeholder="Nombre, marca, modelo o placa"
-            value={q}
-            onChange={(e) => search(e.target.value)}
-          />
-        </div>
-        <ul aria-label="Activos del catálogo" className="min-h-0 flex-1 divide-y overflow-y-auto">
-          {results === null && <li className="p-4 text-sm text-muted-foreground">Buscando…</li>}
-          {results?.length === 0 && (
-            <li className="p-4 text-sm text-muted-foreground">
-              Ningún activo coincide. Puedes escribir el nombre a mano: se usará solo en este contrato.
-            </li>
-          )}
-          {results?.map((a) => (
-            <li key={a.id}>
-              <button
-                type="button"
-                className="flex min-h-14 w-full flex-col items-start gap-0.5 px-4 py-3 text-left hover:bg-accent"
-                onClick={() => {
-                  onPick(a);
-                  setOpen(false);
-                }}
-              >
-                <span className="font-medium">{a.name}</span>
-                {[a.brand, a.model, a.plate].some(Boolean) && (
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {[a.brand, a.model, a.plate].filter(Boolean).join(" · ")}
-                  </span>
+        {creating ? (
+          <>
+            <SheetHeader className="border-b">
+              <SheetTitle>Nuevo activo</SheetTitle>
+              <SheetDescription>Se guarda en el catálogo y queda elegido para la lista.</SheetDescription>
+            </SheetHeader>
+            <form onSubmit={create} noValidate className="flex flex-col gap-5 p-4">
+              <FormField name="asset_name" label="Nombre" error={errors.name}>
+                {(a11y) => <Input {...a11y} autoFocus autoComplete="off" maxLength={200} defaultValue={q} />}
+              </FormField>
+              <FormField name="asset_kind" label="Tipo" error={errors.kind}>
+                {(a11y) => (
+                  <NativeSelect {...a11y} className="w-full" defaultValue="">
+                    <option value="">Selecciona…</option>
+                    {Object.entries(ASSET_KIND_LABEL).map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
+                  </NativeSelect>
                 )}
-              </button>
-            </li>
-          ))}
-          {results && results.length >= 30 && (
-            <li className="p-4 text-xs text-muted-foreground">Se muestran los primeros 30. Afina la búsqueda.</li>
-          )}
-        </ul>
+              </FormField>
+              <FormField name="asset_model" label="Modelo (opcional)" error={errors.model}>
+                {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} />}
+              </FormField>
+              {state?.error && <FieldError>{state.error}</FieldError>}
+              <div className="flex gap-2">
+                <Button type="submit" disabled={saving} className="h-10">
+                  {saving ? "Creando…" : "Crear y usar"}
+                </Button>
+                <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={() => setCreating(false)}>
+                  Volver
+                </Button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <>
+            <SheetHeader className="border-b">
+              <SheetTitle>Buscar activo en el catálogo</SheetTitle>
+              <SheetDescription>Elige uno para usarlo en la lista, o crea uno nuevo si no existe.</SheetDescription>
+            </SheetHeader>
+            <div className="border-b p-4">
+              <Input
+                type="search"
+                autoFocus
+                autoComplete="off"
+                aria-label="Buscar activo"
+                placeholder="Nombre, marca, modelo o placa"
+                value={q}
+                onChange={(e) => search(e.target.value)}
+              />
+            </div>
+            <ul aria-label="Activos del catálogo" className="min-h-0 flex-1 divide-y overflow-y-auto">
+              {results === null && <li className="p-4 text-sm text-muted-foreground">Buscando…</li>}
+              {results?.length === 0 && (
+                <li className="p-4 text-sm text-muted-foreground">Ningún activo coincide con la búsqueda.</li>
+              )}
+              {results?.map((a) => (
+                <li key={a.id}>
+                  <button
+                    type="button"
+                    className="flex min-h-14 w-full flex-col items-start gap-0.5 px-4 py-3 text-left hover:bg-accent"
+                    onClick={() => pick(a)}
+                  >
+                    <span className="font-medium">{a.name}</span>
+                    {[a.brand, a.model, a.plate].some(Boolean) && (
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {[a.brand, a.model, a.plate].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))}
+              {results && results.length >= 30 && (
+                <li className="p-4 text-xs text-muted-foreground">Se muestran los primeros 30. Afina la búsqueda.</li>
+              )}
+            </ul>
+            <div className="border-t p-4">
+              <Button type="button" variant="outline" className="h-10 w-full gap-2" onClick={() => setCreating(true)}>
+                <HugeiconsIcon icon={Add01Icon} className="size-5" />
+                {q.trim() ? `Crear activo “${q.trim()}”` : "Crear activo nuevo"}
+              </Button>
+            </div>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );
 }
 
-// Crea o edita una lista. El activo se busca en el catálogo o se escribe solo para este contrato.
+// Crear una lista es un solo paso: el nombre (a mano o de un activo del catálogo).
+// Los datos de la máquina (modelo, serie, motor, identificador) se completan después, al editarla.
 export function ListForm({
   org,
   contractId,
@@ -330,12 +410,45 @@ export function ListForm({
   onDone: (id?: string) => void;
   onCancel?: () => void;
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
-  const [name, setName] = useState(editing?.name ?? "");
-  const [model, setModel] = useState(editing?.model ?? "");
-  const [assetId, setAssetId] = useState(editing?.assetId ?? "");
+  return editing ? (
+    <ListDetailsForm org={org} contractId={contractId} list={editing} onDone={onDone} onCancel={onCancel} />
+  ) : (
+    <ListCreateForm org={org} contractId={contractId} onDone={onDone} onCancel={onCancel} />
+  );
+}
+
+function useListSubmit(onDone: (id?: string) => void) {
   const [state, setState] = useState<ListState>();
   const [saving, setSaving] = useState(false);
+  function submit(run: () => Promise<ListState>) {
+    if (saving) return;
+    setSaving(true);
+    setState(undefined);
+    startTransition(async () => {
+      const res = await run();
+      setSaving(false);
+      if (res?.error || res?.fields) setState(res);
+      else onDone(res?.id);
+    });
+  }
+  return { state, saving, submit };
+}
+
+function ListCreateForm({
+  org,
+  contractId,
+  onDone,
+  onCancel,
+}: {
+  org: string;
+  contractId: string;
+  onDone: (id?: string) => void;
+  onCancel?: () => void;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [name, setName] = useState("");
+  const [assetId, setAssetId] = useState("");
+  const { state, saving, submit } = useListSubmit(onDone);
   const errors = state?.fields ?? {};
 
   useEffect(() => {
@@ -343,52 +456,25 @@ export function ListForm({
     formRef.current?.querySelector<HTMLElement>('[name="name"]')?.focus();
   }, []);
 
-  // Escribir un nombre propio desvincula el activo del catálogo.
-  function onName(value: string) {
-    setName(value);
-    setAssetId("");
-  }
-
-  function choose(a: AssetResult) {
-    setName(a.name);
-    setModel(a.model ?? "");
-    setAssetId(a.id);
-  }
-
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (saving) return;
-    const data = new FormData(e.currentTarget);
-    if (!name.trim()) {
-      setState({ fields: { name: "Escribe el nombre del activo." } });
-      return;
-    }
-    setSaving(true);
-    setState(undefined);
-    startTransition(async () => {
-      const res = editing
-        ? await updateList(org, contractId, editing.id, data)
-        : await createList(org, contractId, data);
-      setSaving(false);
-      if (res?.error || res?.fields) setState(res);
-      else onDone(res?.id);
-    });
-  }
-
   return (
     <form
       ref={formRef}
       noValidate
-      onSubmit={onSubmit}
-      className="grid gap-x-4 gap-y-5 md:grid-cols-4 md:items-start [&_input]:bg-background"
+      className="flex flex-col gap-4 md:flex-row md:items-start [&_input]:bg-background"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!name.trim()) return submit(async () => ({ fields: { name: "Escribe el nombre del activo o de la lista." } }));
+        const data = new FormData(e.currentTarget);
+        submit(() => createList(org, contractId, data));
+      }}
     >
       <input type="hidden" name="asset_id" value={assetId} />
-      <div className="flex flex-col gap-2 md:col-span-2">
+      <div className="min-w-0 md:max-w-xl md:flex-1">
         <FormField
           name="name"
           label="Nombre del activo o de la lista"
           error={errors.name}
-          hint={assetId ? "Del catálogo" : "Basta con el nombre; lo demás es opcional."}
+          hint={assetId ? "Activo del catálogo" : "Escribe un nombre (p. ej. “Lista general”) o busca un activo."}
         >
           {(a11y) => (
             <div className="flex gap-2">
@@ -396,35 +482,103 @@ export function ListForm({
                 {...a11y}
                 autoComplete="off"
                 maxLength={200}
-                placeholder="Escribe un nombre o busca en el catálogo"
                 value={name}
-                onChange={(e) => onName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setAssetId(""); // un nombre escrito a mano desvincula el activo
+                }}
               />
-              <AssetPicker org={org} onPick={choose} />
+              <AssetPicker
+                org={org}
+                onPick={(a) => {
+                  setName(a.name);
+                  setAssetId(a.id);
+                }}
+              />
             </div>
           )}
         </FormField>
       </div>
+      <Field className="md:w-auto">
+        <FieldLabel aria-hidden className="max-md:hidden">&nbsp;</FieldLabel>
+        <div className="flex gap-2">
+          <Button type="submit" disabled={saving} className="h-10 gap-2">
+            <HugeiconsIcon icon={Add01Icon} className="size-5" strokeWidth={2} />
+            {saving ? "Creando…" : "Crear nueva lista"}
+          </Button>
+          {onCancel && (
+            <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={onCancel}>
+              Cancelar
+            </Button>
+          )}
+        </div>
+      </Field>
+      {state?.error && <FieldError>{state.error}</FieldError>}
+    </form>
+  );
+}
+
+// Corrige los datos de una lista ya creada.
+function ListDetailsForm({
+  org,
+  contractId,
+  list,
+  onDone,
+  onCancel,
+}: {
+  org: string;
+  contractId: string;
+  list: ListView;
+  onDone: (id?: string) => void;
+  onCancel?: () => void;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const { state, saving, submit } = useListSubmit(onDone);
+  const errors = state?.fields ?? {};
+
+  useEffect(() => {
+    formRef.current?.scrollIntoView({ block: "nearest" });
+    formRef.current?.querySelector<HTMLElement>('[name="name"]')?.focus();
+  }, []);
+
+  const mono = "font-mono";
+  return (
+    <form
+      ref={formRef}
+      noValidate
+      className="grid gap-x-4 gap-y-5 md:grid-cols-4 md:items-start [&_input]:bg-background"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        if (!String(data.get("name") ?? "").trim()) {
+          return submit(async () => ({ fields: { name: "Escribe el nombre del activo o de la lista." } }));
+        }
+        submit(() => updateList(org, contractId, list.id, data));
+      }}
+    >
+      <div className="md:col-span-2">
+        <FormField name="name" label="Nombre" error={errors.name}>
+          {(a11y) => <Input {...a11y} autoComplete="off" maxLength={200} defaultValue={list.name} />}
+        </FormField>
+      </div>
       <FormField name="model" label="Modelo" error={errors.model}>
-        {(a11y) => (
-          <Input {...a11y} autoComplete="off" maxLength={100} value={model} onChange={(e) => setModel(e.target.value)} />
-        )}
+        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} defaultValue={list.model} />}
       </FormField>
       <FormField name="serial" label="Serie" error={errors.serial}>
-        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" defaultValue={editing?.serial} />}
+        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className={mono} defaultValue={list.serial} />}
       </FormField>
       <FormField name="engine" label="Motor" error={errors.engine}>
-        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" defaultValue={editing?.engine} />}
+        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className={mono} defaultValue={list.engine} />}
       </FormField>
       <FormField name="identifier" label="Identificador" error={errors.identifier}>
-        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" defaultValue={editing?.identifier} />}
+        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className={mono} defaultValue={list.identifier} />}
       </FormField>
       <Field className="md:col-span-2">
         <FieldLabel aria-hidden className="max-md:hidden">&nbsp;</FieldLabel>
         <div className="flex gap-2">
           <Button type="submit" disabled={saving} className="h-10 gap-2">
-            <HugeiconsIcon icon={editing ? Tick02Icon : Add01Icon} className="size-5" strokeWidth={2} />
-            {saving ? "Guardando…" : editing ? "Guardar lista" : "Crear nueva lista"}
+            <HugeiconsIcon icon={Tick02Icon} className="size-5" strokeWidth={2} />
+            {saving ? "Guardando…" : "Guardar lista"}
           </Button>
           {onCancel && (
             <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={onCancel}>
