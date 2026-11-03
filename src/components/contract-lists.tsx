@@ -378,15 +378,15 @@ export function ListForm({
       ref={formRef}
       noValidate
       onSubmit={onSubmit}
-      className="grid gap-4 md:grid-cols-[2fr_1fr_1fr_1fr_1.2fr_3.5rem] md:items-start [&_input]:bg-background"
+      className="grid gap-x-4 gap-y-5 md:grid-cols-4 md:items-start [&_input]:bg-background"
     >
       <input type="hidden" name="asset_id" value={assetId} />
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 md:col-span-3">
         <FormField
           name="name"
           label="Nombre del activo o de la lista"
           error={errors.name}
-          hint={assetId ? "Del catálogo" : "Basta con el nombre: el resto es opcional (p. ej. “Lista general”)."}
+          hint={assetId ? "Del catálogo" : "Basta con el nombre; lo demás es opcional."}
         >
           {(a11y) => (
             <div className="flex gap-2">
@@ -419,19 +419,13 @@ export function ListForm({
       </FormField>
       <Field>
         <FieldLabel aria-hidden className="max-md:hidden">&nbsp;</FieldLabel>
-        <Button
-          type="submit"
-          size="icon"
-          disabled={saving}
-          className="h-10 w-full"
-          aria-label={editing ? "Guardar lista" : "Crear lista"}
-          title={editing ? "Guardar lista" : "Crear lista"}
-        >
-          <HugeiconsIcon icon={editing ? Tick02Icon : Add01Icon} className="size-6" strokeWidth={2} />
+        <Button type="submit" disabled={saving} className="h-10 w-full gap-2">
+          <HugeiconsIcon icon={editing ? Tick02Icon : Add01Icon} className="size-5" strokeWidth={2} />
+          {saving ? "Guardando…" : editing ? "Guardar lista" : "Crear lista"}
         </Button>
       </Field>
       {state?.error && (
-        <div className="md:col-span-6">
+        <div className="md:col-span-4">
           <FieldError>{state.error}</FieldError>
         </div>
       )}
