@@ -31,6 +31,13 @@ import { Field, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -64,6 +71,96 @@ export type ListView = {
   identifier: string;
 };
 
+// Botón inicial de la fila: abre un cajón con todas las listas y un buscador (sirve con muchas).
+function AllLists({
+  lists,
+  counts,
+  activeId,
+  onSelect,
+}: {
+  lists: ListView[];
+  counts: Record<string, number>;
+  activeId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const term = q.trim().toLowerCase();
+  const shown = term
+    ? lists.filter((l) =>
+        [l.name, l.brand, l.model, l.serial, l.identifier].some((v) => v.toLowerCase().includes(term)),
+      )
+    : lists;
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setQ("");
+      }}
+    >
+      <button
+        type="button"
+        aria-label={`Ver todas las listas (${lists.length})`}
+        title="Todas las listas"
+        onClick={() => setOpen(true)}
+        className="flex h-12 shrink-0 items-center text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-5" />
+      </button>
+      <SheetContent className="gap-0 sm:max-w-md">
+        <SheetHeader className="border-b">
+          <SheetTitle>Listas del contrato</SheetTitle>
+          <SheetDescription>
+            {lists.length} {lists.length === 1 ? "lista" : "listas"}. Elige una para abrirla.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="border-b p-4">
+          <Input
+            type="search"
+            autoFocus
+            autoComplete="off"
+            aria-label="Buscar lista"
+            placeholder="Nombre, marca, modelo o serie"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+        <ul aria-label="Listas" className="min-h-0 flex-1 divide-y overflow-y-auto">
+          {shown.length === 0 && <li className="p-4 text-sm text-muted-foreground">Ninguna lista coincide.</li>}
+          {shown.map((l) => {
+            const active = l.id === activeId;
+            const detail = [l.brand, l.model, l.serial].filter(Boolean).join(" · ");
+            return (
+              <li key={l.id}>
+                <button
+                  type="button"
+                  aria-current={active ? "true" : undefined}
+                  onClick={() => {
+                    onSelect(l.id);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "flex min-h-14 w-full items-start gap-3 border-l-2 px-4 py-3 text-left transition-colors hover:bg-accent",
+                    active ? "border-l-brand bg-foreground/[0.06]" : "border-l-transparent",
+                  )}
+                >
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className={cn("break-words", active && "font-bold")}>{l.name}</span>
+                    {detail && <span className="truncate font-mono text-xs text-muted-foreground">{detail}</span>}
+                  </span>
+                  <span className="num pt-0.5 text-xs text-muted-foreground">{counts[l.id] ?? 0}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // Pestañas: una por lista, con su cantidad de líneas.
 export function ListTabs({
   lists,
@@ -82,10 +179,7 @@ export function ListTabs({
 }) {
   return (
     <div role="tablist" aria-label="Listas del contrato" className="flex gap-6 overflow-x-auto border-b px-6">
-      {/* Un solo ícono para toda la fila: indica que son las listas del contrato. */}
-      <span className="flex h-12 shrink-0 items-center text-muted-foreground" title="Listas">
-        <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-5" aria-hidden />
-      </span>
+      <AllLists lists={lists} counts={counts} activeId={activeId} onSelect={onSelect} />
       {lists.map((l) => {
         const active = l.id === activeId;
         return (
