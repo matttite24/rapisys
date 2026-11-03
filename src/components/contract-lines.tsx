@@ -82,11 +82,14 @@ export function StatusControl({
   return (
     <div className={inHeader ? "relative" : "flex flex-col gap-2"}>
       <div className={inHeader ? "flex items-center gap-2" : "flex flex-wrap items-center gap-2"}>
+        {/* En el encabezado el estado ya está en la columna de opciones y no se retrocede: solo el paso siguiente. */}
+        {!inHeader && (
         <span className="inline-flex items-center gap-2 bg-muted px-2.5 py-1.5 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-foreground select-none">
           <span aria-hidden className={`size-2 ${STATUS_DOT[status] ?? "bg-muted-foreground"}`} />
           {STATUS_LABEL[status] ?? status}
         </span>
-        {prev && (
+        )}
+        {prev && !inHeader && (
           <Button variant="outline" disabled={pending} onClick={() => go(prev)}>
             ← {STATUS_LABEL[prev]}
           </Button>
