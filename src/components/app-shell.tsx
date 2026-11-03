@@ -228,10 +228,15 @@ function Panel({
             ))}
           </div>
         ))}
-        {contract && (
-          <BackLink {...contract.back} onNavigate={onNavigate} className="mt-2 min-h-10 border-t py-2 pt-3" />
-        )}
       </nav>
+      {/* Pie de la columna: regreso a la vista general, con el color de acento. */}
+      {contract && (
+        <BackLink
+          {...contract.back}
+          onNavigate={onNavigate}
+          className="h-12 shrink-0 px-4 bg-brand text-brand-foreground hover:bg-brand hover:text-brand-foreground hover:brightness-90"
+        />
+      )}
     </div>
   );
 }
@@ -326,7 +331,7 @@ function MobileNav({
             </Link>
           ))}
           {contract && (
-            <BackLink {...contract.back} onNavigate={onNavigate} className="h-12 border-b px-6" />
+            <BackLink {...contract.back} onNavigate={onNavigate} className="h-12 px-6 bg-brand text-brand-foreground hover:bg-brand hover:text-brand-foreground hover:brightness-90" />
           )}
         </nav>
       )}
