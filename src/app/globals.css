@@ -33,6 +33,7 @@
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
+  --color-surface-strong: var(--surface-strong);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
@@ -75,6 +76,8 @@
   --secondary: oklch(0.94 0.006 85);
   --secondary-foreground: oklch(0.16 0.01 85);
   --muted: oklch(0.94 0.006 85);
+  /* Fondo de la zona de trabajo principal (agregar items): más marcado que muted. */
+  --surface-strong: oklch(0.885 0.012 85);
   --muted-foreground: oklch(0.48 0.01 85);
   --accent: oklch(0.925 0.006 85);
   --accent-foreground: oklch(0.16 0.01 85);
@@ -117,6 +120,7 @@
   --secondary: oklch(0.24 0.005 85);
   --secondary-foreground: oklch(0.96 0.005 85);
   --muted: oklch(0.24 0.005 85);
+  --surface-strong: oklch(0.32 0.008 85);
   --muted-foreground: oklch(0.72 0.01 85);
   --accent: oklch(0.27 0.006 85);
   --accent-foreground: oklch(0.96 0.005 85);

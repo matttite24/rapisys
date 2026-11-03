@@ -374,7 +374,7 @@ export function ReferenceList({
 
       {/* La función principal de la pantalla: va primero y con fondo propio. */}
       {canAdd && (
-        <section className="relative z-10 border-b bg-muted shadow-bar">
+        <section className="border-b bg-surface-strong">
           {/* Agregar una línea es lo habitual: va sin barra de título para ocupar menos alto. */}
           {mode === "line" && editing && (
             <div className="flex h-10 items-center justify-between px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
@@ -549,7 +549,7 @@ export function ItemsSkeleton() {
           </div>
         ))}
       </div>
-      <div className="border-b bg-muted px-6 py-4 shadow-bar">
+      <div className="border-b bg-surface-strong px-6 py-4">
         <div className="grid gap-4 md:grid-cols-[9rem_1fr_6.5rem_9rem_9rem_3.5rem]">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex flex-col gap-2">
