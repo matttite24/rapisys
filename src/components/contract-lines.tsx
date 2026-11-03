@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Pager } from "@/components/pager";
+import { Skeleton } from "@/components/ui/skeleton";
 import { pageCount } from "@/lib/pagination";
 import { BulkImport } from "@/components/bulk-import";
 import { ListDetailsForm, ListInfo, ListTabs, NewListDialog, type ListView } from "@/components/contract-lists";
@@ -442,7 +443,11 @@ export function ReferenceList({
               </div>
             )}
           </div>
-          <div className={cn("transition-opacity", (navigating || switching) && "opacity-50")} aria-busy={navigating || switching}>
+          {navigating || switching ? (
+            // Cambió la lista, la página o la búsqueda: las filas viejas ya no valen; llegan las nuevas.
+            <LinesTableSkeleton rows={Math.min(8, Math.max(3, active?.count ?? 5))} />
+          ) : (
+            <div>
             {shown.length === 0 ? (
               <p className="p-6 text-muted-foreground">
                 {q
@@ -478,9 +483,88 @@ export function ReferenceList({
               {label}
             </p>
           </div>
+          )}
         </section>
       )}
     </>
+  );
+}
+
+// Anchos de las barras de relleno, variados para que no parezca una rejilla repetida.
+const SKELETON_WIDTHS = ["w-4/5", "w-3/5", "w-11/12", "w-2/3", "w-3/4", "w-1/2"];
+
+// La tabla vacía con sus títulos reales y filas de relleno: aparece al instante y los datos
+// llegan después. Sirve también al cambiar de lista, de página o al buscar.
+export function LinesTableSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <div role="status" aria-label="Cargando líneas" className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b bg-muted/50">
+            <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
+            <th scope="col" className={TH}>Part. num.</th>
+            <th scope="col" className={TH}>Descripción</th>
+            <th scope="col" className={`${TH} text-right`}>Cantidad</th>
+            <th scope="col" className={TH}>Unidad</th>
+            <th scope="col" className={TH}>CPC</th>
+            <th scope="col" className={`${TH} w-px`}><span className="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: rows }, (_, i) => (
+            <tr key={i} className="border-b last:border-b-0">
+              <td className={`${TD} w-px`}><Skeleton className="ml-auto h-4 w-5" /></td>
+              <td className={TD}><Skeleton className={cn("h-4", SKELETON_WIDTHS[i % 6])} /></td>
+              <td className={cn(TD, "w-1/2")}><Skeleton className={cn("h-4", SKELETON_WIDTHS[(i + 2) % 6])} /></td>
+              <td className={TD}><Skeleton className="ml-auto h-4 w-8" /></td>
+              <td className={TD}><Skeleton className="h-4 w-16" /></td>
+              <td className={TD}><Skeleton className="h-4 w-24" /></td>
+              <td className={cn(TD, "p-1")}><Skeleton className="size-7" /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Pantalla completa de Items mientras llega todo: la estructura se ve ya, vacía.
+export function ItemsSkeleton() {
+  return (
+    <div role="status" aria-label="Cargando items">
+      <div className="flex h-12 items-center gap-6 border-b px-6">
+        <Skeleton className="size-5" />
+        {[36, 28, 32].map((w, i) => (
+          <Skeleton key={i} className="h-4" style={{ width: `${w * 4}px` }} />
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-12 gap-y-4 border-b px-6 py-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="size-5" />
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-3 w-14" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="border-b bg-muted px-6 py-4 shadow-raised">
+        <div className="grid gap-4 md:grid-cols-[9rem_1fr_6.5rem_9rem_9rem_3.5rem]">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex flex-col gap-2">
+              <Skeleton className="h-3 w-16 bg-foreground/10" />
+              <Skeleton className="h-10 bg-foreground/10" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex h-12 items-center gap-3 border-b px-6">
+        <HugeiconsIcon icon={Search01Icon} aria-hidden className="size-5 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Buscar por número de parte o descripción</span>
+      </div>
+      <LinesTableSkeleton />
+    </div>
   );
 }
 

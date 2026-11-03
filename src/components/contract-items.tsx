@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ListView } from "@/components/contract-lists";
-import { ReferenceList, type LineView } from "@/components/contract-lines";
+import { ItemsSkeleton, ReferenceList, type LineView } from "@/components/contract-lines";
 import { PageSection } from "@/components/page-section";
 import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { findDuplicates } from "@/lib/duplicates";
@@ -138,7 +138,7 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
 
 export function ContractItemsPage({ params, searchParams }: { params: IdParams; searchParams: Search }) {
   return (
-    <Suspense fallback={<PageSection label="Cargando…" />}>
+    <Suspense fallback={<ItemsSkeleton />}>
       <Items params={params} searchParams={searchParams} />
     </Suspense>
   );
