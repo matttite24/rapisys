@@ -374,6 +374,7 @@ function SectionHeader({
   const { active } = useActiveModule();
   return (
     <CellHeader
+      className="relative z-10 shadow-raised"
       title={title ?? active.title}
       leading={leading}
       action={<div ref={setSlot} className="flex items-center gap-1 self-stretch" />}

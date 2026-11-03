@@ -550,7 +550,7 @@ export function BulkImport({
           </div>
 
           {step === "review" && (
-            <div className="shrink-0 border-t bg-popover">
+            <div className="relative z-10 shrink-0 border-t bg-popover [box-shadow:0_-8px_16px_-10px_color-mix(in_oklch,var(--foreground)_30%,transparent)]">
               {error && <div className="border-b p-4"><FieldError>{error}</FieldError></div>}
               <div className="flex flex-wrap gap-2 p-4">
                 <Button type="button" className="h-10" disabled={saving || rows.length === 0} onClick={load}>

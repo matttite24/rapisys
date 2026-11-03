@@ -298,7 +298,7 @@ export function ReferenceList({
 
       {/* La función principal de la pantalla: va primero y con fondo propio. */}
       {canAdd && (
-        <section className="border-b bg-muted">
+        <section className="relative z-10 border-b bg-muted shadow-raised">
           {/* Agregar una línea es lo habitual: va sin barra de título para ocupar menos alto. */}
           {mode === "line" && editing && (
             <div className="flex h-10 items-center justify-between px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
