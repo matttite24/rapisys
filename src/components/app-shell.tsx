@@ -14,6 +14,7 @@ import { CELL_ROW as ROW, CellHeader } from "@/components/cell-header";
 import { HeaderSlotContext, HeaderTitleContext } from "@/components/header-action";
 import { CONTRACT_SECTIONS, modules, type NavGroup, type NavModule } from "@/components/nav-config";
 import { OrgLogo } from "@/components/org-switcher-menu";
+import { PanelTopContext } from "@/components/panel-slots";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -179,9 +180,12 @@ function Rail({
 // Columna 2: opciones del módulo/pantalla. Su celda superior es el selector de organización.
 function Panel({
   orgSwitcher,
+  panelTop,
   onNavigate,
 }: {
   orgSwitcher: React.ReactNode;
+  // Si una pantalla aporta celda superior, reemplaza al selector de organización.
+  panelTop: React.ReactNode;
   onNavigate?: () => void;
 }) {
   const { path, active, to } = useActiveModule();
@@ -191,7 +195,7 @@ function Panel({
 
   return (
     <div className="flex w-60 shrink-0 flex-col border-r bg-muted/50">
-      <div className={cn(ROW, "crosshair")}>{orgSwitcher}</div>
+      <div className={cn(ROW, "crosshair")}>{panelTop ?? orgSwitcher}</div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
         {groups.map((g, i) => (
@@ -238,10 +242,12 @@ function Panel({
 function MobileNav({
   account,
   orgSwitcher,
+  panelTop,
   onNavigate,
 }: {
   account: React.ReactNode;
   orgSwitcher: React.ReactNode;
+  panelTop: React.ReactNode;
   onNavigate: () => void;
 }) {
   const { path, active, to } = useActiveModule();
@@ -271,7 +277,7 @@ function MobileNav({
       </div>
 
       {/* Fila 2: organización y cambiador */}
-      <div className={ROW}>{orgSwitcher}</div>
+      <div className={ROW}>{panelTop ?? orgSwitcher}</div>
 
       {/* Columna de módulos del escritorio, en horizontal */}
       <nav aria-label="Módulos" className="grid grid-flow-col auto-cols-fr divide-x border-b">
@@ -385,11 +391,13 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const [title, setTitle] = useState<React.ReactNode>(null);
+  const [panelTop, setPanelTop] = useState<React.ReactNode>(null);
 
   return (
     <OrgContext.Provider value={org}>
       <HeaderSlotContext.Provider value={slot}>
       <HeaderTitleContext.Provider value={setTitle}>
+      <PanelTopContext.Provider value={setPanelTop}>
       <div className="flex h-svh">
         {/* Escritorio */}
         <aside className="hidden shrink-0 md:flex">
@@ -398,7 +406,7 @@ export function AppShell({
             panelOpen={panelOpen}
             onTogglePanel={() => setPanelOpen((v) => !v)}
           />
-          {panelOpen && <Panel orgSwitcher={orgSwitcher} />}
+          {panelOpen && <Panel orgSwitcher={orgSwitcher} panelTop={panelTop} />}
         </aside>
 
         {/* Celda de contenido: encabezado de sección + página */}
@@ -429,6 +437,7 @@ export function AppShell({
                 <MobileNav
                   account={account}
                   orgSwitcher={orgSwitcher}
+                  panelTop={panelTop}
                   onNavigate={() => setMobileOpen(false)}
                 />
               </SheetContent>
@@ -438,6 +447,7 @@ export function AppShell({
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       </div>
+      </PanelTopContext.Provider>
       </HeaderTitleContext.Provider>
       </HeaderSlotContext.Provider>
     </OrgContext.Provider>

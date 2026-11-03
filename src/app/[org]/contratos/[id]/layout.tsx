@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { StatusControl } from "@/components/contract-lines";
+import { ContractStatusCell } from "@/components/contract-status-cell";
 import { HeaderSlot, HeaderTitle } from "@/components/header-action";
+import { PanelTop } from "@/components/panel-slots";
 import { getContract } from "@/lib/contract-data";
 import { addDaysIso, formatIso } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
@@ -36,6 +38,10 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
           <StatusControl org={org} contractId={id} status={c.status} summary={summary} inHeader />
         </div>
       </HeaderSlot>
+      {/* En un contrato, la celda de la organización pasa a mostrar estado y fecha de entrega. */}
+      <PanelTop>
+        <ContractStatusCell status={c.status} delivery={summary.delivery} />
+      </PanelTop>
       <div className="border-b p-4 md:hidden">
         <StatusControl org={org} contractId={id} status={c.status} summary={summary} />
       </div>
