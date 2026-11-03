@@ -13,10 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
 import { addLines } from "@/lib/contract-actions";
-import { groupWords, parseTable, type OcrLine, type OcrWord } from "@/lib/ocr-table";
-import { UNITS } from "@/lib/units";
+import { groupWords, parseTable, type OcrLine, type OcrWord, type ParsedRow } from "@/lib/ocr-table";
 import { cn } from "@/lib/utils";
 
 type Step = "start" | "reading" | "review";
@@ -50,19 +48,22 @@ async function prepare(file: Blob): Promise<Blob> {
 }
 
 type Reading = { lines: OcrLine[]; words: OcrWord[] };
+type Rect = { left: number; top: number; width: number; height: number };
 
 // Modos de lectura de Tesseract que se prueban en orden hasta que uno devuelva filas.
 // "4" = una columna: en pruebas con tablas de contrato conserva los números chicos (ítem y
 // cantidad) que el modo de texto disperso ("11") descarta. "3" = automático. "6" = un bloque.
 const MODES = ["4", "3", "6"];
 
-// Lee la imagen con Tesseract, en el navegador: la captura no sale de tu equipo. Los datos
-// de idioma se descargan una vez (unos MB) la primera vez que se usa.
-async function readImage(
-  file: Blob,
-  onProgress: (p: number) => void,
-  enough: (r: Reading) => boolean,
-): Promise<Reading> {
+type Ocr = {
+  read: (enough: (r: Reading) => boolean) => Promise<Reading>;
+  // Lee solo dígitos dentro de un recuadro de la imagen.
+  digitsAt: (rect: Rect) => Promise<string>;
+};
+
+// Abre Tesseract en el navegador (la captura no sale de tu equipo; los datos de idioma se
+// descargan una vez, unos MB) y lo cierra al terminar `run`.
+async function withOcr<T>(file: Blob, onProgress: (p: number) => void, run: (ocr: Ocr) => Promise<T>): Promise<T> {
   const image = await prepare(file);
   const mod = await import("tesseract.js");
   const { createWorker } = (mod as unknown as { default?: typeof mod }).default ?? mod;
@@ -71,24 +72,50 @@ async function readImage(
       if (m.status === "recognizing text") onProgress(m.progress);
     },
   });
-  let first: Reading | undefined;
+
+  const ocr: Ocr = {
+    async read(enough) {
+      let first: Reading | undefined;
+      for (const mode of MODES) {
+        await worker.setParameters({ tessedit_pageseg_mode: mode as never });
+        const { data } = await worker.recognize(image, {}, { blocks: true });
+        const result: Reading = { lines: [], words: [] };
+        for (const b of data.blocks ?? [])
+          for (const p of b.paragraphs)
+            for (const l of p.lines) {
+              const words: OcrWord[] = l.words.map((w) => ({
+                text: w.text,
+                confidence: w.confidence,
+                x0: w.bbox.x0,
+                y0: w.bbox.y0,
+                x1: w.bbox.x1,
+                y1: w.bbox.y1,
+              }));
+              result.words.push(...words);
+              // Altura del renglón: la del CPC si lo hay (los símbolos sueltos estiran el recuadro del renglón).
+              const anchor = words.find((w) => /^\d{6,12}$/.test(w.text));
+              result.lines.push({
+                text: l.text,
+                confidence: l.confidence,
+                y0: anchor?.y0 ?? l.bbox.y0,
+                y1: anchor?.y1 ?? l.bbox.y1,
+              });
+            }
+        first ??= result;
+        if (enough(result)) return result;
+      }
+      // Ningún modo dio filas: se muestra lo del primero (el mejor para tablas), no el último.
+      return first ?? { lines: [], words: [] };
+    },
+    async digitsAt(rect) {
+      await worker.setParameters({ tessedit_pageseg_mode: "7" as never, tessedit_char_whitelist: "0123456789" });
+      const { data } = await worker.recognize(image, { rectangle: rect });
+      return data.text.trim();
+    },
+  };
+
   try {
-    for (const mode of MODES) {
-      await worker.setParameters({ tessedit_pageseg_mode: mode as never });
-      const { data } = await worker.recognize(image, {}, { blocks: true });
-      const result: Reading = { lines: [], words: [] };
-      for (const b of data.blocks ?? [])
-        for (const p of b.paragraphs)
-          for (const l of p.lines) {
-            result.lines.push({ text: l.text, confidence: l.confidence });
-            for (const w of l.words)
-              result.words.push({ text: w.text, confidence: w.confidence, x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1 });
-          }
-      first ??= result;
-      if (enough(result)) return result;
-    }
-    // Ningún modo dio filas: se muestra lo del primero (el mejor para tablas), no el último.
-    return first ?? { lines: [], words: [] };
+    return await run(ocr);
   } finally {
     await worker.terminate();
   }
@@ -98,6 +125,26 @@ async function readImage(
 function tableFrom(r: Reading) {
   const byLines = parseTable(r.lines);
   return byLines.rows.length ? byLines : parseTable(groupWords(r.words));
+}
+
+// Los números sueltos (la cantidad) son lo que el OCR más pierde: las filas sin cantidad se
+// releen con un recuadro angosto bajo el encabezado CANTID., leyendo solo dígitos.
+async function fillQuantities(rows: ParsedRow[], words: OcrWord[], digitsAt: Ocr["digitsAt"]) {
+  const head = words.find((w) => /^cantid/i.test(w.text));
+  if (!head) return;
+  const cx = (head.x0 + head.x1) / 2;
+  const half = (head.x1 - head.x0) / 2 + 10;
+  for (const r of rows) {
+    if (r.quantity || r.y0 === undefined || r.y1 === undefined) continue;
+    const pad = 10;
+    const text = await digitsAt({
+      left: Math.max(0, Math.round(cx - half)),
+      top: Math.max(0, Math.round(r.y0 - pad)),
+      width: Math.round(half * 2),
+      height: Math.round(r.y1 - r.y0 + pad * 2),
+    });
+    if (/^\d{1,4}$/.test(text)) r.quantity = text;
+  }
 }
 
 // Carga masiva de la lista abierta: captura → lectura (OCR) → revisión editable → carga.
@@ -147,9 +194,13 @@ export function BulkImport({
     setProgress(0);
     setStep("reading");
     try {
-      const reading = await readImage(file, setProgress, (r) => tableFrom(r).rows.length > 0);
-      const parsed = tableFrom(reading);
-      setRawText(reading.lines.map((l) => l.text.trim()).filter(Boolean).join("\n"));
+      const { parsed, raw } = await withOcr(file, setProgress, async (ocr) => {
+        const reading = await ocr.read((r) => tableFrom(r).rows.length > 0);
+        const parsed = tableFrom(reading);
+        await fillQuantities(parsed.rows, reading.words, ocr.digitsAt);
+        return { parsed, raw: reading.lines.map((l) => l.text.trim()).filter(Boolean).join("\n") };
+      });
+      setRawText(raw);
       setSkipped(parsed.skipped);
       setRows(
         parsed.rows.map((r) => ({
@@ -295,82 +346,90 @@ export function BulkImport({
 
           {step === "review" && (
             <>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-b px-6 py-3 font-mono text-xs uppercase tracking-[0.08em]">
-                <span>{rows.length} {rows.length === 1 ? "fila" : "filas"} leídas</span>
-                <span className={toReview ? "text-foreground" : "text-muted-foreground"}>{toReview} para revisar</span>
-                {skipped > 0 && <span className="text-muted-foreground">{skipped} renglones descartados</span>}
-              </div>
-              <div className="grid lg:grid-cols-[18rem_1fr]">
-                <div className="border-b p-4 lg:border-r lg:border-b-0">
+              {/* Fila 1: la captura y la información de lo que se leyó. */}
+              <div className="grid gap-px border-b bg-border md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] [&>*]:bg-popover">
+                <div className="p-4">
                   {imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={imageUrl} alt="Captura original" className="max-h-64 w-full border object-contain lg:max-h-[28rem]" />
+                    <img src={imageUrl} alt="Captura original" className="max-h-44 w-full border object-contain object-left" />
                   )}
-                  <p className="pt-2 text-xs text-muted-foreground">Compara con la captura: los números de parte son lo más fácil de leer mal.</p>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[44rem] text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50 text-left font-mono text-[0.6875rem] font-bold uppercase tracking-[0.1em]">
-                        <th className="w-px px-3 py-2 text-right">N.º</th>
-                        <th className="px-2 py-2">Part. num.</th>
-                        <th className="px-2 py-2">Descripción</th>
-                        <th className="px-2 py-2">Cantidad</th>
-                        <th className="px-2 py-2">Unidad</th>
-                        <th className="px-2 py-2">CPC</th>
-                        <th className="w-px px-2 py-2"><span className="sr-only">Quitar</span></th>
+                <div className="flex flex-col justify-center gap-3 p-6">
+                  <dl className="grid grid-cols-3 gap-4 font-mono">
+                    <div>
+                      <dt className="text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Leídas</dt>
+                      <dd className="num text-2xl">{rows.length}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Por revisar</dt>
+                      <dd className={cn("num text-2xl", toReview > 0 && "text-amber-600 dark:text-amber-400")}>{toReview}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Descartados</dt>
+                      <dd className="num text-2xl text-muted-foreground">{skipped}</dd>
+                    </div>
+                  </dl>
+                  <p className="text-sm text-muted-foreground">
+                    Compara con la captura. Las filas en ámbar son las dudosas; los números de parte son lo más fácil de leer mal.
+                  </p>
+                </div>
+              </div>
+
+              {/* Fila 2: la tabla, a todo el ancho. */}
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[40rem] text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50 text-left font-mono text-[0.6875rem] font-bold uppercase tracking-[0.1em]">
+                      <th className="w-px px-4 py-2 text-right">N.º</th>
+                      <th className="w-56 px-2 py-2">Part. num.</th>
+                      <th className="px-2 py-2">Descripción</th>
+                      <th className="w-32 px-2 py-2">Cantidad</th>
+                      <th className="w-44 px-2 py-2">CPC</th>
+                      <th className="w-px px-3 py-2"><span className="sr-only">Quitar</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-muted-foreground">
+                          No se reconoció ninguna fila. Prueba con una captura más grande o más nítida.
+                          <details className="pt-3 text-xs">
+                            <summary className="cursor-pointer">Texto que leyó el OCR</summary>
+                            <pre className="max-h-48 overflow-auto whitespace-pre-wrap pt-2 font-mono">{rawText || "(nada)"}</pre>
+                          </details>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {rows.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="p-6 text-muted-foreground">
-                            No se reconoció ninguna fila. Prueba con una captura más grande o más nítida.
-                            <details className="pt-3 text-xs">
-                              <summary className="cursor-pointer">Texto que leyó el OCR</summary>
-                              <pre className="max-h-48 overflow-auto whitespace-pre-wrap pt-2 font-mono">{rawText || "(nada)"}</pre>
-                            </details>
+                    )}
+                    {rows.map((r, i) => {
+                      const err = (f: string) => rowErrors[`${i}.${f}`];
+                      return (
+                        <tr key={r.id} className={cn("border-b align-top last:border-b-0", r.review && "bg-amber-500/10")}>
+                          <td className="num px-4 py-2 text-right text-muted-foreground">{i + 1}</td>
+                          <td className="px-2 py-1.5">
+                            <Input aria-label={`Número de parte, fila ${i + 1}`} aria-invalid={!!err("part_number") || undefined} className="h-8 font-mono" value={r.part} onChange={(e) => patch(r.id, { part: e.target.value })} />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <Input aria-label={`Descripción, fila ${i + 1}`} aria-invalid={!!err("description") || undefined} className="h-8" value={r.description} onChange={(e) => patch(r.id, { description: e.target.value })} />
+                            {r.review && r.raw && <p className="pt-1 font-mono text-[0.6875rem] text-muted-foreground">Leído: {r.raw}</p>}
+                            {(err("description") || err("part_number")) && <p className="pt-1 text-xs text-destructive">{err("description") ?? err("part_number")}</p>}
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <Input aria-label={`Cantidad, fila ${i + 1}`} aria-invalid={!!err("quantity") || undefined} inputMode="decimal" className="h-8 font-mono" value={r.quantity} onChange={(e) => patch(r.id, { quantity: e.target.value })} />
+                            {err("quantity") && <p className="pt-1 text-xs text-destructive">{err("quantity")}</p>}
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <Input aria-label={`CPC, fila ${i + 1}`} aria-invalid={!!err("cpc") || undefined} className="h-8 font-mono" value={r.cpc} onChange={(e) => patch(r.id, { cpc: e.target.value })} />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <Button type="button" variant="ghost" size="icon" className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Quitar la fila ${i + 1}`} onClick={() => setRows((rs) => rs.filter((x) => x.id !== r.id))}>
+                              <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+                            </Button>
                           </td>
                         </tr>
-                      )}
-                      {rows.map((r, i) => {
-                        const err = (f: string) => rowErrors[`${i}.${f}`];
-                        return (
-                          <tr key={r.id} className={cn("border-b align-top last:border-b-0", r.review && "bg-amber-500/10")}>
-                            <td className="num px-3 py-2 text-right text-muted-foreground">{i + 1}</td>
-                            <td className="px-2 py-1.5">
-                              <Input aria-label={`Número de parte, fila ${i + 1}`} aria-invalid={!!err("part_number") || undefined} className="h-8 font-mono" value={r.part} onChange={(e) => patch(r.id, { part: e.target.value })} />
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <Input aria-label={`Descripción, fila ${i + 1}`} aria-invalid={!!err("description") || undefined} className="h-8" value={r.description} onChange={(e) => patch(r.id, { description: e.target.value })} />
-                              {r.review && r.raw && <p className="pt-1 font-mono text-[0.6875rem] text-muted-foreground">Leído: {r.raw}</p>}
-                              {(err("description") || err("part_number")) && <p className="pt-1 text-xs text-destructive">{err("description") ?? err("part_number")}</p>}
-                            </td>
-                            <td className="w-28 px-2 py-1.5">
-                              <Input aria-label={`Cantidad, fila ${i + 1}`} aria-invalid={!!err("quantity") || undefined} inputMode="decimal" className="h-8 font-mono" value={r.quantity} onChange={(e) => patch(r.id, { quantity: e.target.value })} />
-                              {err("quantity") && <p className="pt-1 text-xs text-destructive">{err("quantity")}</p>}
-                            </td>
-                            <td className="w-36 px-2 py-1.5">
-                              <NativeSelect aria-label={`Unidad, fila ${i + 1}`} className="h-8 w-full" value={r.unit} onChange={(e) => patch(r.id, { unit: e.target.value })}>
-                                {Object.entries(UNITS).map(([key, label]) => (
-                                  <option key={key} value={key}>{label}</option>
-                                ))}
-                              </NativeSelect>
-                            </td>
-                            <td className="w-36 px-2 py-1.5">
-                              <Input aria-label={`CPC, fila ${i + 1}`} aria-invalid={!!err("cpc") || undefined} className="h-8 font-mono" value={r.cpc} onChange={(e) => patch(r.id, { cpc: e.target.value })} />
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <Button type="button" variant="ghost" size="icon" className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Quitar la fila ${i + 1}`} onClick={() => setRows((rs) => rs.filter((x) => x.id !== r.id))}>
-                                <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
               {error && <div className="border-t p-4"><FieldError>{error}</FieldError></div>}
               <div className="flex flex-wrap gap-2 border-t p-4">

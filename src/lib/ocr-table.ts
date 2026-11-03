@@ -2,7 +2,8 @@
 // en filas para revisar. El OCR no es fiable al 100 %: toda fila sale a revisión humana.
 
 export type OcrWord = { text: string; confidence: number; x0: number; y0: number; x1: number; y1: number };
-export type OcrLine = { text: string; confidence: number };
+// y0/y1: altura del renglón en la imagen (la usa la segunda pasada que lee las cantidades).
+export type OcrLine = { text: string; confidence: number; y0?: number; y1?: number };
 
 export type ParsedRow = {
   part: string;
@@ -11,6 +12,9 @@ export type ParsedRow = {
   cpc: string;
   // Texto tal como lo leyó el OCR, para compararlo al revisar.
   raw: string;
+  // Altura del renglón en la imagen, si se conoce.
+  y0?: number;
+  y1?: number;
   // La fila necesita ojo humano: poca confianza o no calzó con el formato.
   review: boolean;
 };
@@ -41,6 +45,8 @@ export function groupWords(words: OcrWord[]): OcrLine[] {
     return {
       text: inOrder.map((w) => w.text).join(" "),
       confidence: inOrder.reduce((s, w) => s + w.confidence, 0) / inOrder.length,
+      y0: Math.min(...inOrder.map((w) => w.y0)),
+      y1: Math.max(...inOrder.map((w) => w.y1)),
     };
   });
 }
@@ -60,6 +66,7 @@ const LOW_CONFIDENCE = 80;
 export function parseTable(lines: OcrLine[]): { rows: ParsedRow[]; skipped: number } {
   const rows: ParsedRow[] = [];
   let skipped = 0;
+  const push = (row: ParsedRow, line: OcrLine) => rows.push({ ...row, y0: line.y0, y1: line.y1 });
 
   for (const line of lines) {
     const text = line.text.replace(CLEAN, " ").replace(/\s+/g, " ").trim();
@@ -71,28 +78,28 @@ export function parseTable(lines: OcrLine[]): { rows: ParsedRow[]; skipped: numb
 
     let m = FULL.exec(text);
     if (m) {
-      rows.push({ part: m[2], description: m[3], quantity: m[4].replace(",", "."), cpc: m[5], raw: text, review: low });
+      push({ part: m[2], description: m[3], quantity: m[4].replace(",", "."), cpc: m[5], raw: text, review: low }, line);
       continue;
     }
     m = NO_CPC.exec(text);
     if (m) {
-      rows.push({ part: m[2], description: m[3], quantity: m[4].replace(",", "."), cpc: "", raw: text, review: true });
+      push({ part: m[2], description: m[3], quantity: m[4].replace(",", "."), cpc: "", raw: text, review: true }, line);
       continue;
     }
     m = NO_ITEM.exec(text);
     if (m) {
-      rows.push({ part: m[1], description: m[2], quantity: m[3].replace(",", "."), cpc: m[4], raw: text, review: true });
+      push({ part: m[1], description: m[2], quantity: m[3].replace(",", "."), cpc: m[4], raw: text, review: true }, line);
       continue;
     }
     m = NO_QTY.exec(text);
     if (m) {
-      rows.push({ part: m[1], description: m[2], quantity: "", cpc: m[3], raw: text, review: true });
+      push({ part: m[1], description: m[2], quantity: "", cpc: m[3], raw: text, review: true }, line);
       continue;
     }
     // Parece una fila de la tabla (empieza con su número) pero no calzó: se deja para corregir a mano.
     const lead = /^(\d{1,3})\s+(.+)$/.exec(text);
     if (lead) {
-      rows.push({ part: "", description: lead[2], quantity: "1", cpc: "", raw: text, review: true });
+      push({ part: "", description: lead[2], quantity: "1", cpc: "", raw: text, review: true }, line);
       continue;
     }
     skipped++;
