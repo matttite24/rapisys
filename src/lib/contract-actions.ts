@@ -28,13 +28,15 @@ type LineValues = {
   cpc: string | null;
 };
 
-// Lee y valida los campos de una línea; los mismos para agregar y editar.
-function parseLine(formData: FormData): { values: LineValues } | { fields: Record<string, string> } {
-  const partNumber = text(formData, "part_number");
-  const description = text(formData, "description");
-  const unit = text(formData, "unit");
-  const cpc = text(formData, "cpc");
-  const quantity = parseDecimal(text(formData, "quantity"));
+type RawLine = { partNumber: string; description: string; quantity: string; unit: string; cpc: string };
+
+// Valida los campos de una línea; los mismos para agregar, editar y la carga masiva.
+function parseLineValues(raw: RawLine): { values: LineValues } | { fields: Record<string, string> } {
+  const partNumber = raw.partNumber.trim();
+  const description = raw.description.trim();
+  const unit = raw.unit.trim();
+  const cpc = raw.cpc.trim();
+  const quantity = parseDecimal(raw.quantity.trim());
 
   const fields: Record<string, string> = {};
   if (partNumber.length > 60) fields.part_number = "Máximo 60 caracteres.";
@@ -50,6 +52,61 @@ function parseLine(formData: FormData): { values: LineValues } | { fields: Recor
   return {
     values: { partNumber: partNumber || null, description, quantity, unit, cpc: cpc || null },
   };
+}
+
+function parseLine(formData: FormData) {
+  return parseLineValues({
+    partNumber: text(formData, "part_number"),
+    description: text(formData, "description"),
+    quantity: text(formData, "quantity"),
+    unit: text(formData, "unit"),
+    cpc: text(formData, "cpc"),
+  });
+}
+
+export type BulkResult = { error?: string; fields?: Record<string, string>; count?: number } | undefined;
+
+// Carga masiva (revisada por la persona): todas las filas entran juntas o no entra ninguna.
+// Los errores por fila vienen con la posición como clave: "3.quantity".
+export async function addLines(
+  org: string,
+  contractId: string,
+  listId: string,
+  rows: RawLine[],
+): Promise<BulkResult> {
+  if (!Array.isArray(rows) || rows.length === 0) return { error: "No hay líneas para cargar." };
+  if (rows.length > 500) return { error: "Máximo 500 líneas por carga." };
+
+  const fields: Record<string, string> = {};
+  const clean: Record<string, unknown>[] = [];
+  rows.forEach((r, i) => {
+    const parsed = parseLineValues(r);
+    if ("fields" in parsed) {
+      for (const [k, v] of Object.entries(parsed.fields)) fields[`${i}.${k}`] = v;
+      return;
+    }
+    const v = parsed.values;
+    clean.push({
+      part_number: v.partNumber ?? "",
+      description: v.description,
+      quantity: v.quantity,
+      unit: v.unit,
+      cpc: v.cpc ?? "",
+    });
+  });
+  if (Object.keys(fields).length) return { fields };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("add_contract_lines", { p_list_id: listId, p_rows: clean });
+  if (error) {
+    if (error.message === "list_not_found") return { error: "No encontramos la lista." };
+    if (error.message === "not_in_progress") {
+      return { error: "Los items se cargan cuando el contrato está En ejecución." };
+    }
+    return { error: friendly(error) };
+  }
+  refresh(org, contractId);
+  return { count: Number(data) };
 }
 
 export async function addLine(
