@@ -5,6 +5,7 @@ import { startTransition, useEffect, useOptimistic, useRef, useState } from "rea
 import { cn } from "@/lib/utils";
 import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, FileUploadIcon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { ListForm, ListInfo, ListTabs, type ListView } from "@/components/contract-lists";
 import { FormField } from "@/components/form-field";
 import { NumericInput } from "@/components/numeric-input";
 import {
@@ -36,9 +37,12 @@ const TD = cn(TABLE_TD, "py-1.5 align-middle");
 
 export type LineView = {
   id: string;
+  listId: string;
+  partNumber: string;
   description: string;
   quantity: number;
   unit: string;
+  cpc: string;
 };
 
 const SUMMARY_LABEL =
@@ -186,16 +190,18 @@ type OptimisticAction =
   | { type: "update"; line: LineView }
   | { type: "remove"; id: string };
 
-// La lista y su formulario comparten estado: la línea aparece al instante y el
-// servidor la confirma por detrás (si falla, vuelve a desaparecer).
+// Las listas del contrato (una por activo) con sus líneas. La lista y su formulario
+// comparten estado: la línea aparece al instante y el servidor la confirma por detrás.
 export function ReferenceList({
   org,
   contractId,
+  lists,
   lines,
   canAdd,
 }: {
   org: string;
   contractId: string;
+  lists: ListView[];
   lines: LineView[];
   canAdd: boolean;
 }) {
@@ -205,10 +211,31 @@ export function ReferenceList({
     return state.filter((l) => l.id !== a.id);
   });
   const [error, setError] = useState<string>();
-  // Línea que se está editando en el formulario de arriba.
+  const [activeId, setActiveId] = useState<string | null>(null);
+  // Qué muestra el panel gris de arriba: una línea (agregar o editar) o una lista.
+  const [panel, setPanel] = useState<"line" | "list-new" | "list-edit">("line");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const editing = shown.find((l) => l.id === editingId) ?? null;
-  const editingN = editing ? shown.indexOf(editing) + 1 : 0;
+
+  // Si la lista abierta ya no existe (se eliminó), se vuelve a la primera.
+  const active = lists.find((l) => l.id === activeId) ?? lists[0] ?? null;
+  const listLines = active ? shown.filter((l) => l.listId === active.id) : [];
+  const counts: Record<string, number> = {};
+  for (const l of shown) counts[l.listId] = (counts[l.listId] ?? 0) + 1;
+
+  const editing = listLines.find((l) => l.id === editingId) ?? null;
+  const editingN = editing ? listLines.indexOf(editing) + 1 : 0;
+  // Sin listas, lo único posible es crear la primera.
+  const mode = lists.length === 0 ? "list-new" : panel;
+
+  function resetPanel() {
+    setPanel("line");
+    setEditingId(null);
+  }
+
+  function select(id: string) {
+    setActiveId(id);
+    resetPanel();
+  }
 
   function remove(id: string) {
     setError(undefined);
@@ -220,18 +247,66 @@ export function ReferenceList({
     });
   }
 
+  const title =
+    mode === "list-new"
+      ? lists.length === 0 ? "Crea la primera lista: un activo" : "Nueva lista"
+      : mode === "list-edit"
+        ? "Editar lista"
+        : editing
+          ? `Editar línea ${editingN}`
+          : "Agregar item a la lista";
+  const cancellable = lists.length > 0 && (mode !== "line" || editing !== null);
+
+  if (lists.length === 0 && !canAdd) {
+    return (
+      <PageSection label="0 líneas de referencia" className="p-0">
+        <p className="p-6 text-muted-foreground">Este contrato no tiene items.</p>
+      </PageSection>
+    );
+  }
+
   return (
     <>
+      {lists.length > 0 && (
+        <ListTabs
+          lists={lists}
+          counts={counts}
+          activeId={active?.id ?? null}
+          canAdd={canAdd}
+          onSelect={select}
+          onNew={() => {
+            setEditingId(null);
+            setPanel("list-new");
+          }}
+        />
+      )}
+      {active && (
+        <ListInfo
+          // Al cambiar de lista se reinicia el estado de confirmación.
+          key={active.id}
+          org={org}
+          contractId={contractId}
+          list={active}
+          lineCount={counts[active.id] ?? 0}
+          canEdit={canAdd}
+          editing={mode === "list-edit"}
+          onEdit={() => {
+            setEditingId(null);
+            setPanel("list-edit");
+          }}
+        />
+      )}
+
       {/* La función principal de la pantalla: va primero y con fondo propio. */}
       {canAdd && (
         <section className="border-b border-l-4 border-l-brand bg-muted">
           <div className="flex h-10 items-center justify-between px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
-            <span>{editing ? `Editar línea ${editingN}` : "Agregar item a la lista"}</span>
-            {editing && (
+            <span>{title}</span>
+            {cancellable && (
               <button
                 type="button"
                 className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
-                onClick={() => setEditingId(null)}
+                onClick={resetPanel}
               >
                 <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
                 Cancelar
@@ -239,36 +314,61 @@ export function ReferenceList({
             )}
           </div>
           <div className="px-6 pb-6">
-            <LineForm
-              // Al cambiar de línea el formulario se rearma con sus valores.
-              key={editing?.id ?? "new"}
-              org={org}
-              contractId={contractId}
-              editing={editing}
-              onAdd={(line) => apply({ type: "add", line })}
-              onUpdate={(line) => apply({ type: "update", line })}
-              onDone={() => setEditingId(null)}
-            />
+            {mode === "line" && active ? (
+              <LineForm
+                // Al cambiar de línea o de lista el formulario se rearma con sus valores.
+                key={`${active.id}:${editing?.id ?? "new"}`}
+                org={org}
+                contractId={contractId}
+                listId={active.id}
+                editing={editing}
+                onAdd={(line) => apply({ type: "add", line })}
+                onUpdate={(line) => apply({ type: "update", line })}
+                onDone={() => setEditingId(null)}
+              />
+            ) : (
+              <ListForm
+                key={mode === "list-edit" ? `edit:${active?.id}` : "new"}
+                org={org}
+                contractId={contractId}
+                editing={mode === "list-edit" ? active : null}
+                onDone={(id) => {
+                  if (id) setActiveId(id);
+                  resetPanel();
+                }}
+              />
+            )}
           </div>
         </section>
       )}
 
-      <PageSection
-        label={`${shown.length} ${shown.length === 1 ? "línea" : "líneas"} de referencia`}
-        meta={canAdd ? <BulkImport /> : undefined}
-        className="p-0"
-      >
-        {shown.length === 0 ? (
-          <p className="p-6 text-muted-foreground">
-            {canAdd ? "Aún no hay items en la lista del contrato. Agrega el primero arriba." : "Este contrato no tiene items."}
-          </p>
-        ) : (
-          <>
-            {error && <p role="alert" className="border-b p-3 text-sm text-destructive">{error}</p>}
-            <LinesTable lines={shown} editingId={editingId} canEdit={canAdd} onEdit={setEditingId} onRemove={remove} />
-          </>
-        )}
-      </PageSection>
+      {active && (
+        <PageSection
+          label={`${listLines.length} ${listLines.length === 1 ? "línea" : "líneas"} de referencia`}
+          meta={canAdd ? <BulkImport /> : undefined}
+          className="p-0"
+        >
+          {listLines.length === 0 ? (
+            <p className="p-6 text-muted-foreground">
+              {canAdd ? "Esta lista aún no tiene items. Agrega el primero arriba." : "Esta lista no tiene items."}
+            </p>
+          ) : (
+            <>
+              {error && <p role="alert" className="border-b p-3 text-sm text-destructive">{error}</p>}
+              <LinesTable
+                lines={listLines}
+                editingId={editingId}
+                canEdit={canAdd}
+                onEdit={(id) => {
+                  setPanel("line");
+                  setEditingId(id);
+                }}
+                onRemove={remove}
+              />
+            </>
+          )}
+        </PageSection>
+      )}
     </>
   );
 }
@@ -292,15 +392,25 @@ function LinesTable({
         <thead>
           <tr className="border-b bg-muted/50">
             <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
+            <th scope="col" className={TH}>Part. num.</th>
             <th scope="col" className={TH}>Descripción</th>
             <th scope="col" className={`${TH} text-right`}>Cantidad</th>
             <th scope="col" className={TH}>Unidad</th>
-            <th scope="col" className={`${TH} w-px`}><span className="sr-only">Quitar</span></th>
+            <th scope="col" className={TH}>CPC</th>
+            <th scope="col" className={`${TH} w-px`}><span className="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
           {lines.map((l, i) => (
-            <LineRow key={l.id} line={l} n={i + 1} editing={l.id === editingId} canEdit={canEdit} onEdit={onEdit} onRemove={onRemove} />
+            <LineRow
+              key={l.id}
+              line={l}
+              n={i + 1}
+              editing={l.id === editingId}
+              canEdit={canEdit}
+              onEdit={onEdit}
+              onRemove={onRemove}
+            />
           ))}
         </tbody>
       </table>
@@ -330,9 +440,11 @@ function LineRow({
   return (
     <tr className={cn("border-b last:border-b-0", saving && "opacity-60", editing && "bg-muted")}>
       <td className={`${TD} num text-right text-muted-foreground`}>{n}</td>
+      <td className={`${TD} whitespace-nowrap font-mono text-xs`}>{l.partNumber || "—"}</td>
       <td className={`${TD} break-words`}>{l.description}</td>
       <td className={`${TD} num text-right`}>{l.quantity}</td>
       <td className={`${TD} whitespace-nowrap`}>{unitLabel(l.unit)}</td>
+      <td className={`${TD} whitespace-nowrap font-mono text-xs`}>{l.cpc || "—"}</td>
       <td className={cn(TD, "p-1 whitespace-nowrap")}>
         {saving ? null : confirming ? (
           <span className="flex gap-2">
@@ -377,10 +489,11 @@ const MESSAGES = {
   unit: "Elige una unidad de medida.",
 };
 
-// Agrega o edita una línea de la lista de referencia: descripción, cantidad y unidad.
+// Agrega o edita una línea de la lista: número de parte, descripción, cantidad, unidad y CPC.
 function LineForm({
   org,
   contractId,
+  listId,
   editing,
   onAdd,
   onUpdate,
@@ -388,6 +501,7 @@ function LineForm({
 }: {
   org: string;
   contractId: string;
+  listId: string;
   editing: LineView | null;
   onAdd: (line: LineView) => void;
   onUpdate: (line: LineView) => void;
@@ -410,9 +524,11 @@ function LineForm({
     if (saving) return;
     const form = e.currentTarget;
     const data = new FormData(form);
+    const partNumber = String(data.get("part_number") ?? "").trim();
     const description = String(data.get("description") ?? "").trim();
     const quantity = parseDecimal(String(data.get("quantity") ?? ""));
     const unit = String(data.get("unit") ?? "");
+    const cpc = String(data.get("cpc") ?? "").trim();
 
     // Se valida aquí para responder al instante; el servidor vuelve a validar.
     const fields: Record<string, string> = {};
@@ -425,12 +541,13 @@ function LineForm({
     }
 
     setState(undefined);
+    const line = { listId, partNumber, description, quantity, unit, cpc };
 
     if (editing) {
       // La fila cambia ya; el formulario sale de edición cuando el servidor confirma.
       setSaving(true);
       startTransition(async () => {
-        onUpdate({ id: editing.id, description, quantity, unit });
+        onUpdate({ ...line, id: editing.id });
         const res = await updateLine(org, contractId, editing.id, data);
         setSaving(false);
         if (res?.error || res?.fields) setState(res);
@@ -441,20 +558,19 @@ function LineForm({
 
     startTransition(async () => {
       // La fila aparece ya y el formulario queda listo para la siguiente.
-      onAdd({ id: `${TEMP_PREFIX}${Date.now()}`, description, quantity, unit });
+      onAdd({ ...line, id: `${TEMP_PREFIX}${Date.now()}` });
       form.reset();
-      form.querySelector<HTMLElement>('[name="description"]')?.focus();
+      form.querySelector<HTMLElement>('[name="part_number"]')?.focus();
 
-      const res = await addLine(org, contractId, undefined, data);
+      const res = await addLine(org, contractId, listId, data);
       if (res?.error || res?.fields) {
         // No se guardó: se devuelve lo escrito para no perderlo.
-        const set = (name: string, value: string) => {
+        for (const name of ["part_number", "description", "quantity", "unit", "cpc"]) {
           const el = form.elements.namedItem(name);
-          if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = value;
-        };
-        set("description", description);
-        set("quantity", String(data.get("quantity") ?? ""));
-        set("unit", unit);
+          if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) {
+            el.value = String(data.get(name) ?? "");
+          }
+        }
         setState(res);
       }
     });
@@ -472,15 +588,27 @@ function LineForm({
           formRef.current?.requestSubmit();
         }
       }}
-      className="grid gap-4 md:grid-cols-[1fr_8rem_11rem_3.5rem] md:items-start [&_input]:bg-background [&_select]:bg-background"
+      className="grid gap-4 md:grid-cols-[9rem_1fr_6.5rem_9rem_9rem_3.5rem] md:items-start [&_input]:bg-background [&_select]:bg-background"
     >
+      <FormField name="part_number" label="Part. num." error={errors.part_number}>
+        {(a11y) => (
+          <Input {...a11y} autoComplete="off" maxLength={60} className="font-mono" defaultValue={editing?.partNumber} />
+        )}
+      </FormField>
       <FormField name="description" label="Descripción" error={errors.description}>
         {(a11y) => <Input {...a11y} autoComplete="off" maxLength={500} defaultValue={editing?.description} />}
       </FormField>
       <FormField name="quantity" label="Cantidad" error={errors.quantity}>
-        {(a11y) => <NumericInput {...a11y} kind="decimal" className="font-mono" defaultValue={editing ? String(editing.quantity) : "1"} />}
+        {(a11y) => (
+          <NumericInput
+            {...a11y}
+            kind="decimal"
+            className="font-mono"
+            defaultValue={editing ? String(editing.quantity) : "1"}
+          />
+        )}
       </FormField>
-      <FormField name="unit" label="Unidad de medida" error={errors.unit}>
+      <FormField name="unit" label="Unidad" error={errors.unit}>
         {(a11y) => (
           <NativeSelect {...a11y} className="w-full" defaultValue={editing?.unit ?? "unit"}>
             {Object.entries(UNITS).map(([key, label]) => (
@@ -489,6 +617,11 @@ function LineForm({
               </option>
             ))}
           </NativeSelect>
+        )}
+      </FormField>
+      <FormField name="cpc" label="CPC" error={errors.cpc}>
+        {(a11y) => (
+          <Input {...a11y} autoComplete="off" maxLength={20} className="font-mono" defaultValue={editing?.cpc} />
         )}
       </FormField>
       {/* Etiqueta vacía del mismo alto que las demás: el botón queda a la altura de los campos. */}
@@ -506,7 +639,7 @@ function LineForm({
         </Button>
       </Field>
       {state?.error && (
-        <div className="md:col-span-4">
+        <div className="md:col-span-6">
           <FieldError>{state.error}</FieldError>
         </div>
       )}

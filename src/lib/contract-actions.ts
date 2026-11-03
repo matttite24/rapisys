@@ -20,35 +20,60 @@ function friendly(error: DbError) {
   return "No se pudo completar la acción. Inténtalo de nuevo.";
 }
 
-export async function addLine(
-  org: string,
-  contractId: string,
-  _: LineState,
-  formData: FormData,
-): Promise<LineState> {
+type LineValues = {
+  partNumber: string | null;
+  description: string;
+  quantity: number;
+  unit: string;
+  cpc: string | null;
+};
+
+// Lee y valida los campos de una línea; los mismos para agregar y editar.
+function parseLine(formData: FormData): { values: LineValues } | { fields: Record<string, string> } {
+  const partNumber = text(formData, "part_number");
   const description = text(formData, "description");
   const unit = text(formData, "unit");
+  const cpc = text(formData, "cpc");
   const quantity = parseDecimal(text(formData, "quantity"));
 
   const fields: Record<string, string> = {};
+  if (partNumber.length > 60) fields.part_number = "Máximo 60 caracteres.";
   if (!description) fields.description = "Escribe la descripción del item.";
   else if (description.length > 500) fields.description = "Máximo 500 caracteres.";
   if (quantity === null || quantity <= 0 || quantity > 10_000_000) {
     fields.quantity = "Escribe una cantidad mayor a 0, con máximo 2 decimales.";
   }
   if (!isUnit(unit)) fields.unit = "Elige una unidad de medida.";
-  if (Object.keys(fields).length) return { fields };
+  if (cpc.length > 20) fields.cpc = "Máximo 20 caracteres.";
+  if (Object.keys(fields).length || quantity === null) return { fields };
+
+  return {
+    values: { partNumber: partNumber || null, description, quantity, unit, cpc: cpc || null },
+  };
+}
+
+export async function addLine(
+  org: string,
+  contractId: string,
+  listId: string,
+  formData: FormData,
+): Promise<LineState> {
+  const parsed = parseLine(formData);
+  if ("fields" in parsed) return { fields: parsed.fields };
+  const v = parsed.values;
 
   // Una sola llamada: la función valida que el contrato esté En ejecución y la inserta.
   const supabase = await createClient();
   const { error } = await supabase.rpc("add_contract_line", {
-    p_contract_id: contractId,
-    p_description: description,
-    p_quantity: quantity as number,
-    p_unit: unit,
+    p_list_id: listId,
+    p_part_number: v.partNumber as string,
+    p_description: v.description,
+    p_quantity: v.quantity,
+    p_unit: v.unit,
+    p_cpc: v.cpc as string,
   });
   if (error) {
-    if (error.message === "contract_not_found") return { error: "No encontramos el contrato." };
+    if (error.message === "list_not_found") return { error: "No encontramos la lista." };
     if (error.message === "not_in_progress") {
       return { error: "Los items se cargan cuando el contrato está En ejecución." };
     }
@@ -63,18 +88,9 @@ export async function updateLine(
   lineId: string,
   formData: FormData,
 ): Promise<LineState> {
-  const description = text(formData, "description");
-  const unit = text(formData, "unit");
-  const quantity = parseDecimal(text(formData, "quantity"));
-
-  const fields: Record<string, string> = {};
-  if (!description) fields.description = "Escribe la descripción del item.";
-  else if (description.length > 500) fields.description = "Máximo 500 caracteres.";
-  if (quantity === null || quantity <= 0 || quantity > 10_000_000) {
-    fields.quantity = "Escribe una cantidad mayor a 0, con máximo 2 decimales.";
-  }
-  if (!isUnit(unit)) fields.unit = "Elige una unidad de medida.";
-  if (Object.keys(fields).length) return { fields };
+  const parsed = parseLine(formData);
+  if ("fields" in parsed) return { fields: parsed.fields };
+  const v = parsed.values;
 
   const supabase = await createClient();
   const { data: contract } = await supabase
@@ -89,7 +105,13 @@ export async function updateLine(
 
   const { data, error } = await supabase
     .from("contract_items")
-    .update({ description, quantity, unit })
+    .update({
+      part_number: v.partNumber,
+      description: v.description,
+      quantity: v.quantity,
+      unit: v.unit,
+      cpc: v.cpc,
+    })
     .eq("id", lineId)
     .eq("contract_id", contractId)
     .select("id");

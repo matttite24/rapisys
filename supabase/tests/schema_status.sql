@@ -14,4 +14,5 @@ select
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'contract_items' and column_name = 'description'
   )                                                                        as "7_contract_reference_lines",
-  to_regproc('public.add_contract_line') is not null                       as "8_add_contract_line";
+  to_regproc('public.add_contract_line') is not null                       as "8_add_contract_line",
+  to_regclass('public.contract_lists') is not null                         as "9_contract_lists";
