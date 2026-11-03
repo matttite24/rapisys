@@ -2,6 +2,7 @@
 
 import { TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
 import { useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FormField } from "@/components/form-field";
@@ -24,7 +25,7 @@ import { addLine, removeLine, setContractStatus, type LineState } from "@/lib/co
 import { STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
 import { UNITS, unitLabel } from "@/lib/units";
 
-const TD = `${TABLE_TD} align-top`;
+const TD = cn(TABLE_TD, "py-1.5 align-middle");
 
 export type LineView = {
   id: string;
@@ -212,7 +213,7 @@ function LineRow({
       </td>
       <td className={`${TD} num text-right`}>{l.quantity}</td>
       <td className={`${TD} whitespace-nowrap`}>{unitLabel(l.unit)}</td>
-      <td className={`${TD} whitespace-nowrap`}>
+      <td className={cn(TD, "p-1 whitespace-nowrap")}>
         {confirming ? (
           <span className="flex gap-2">
             <Button variant="destructive" disabled={pending} onClick={() => void remove()}>
@@ -224,7 +225,7 @@ function LineRow({
           <Button
             variant="ghost"
             size="icon"
-            className="size-10 text-muted-foreground"
+            className="size-7 text-muted-foreground"
             aria-label={`Quitar la línea ${n} del contrato`}
             onClick={() => setConfirming(true)}
           >
