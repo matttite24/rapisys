@@ -155,15 +155,24 @@ export function ListInfo({
     if (res?.error) setError(res.error);
   }
 
+  // Una lista general solo tiene nombre: no se muestran datos vacíos.
+  const general = !list.model && !list.serial && !list.engine && !list.identifier;
+
   return (
     <div className={cn("border-b", editing && "bg-muted")}>
-      <div className="flex items-center justify-between gap-4 px-6 py-4">
-        <div className="flex min-w-0 flex-wrap gap-x-12 gap-y-4">
-          <Datum icon={Car01Icon} label="Modelo" value={list.model} />
-          <Datum icon={BarCode01Icon} label="Serie" value={list.serial} />
-          <Datum icon={EngineIcon} label="Motor" value={list.engine} />
-          <Datum icon={IdentityCardIcon} label="Identificador" value={list.identifier} />
-        </div>
+      <div className={cn("flex items-center justify-between gap-4 px-6", general ? "py-2" : "py-4")}>
+        {general ? (
+          <p className="text-sm text-muted-foreground">
+            Lista general: sin datos de un activo en particular.
+          </p>
+        ) : (
+          <div className="flex min-w-0 flex-wrap gap-x-12 gap-y-4">
+            <Datum icon={Car01Icon} label="Modelo" value={list.model} />
+            <Datum icon={BarCode01Icon} label="Serie" value={list.serial} />
+            <Datum icon={EngineIcon} label="Motor" value={list.engine} />
+            <Datum icon={IdentityCardIcon} label="Identificador" value={list.identifier} />
+          </div>
+        )}
         <div className="-mr-2 flex shrink-0 items-center gap-1">
           {canEdit && (
             <>
@@ -289,16 +298,16 @@ export function ListForm({
       <div className="flex flex-col gap-2">
         <FormField
           name="name"
-          label="Activo"
+          label="Nombre del activo o de la lista"
           error={errors.name}
-          hint={assetId ? "Del catálogo" : undefined}
+          hint={assetId ? "Del catálogo" : "Basta con el nombre: el resto es opcional (p. ej. “Lista general”)."}
         >
           {(a11y) => (
             <Input
               {...a11y}
               autoComplete="off"
               maxLength={200}
-              placeholder="Busca en el catálogo o escribe uno nuevo"
+              placeholder="Busca un activo o escribe un nombre"
               value={name}
               onChange={(e) => onName(e.target.value)}
               onFocus={() => results === null && onName(name)}
