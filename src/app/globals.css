@@ -207,17 +207,13 @@
   height: 2.5rem;
   padding-inline: 1rem;
 }
-/* Los botones principales se elevan un nivel y se hunden al pulsar: la acción se siente física. */
+/* Los botones son planos: sin sombra. Al pulsar un botón principal se hunde 1 px. */
 [data-slot="button"] {
-  transition-property: background-color, color, border-color, box-shadow, transform;
+  transition-property: background-color, color, border-color, transform;
   transition-duration: 120ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
-[data-slot="button"].bg-primary:not(:disabled) {
-  box-shadow: var(--elev-1);
-}
 [data-slot="button"].bg-primary:active:not(:disabled) {
-  box-shadow: none;
   transform: translateY(1px);
 }
 @media (prefers-reduced-motion: reduce) {
