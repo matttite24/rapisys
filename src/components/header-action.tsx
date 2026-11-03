@@ -49,3 +49,9 @@ export function HeaderAction({ icon, label, href, onClick }: Props) {
     slot,
   );
 }
+
+// Contenido libre en el encabezado de la sección (p. ej. cliente y estado del contrato).
+export function HeaderSlot({ children }: { children: React.ReactNode }) {
+  const slot = useContext(HeaderSlotContext);
+  return slot ? createPortal(children, slot) : null;
+}

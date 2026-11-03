@@ -42,10 +42,13 @@ export function StatusControl({
   contractId,
   status,
   summary,
+  inHeader,
 }: {
   org: string;
   contractId: string;
   status: string;
+  // En el encabezado va en una sola línea y el error cuelga debajo de él.
+  inHeader?: boolean;
   // Datos del contrato, para confirmar el paso a En ejecución.
   summary?: { code: string; total: string; delivery: string };
 }) {
@@ -65,8 +68,8 @@ export function StatusControl({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className={inHeader ? "relative" : "flex flex-col gap-2"}>
+      <div className={inHeader ? "flex items-center gap-2" : "flex flex-wrap items-center gap-2"}>
         <span className="inline-flex items-center gap-2 border px-3 py-2 font-mono text-xs uppercase tracking-[0.08em]">
           <span aria-hidden className={`size-2 ${STATUS_DOT[status] ?? "bg-muted-foreground"}`} />
           {STATUS_LABEL[status] ?? status}
@@ -83,7 +86,18 @@ export function StatusControl({
           </Button>
         )}
       </div>
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <p
+          role="alert"
+          className={
+            inHeader
+              ? "absolute top-full right-0 z-20 mt-2 w-max max-w-80 border bg-background p-3 text-sm text-destructive"
+              : "text-sm text-destructive"
+          }
+        >
+          {error}
+        </p>
+      )}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="data-[size=default]:sm:max-w-lg">
