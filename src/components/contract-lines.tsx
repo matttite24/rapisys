@@ -327,7 +327,7 @@ function LineRow({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 text-muted-foreground"
+              className="size-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
               aria-label={`Quitar la línea ${n} del contrato`}
               onClick={() => setConfirming(true)}
             >
