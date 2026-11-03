@@ -1,12 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
-import {
-  AddLineForm,
-  LinesTable,
-  StatusControl,
-  type LineView,
-} from "@/components/contract-lines";
+import { ReferenceList, StatusControl, type LineView } from "@/components/contract-lines";
 import { ContractForm } from "@/components/contract-form";
 import { HeaderSlot, HeaderTitle } from "@/components/header-action";
 import { CellGrid, PageSection } from "@/components/page-section";
@@ -150,33 +145,7 @@ async function Detail({ params }: { params: IdParams }) {
         </CellGrid>
       </PageSection>
 
-      {/* La función principal de la pantalla: va primero y con fondo propio. */}
-      {c.status === "in_progress" && (
-        <section className="border-b border-l-4 border-l-brand bg-muted">
-          <div className="flex h-10 items-center px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
-            Agregar item a la lista
-          </div>
-          <div className="px-6 pb-6">
-            <AddLineForm org={org} contractId={id} />
-          </div>
-        </section>
-      )}
-
-      <PageSection
-        label={`${lines.length} ${lines.length === 1 ? "línea" : "líneas"} de referencia`}
-        className="p-0"
-      >
-        {lines.length === 0 ? (
-          <p className="p-6 text-muted-foreground">
-            {c.status === "in_progress"
-              ? "Aún no hay items en la lista del contrato. Agrega el primero abajo."
-              : "Este contrato no tiene items."}
-          </p>
-        ) : (
-          <LinesTable org={org} contractId={id} lines={lines} />
-        )}
-      </PageSection>
-
+      <ReferenceList org={org} contractId={id} lines={lines} canAdd={c.status === "in_progress"} />
     </>
   );
 }

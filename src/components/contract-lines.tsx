@@ -1,7 +1,7 @@
 "use client";
 
-import { TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
-import { useRef, useState } from "react";
+import { PageSection, TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
+import { startTransition, useOptimistic, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -23,7 +23,11 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { addLine, removeLine, setContractStatus, type LineState } from "@/lib/contract-actions";
 import { STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
-import { UNITS, unitLabel } from "@/lib/units";
+import { parseDecimal } from "@/lib/money";
+import { UNITS, isUnit, unitLabel } from "@/lib/units";
+
+// Prefijo del id de una línea que aún no confirmó el servidor.
+const TEMP_PREFIX = "tmp-";
 
 const TD = cn(TABLE_TD, "py-1.5 align-middle");
 
@@ -147,15 +151,73 @@ export function StatusControl({
   );
 }
 
-export function LinesTable({
+type OptimisticAction = { type: "add"; line: LineView } | { type: "remove"; id: string };
+
+// La lista y su formulario comparten estado: la línea aparece al instante y el
+// servidor la confirma por detrás (si falla, vuelve a desaparecer).
+export function ReferenceList({
   org,
   contractId,
   lines,
+  canAdd,
 }: {
   org: string;
   contractId: string;
   lines: LineView[];
+  canAdd: boolean;
 }) {
+  const [shown, apply] = useOptimistic(lines, (state, a: OptimisticAction) =>
+    a.type === "add" ? [...state, a.line] : state.filter((l) => l.id !== a.id),
+  );
+  const [error, setError] = useState<string>();
+
+  function remove(id: string) {
+    setError(undefined);
+    startTransition(async () => {
+      apply({ type: "remove", id });
+      const res = await removeLine(org, contractId, id);
+      if (res?.error) setError(res.error);
+    });
+  }
+
+  return (
+    <>
+      {/* La función principal de la pantalla: va primero y con fondo propio. */}
+      {canAdd && (
+        <section className="border-b border-l-4 border-l-brand bg-muted">
+          <div className="flex h-10 items-center px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
+            Agregar item a la lista
+          </div>
+          <div className="px-6 pb-6">
+            <AddLineForm
+              org={org}
+              contractId={contractId}
+              onAdd={(line) => apply({ type: "add", line })}
+            />
+          </div>
+        </section>
+      )}
+
+      <PageSection
+        label={`${shown.length} ${shown.length === 1 ? "línea" : "líneas"} de referencia`}
+        className="p-0"
+      >
+        {shown.length === 0 ? (
+          <p className="p-6 text-muted-foreground">
+            {canAdd ? "Aún no hay items en la lista del contrato. Agrega el primero arriba." : "Este contrato no tiene items."}
+          </p>
+        ) : (
+          <>
+            {error && <p role="alert" className="border-b p-3 text-sm text-destructive">{error}</p>}
+            <LinesTable lines={shown} onRemove={remove} />
+          </>
+        )}
+      </PageSection>
+    </>
+  );
+}
+
+function LinesTable({ lines, onRemove }: { lines: LineView[]; onRemove: (id: string) => void }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -170,7 +232,7 @@ export function LinesTable({
         </thead>
         <tbody>
           {lines.map((l, i) => (
-            <LineRow key={l.id} org={org} contractId={contractId} line={l} n={i + 1} />
+            <LineRow key={l.id} line={l} n={i + 1} onRemove={onRemove} />
           ))}
         </tbody>
       </table>
@@ -179,44 +241,28 @@ export function LinesTable({
 }
 
 function LineRow({
-  org,
-  contractId,
   line: l,
   n,
+  onRemove,
 }: {
-  org: string;
-  contractId: string;
   line: LineView;
   n: number;
+  onRemove: (id: string) => void;
 }) {
-  const [error, setError] = useState<string>();
-  const [pending, setPending] = useState(false);
   const [confirming, setConfirming] = useState(false);
-
-  async function remove() {
-    setPending(true);
-    setError(undefined);
-    const res = await removeLine(org, contractId, l.id);
-    setPending(false);
-    if (res?.error) {
-      setError(res.error);
-      setConfirming(false);
-    }
-  }
+  // Línea enviada y aún sin confirmar por el servidor.
+  const saving = l.id.startsWith(TEMP_PREFIX);
 
   return (
-    <tr className="border-b last:border-b-0">
+    <tr className={cn("border-b last:border-b-0", saving && "opacity-60")}>
       <td className={`${TD} num text-right text-muted-foreground`}>{n}</td>
-      <td className={`${TD} break-words`}>
-        {l.description}
-        {error && <p role="alert" className="mt-1 text-sm text-destructive">{error}</p>}
-      </td>
+      <td className={`${TD} break-words`}>{l.description}</td>
       <td className={`${TD} num text-right`}>{l.quantity}</td>
       <td className={`${TD} whitespace-nowrap`}>{unitLabel(l.unit)}</td>
       <td className={cn(TD, "p-1 whitespace-nowrap")}>
-        {confirming ? (
+        {saving ? null : confirming ? (
           <span className="flex gap-2">
-            <Button variant="destructive" disabled={pending} onClick={() => void remove()}>
+            <Button variant="destructive" onClick={() => onRemove(l.id)}>
               Quitar
             </Button>
             <Button variant="outline" onClick={() => setConfirming(false)}>No</Button>
@@ -237,17 +283,71 @@ function LineRow({
   );
 }
 
+const MESSAGES = {
+  description: "Escribe la descripción del item.",
+  quantity: "Escribe una cantidad mayor a 0, con máximo 2 decimales.",
+  unit: "Elige una unidad de medida.",
+};
+
 // Agrega una línea de la lista de referencia: descripción, cantidad y unidad.
-export function AddLineForm({ org, contractId }: { org: string; contractId: string }) {
+function AddLineForm({
+  org,
+  contractId,
+  onAdd,
+}: {
+  org: string;
+  contractId: string;
+  onAdd: (line: LineView) => void;
+}) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [pending, setPending] = useState(false);
   const [state, setState] = useState<LineState>();
   const errors = state?.fields ?? {};
+
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    const description = String(data.get("description") ?? "").trim();
+    const quantity = parseDecimal(String(data.get("quantity") ?? ""));
+    const unit = String(data.get("unit") ?? "");
+
+    // Se valida aquí para responder al instante; el servidor vuelve a validar.
+    const fields: Record<string, string> = {};
+    if (!description) fields.description = MESSAGES.description;
+    if (quantity === null || quantity <= 0) fields.quantity = MESSAGES.quantity;
+    if (!isUnit(unit)) fields.unit = MESSAGES.unit;
+    if (Object.keys(fields).length || quantity === null) {
+      setState({ fields });
+      return;
+    }
+
+    setState(undefined);
+    startTransition(async () => {
+      // La fila aparece ya y el formulario queda listo para la siguiente.
+      onAdd({ id: `${TEMP_PREFIX}${Date.now()}`, description, quantity, unit });
+      form.reset();
+      form.querySelector<HTMLElement>('[name="description"]')?.focus();
+
+      const res = await addLine(org, contractId, undefined, data);
+      if (res?.error || res?.fields) {
+        // No se guardó: se devuelve lo escrito para no perderlo.
+        const set = (name: string, value: string) => {
+          const el = form.elements.namedItem(name);
+          if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = value;
+        };
+        set("description", description);
+        set("quantity", String(data.get("quantity") ?? ""));
+        set("unit", unit);
+        setState(res);
+      }
+    });
+  }
 
   return (
     <form
       ref={formRef}
       noValidate
+      onSubmit={onSubmit}
       // Enter en cualquier campo agrega la línea.
       onKeyDown={(e) => {
         if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
@@ -256,19 +356,6 @@ export function AddLineForm({ org, contractId }: { org: string; contractId: stri
         }
       }}
       className="grid gap-4 md:grid-cols-[1fr_8rem_11rem_3.5rem] md:items-start [&_input]:bg-background [&_select]:bg-background"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        if (pending) return;
-        const data = new FormData(e.currentTarget);
-        setPending(true);
-        const res = await addLine(org, contractId, undefined, data);
-        setPending(false);
-        setState(res);
-        if (!res?.error && !res?.fields) {
-          formRef.current?.reset();
-          formRef.current?.querySelector<HTMLElement>('[name="description"]')?.focus();
-        }
-      }}
     >
       <FormField name="description" label="Descripción" error={errors.description}>
         {(a11y) => <Input {...a11y} autoComplete="off" maxLength={500} />}
@@ -290,14 +377,7 @@ export function AddLineForm({ org, contractId }: { org: string; contractId: stri
       {/* Etiqueta vacía del mismo alto que las demás: el botón queda a la altura de los campos. */}
       <Field>
         <FieldLabel aria-hidden className="max-md:hidden">&nbsp;</FieldLabel>
-        <Button
-          type="submit"
-          size="icon"
-          disabled={pending}
-          className="h-10 w-full"
-          aria-label={pending ? "Agregando…" : "Agregar línea"}
-          title="Agregar línea"
-        >
+        <Button type="submit" size="icon" className="h-10 w-full" aria-label="Agregar línea" title="Agregar línea">
           <HugeiconsIcon icon={Add01Icon} className="size-6" strokeWidth={2} />
         </Button>
       </Field>

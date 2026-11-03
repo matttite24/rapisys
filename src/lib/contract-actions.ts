@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { STATUS_ORDER } from "@/lib/contracts";
 import { parseDecimal } from "@/lib/money";
 import { isUnit } from "@/lib/units";
-import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
 
@@ -40,31 +39,21 @@ export async function addLine(
   if (!isUnit(unit)) fields.unit = "Elige una unidad de medida.";
   if (Object.keys(fields).length) return { fields };
 
-  const orgId = await getOrgId(org);
-  if (!orgId) return { error: "No encontramos la organización." };
-
+  // Una sola llamada: la función valida que el contrato esté En ejecución y la inserta.
   const supabase = await createClient();
-
-  // Los items se cargan cuando el contrato está En ejecución, no antes ni después.
-  const { data: contract } = await supabase
-    .from("contracts")
-    .select("status")
-    .eq("id", contractId)
-    .eq("organization_id", orgId)
-    .maybeSingle();
-  if (!contract) return { error: "No encontramos el contrato." };
-  if (contract.status !== "in_progress") {
-    return { error: "Los items se cargan cuando el contrato está En ejecución." };
-  }
-
-  const { error } = await supabase.from("contract_items").insert({
-    organization_id: orgId,
-    contract_id: contractId,
-    description,
-    quantity,
-    unit,
+  const { error } = await supabase.rpc("add_contract_line", {
+    p_contract_id: contractId,
+    p_description: description,
+    p_quantity: quantity as number,
+    p_unit: unit,
   });
-  if (error) return { error: friendly(error) };
+  if (error) {
+    if (error.message === "contract_not_found") return { error: "No encontramos el contrato." };
+    if (error.message === "not_in_progress") {
+      return { error: "Los items se cargan cuando el contrato está En ejecución." };
+    }
+    return { error: friendly(error) };
+  }
   refresh(org, contractId);
 }
 
