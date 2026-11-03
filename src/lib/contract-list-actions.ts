@@ -109,7 +109,7 @@ export async function deleteList(org: string, contractId: string, listId: string
   refresh(org, contractId);
 }
 
-export type AssetResult = { id: string; name: string; model: string | null };
+export type AssetResult = { id: string; name: string; brand: string | null; model: string | null; plate: string | null };
 
 // Busca activos del catálogo por nombre, marca, modelo o placa.
 export async function searchAssets(org: string, q: string): Promise<AssetResult[]> {
@@ -120,10 +120,10 @@ export async function searchAssets(org: string, q: string): Promise<AssetResult[
   const supabase = await createClient();
   let query = supabase
     .from("assets")
-    .select("id, name, model")
+    .select("id, name, brand, model, plate")
     .eq("organization_id", orgId)
     .order("name")
-    .limit(10);
+    .limit(30); // el selector avisa cuando llega a este tope
   if (term) query = query.or(`name.ilike.%${term}%,brand.ilike.%${term}%,model.ilike.%${term}%,plate.ilike.%${term}%`);
   const { data } = await query;
   return (data ?? []) as AssetResult[];

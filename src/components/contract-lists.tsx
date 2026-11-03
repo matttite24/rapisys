@@ -10,6 +10,7 @@ import {
   EngineIcon,
   IdentityCardIcon,
   LeftToRightListBulletIcon,
+  Search01Icon,
   Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
@@ -27,6 +28,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   createList,
   deleteList,
@@ -225,6 +233,89 @@ export function ListInfo({
   );
 }
 
+// Cajón para buscar un activo del catálogo: sirve con muchos activos, sin listas dentro del formulario.
+function AssetPicker({ org, onPick }: { org: string; onPick: (a: AssetResult) => void }) {
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<AssetResult[] | null>(null);
+
+  function search(value: string) {
+    setQ(value);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(async () => setResults(await searchAssets(org, value)), 250);
+  }
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) void searchAssets(org, q).then(setResults);
+      }}
+    >
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="size-10 shrink-0"
+        aria-label="Buscar en el catálogo de activos"
+        title="Buscar en el catálogo"
+        onClick={() => setOpen(true)}
+      >
+        <HugeiconsIcon icon={Search01Icon} className="size-5" />
+      </Button>
+      <SheetContent className="gap-0 sm:max-w-md">
+        <SheetHeader className="border-b">
+          <SheetTitle>Buscar activo en el catálogo</SheetTitle>
+          <SheetDescription>Elige uno para llenar el nombre y el modelo de la lista.</SheetDescription>
+        </SheetHeader>
+        <div className="border-b p-4">
+          <Input
+            type="search"
+            autoFocus
+            autoComplete="off"
+            aria-label="Buscar activo"
+            placeholder="Nombre, marca, modelo o placa"
+            value={q}
+            onChange={(e) => search(e.target.value)}
+          />
+        </div>
+        <ul aria-label="Activos del catálogo" className="min-h-0 flex-1 divide-y overflow-y-auto">
+          {results === null && <li className="p-4 text-sm text-muted-foreground">Buscando…</li>}
+          {results?.length === 0 && (
+            <li className="p-4 text-sm text-muted-foreground">
+              Ningún activo coincide. Puedes escribir el nombre a mano: se usará solo en este contrato.
+            </li>
+          )}
+          {results?.map((a) => (
+            <li key={a.id}>
+              <button
+                type="button"
+                className="flex min-h-14 w-full flex-col items-start gap-0.5 px-4 py-3 text-left hover:bg-accent"
+                onClick={() => {
+                  onPick(a);
+                  setOpen(false);
+                }}
+              >
+                <span className="font-medium">{a.name}</span>
+                {[a.brand, a.model, a.plate].some(Boolean) && (
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {[a.brand, a.model, a.plate].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+          {results && results.length >= 30 && (
+            <li className="p-4 text-xs text-muted-foreground">Se muestran los primeros 30. Afina la búsqueda.</li>
+          )}
+        </ul>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // Crea o edita una lista. El activo se busca en el catálogo o se escribe solo para este contrato.
 export function ListForm({
   org,
@@ -238,11 +329,9 @@ export function ListForm({
   onDone: (id?: string) => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [name, setName] = useState(editing?.name ?? "");
   const [model, setModel] = useState(editing?.model ?? "");
   const [assetId, setAssetId] = useState(editing?.assetId ?? "");
-  const [results, setResults] = useState<AssetResult[] | null>(null);
   const [state, setState] = useState<ListState>();
   const [saving, setSaving] = useState(false);
   const errors = state?.fields ?? {};
@@ -252,19 +341,16 @@ export function ListForm({
     formRef.current?.querySelector<HTMLElement>('[name="name"]')?.focus();
   }, []);
 
-  // Busca en el servidor con una pausa corta; escribir un nombre propio desvincula el catálogo.
+  // Escribir un nombre propio desvincula el activo del catálogo.
   function onName(value: string) {
     setName(value);
     setAssetId("");
-    clearTimeout(timer.current);
-    timer.current = setTimeout(async () => setResults(await searchAssets(org, value)), 250);
   }
 
   function choose(a: AssetResult) {
     setName(a.name);
     setModel(a.model ?? "");
     setAssetId(a.id);
-    setResults(null);
   }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -303,46 +389,19 @@ export function ListForm({
           hint={assetId ? "Del catálogo" : "Basta con el nombre: el resto es opcional (p. ej. “Lista general”)."}
         >
           {(a11y) => (
-            <Input
-              {...a11y}
-              autoComplete="off"
-              maxLength={200}
-              placeholder="Busca un activo o escribe un nombre"
-              value={name}
-              onChange={(e) => onName(e.target.value)}
-              onFocus={() => results === null && onName(name)}
-              onBlur={() => setTimeout(() => setResults(null), 150)}
-            />
+            <div className="flex gap-2">
+              <Input
+                {...a11y}
+                autoComplete="off"
+                maxLength={200}
+                placeholder="Escribe un nombre o busca en el catálogo"
+                value={name}
+                onChange={(e) => onName(e.target.value)}
+              />
+              <AssetPicker org={org} onPick={choose} />
+            </div>
           )}
         </FormField>
-        {results !== null && (
-          <ul aria-label="Activos del catálogo" className="max-h-56 divide-y overflow-y-auto border bg-popover">
-            {results.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-muted-foreground">
-                Ninguno coincide: se usará solo en este contrato.
-              </li>
-            ) : (
-              results.map((a) => (
-                <li key={a.id}>
-                  <button
-                    type="button"
-                    className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
-                    // mousedown: elige antes de que el campo pierda el foco
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      choose(a);
-                    }}
-                  >
-                    <span className="truncate">{a.name}</span>
-                    {a.model && (
-                      <span className="ml-auto font-mono text-xs text-muted-foreground">{a.model}</span>
-                    )}
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-        )}
       </div>
       <FormField name="model" label="Modelo" error={errors.model}>
         {(a11y) => (
