@@ -29,6 +29,9 @@ export async function saveAsset(
   if (year !== null && (!Number.isInteger(year) || year < 1950 || year > 2100)) {
     fields.year = "Escribe un año entre 1950 y 2100.";
   }
+  for (const key of ["serial", "engine", "identifier"]) {
+    if (text(formData, key).length > 100) fields[key] = "Máximo 100 caracteres.";
+  }
   if (Object.keys(fields).length) return { fields };
 
   const orgId = await getOrgId(org);
@@ -41,6 +44,9 @@ export async function saveAsset(
     model: text(formData, "model") || null,
     year,
     plate: text(formData, "plate").toUpperCase() || null,
+    serial: text(formData, "serial") || null,
+    engine: text(formData, "engine") || null,
+    identifier: text(formData, "identifier") || null,
   };
 
   const supabase = await createClient();

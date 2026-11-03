@@ -4,12 +4,14 @@ import { startTransition, useEffect, useRef, useState } from "react";
 import {
   Add01Icon,
   BarCode01Icon,
+  Building03Icon,
   Car01Icon,
   Delete02Icon,
   Edit02Icon,
   EngineIcon,
   IdentityCardIcon,
   LeftToRightListBulletIcon,
+  Tag01Icon,
   Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
@@ -25,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
@@ -45,7 +47,7 @@ import {
   type ListState,
   type QuickAssetState,
 } from "@/lib/contract-list-actions";
-import { ASSET_KIND_LABEL } from "@/lib/items";
+import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
 import { cn } from "@/lib/utils";
 
 // Una lista de referencia del contrato: los datos del activo al que sirve.
@@ -53,6 +55,9 @@ export type ListView = {
   id: string;
   assetId: string | null;
   name: string;
+  // Datos del activo del catálogo (vacíos en una lista general).
+  kind: string;
+  brand: string;
   model: string;
   serial: string;
   engine: string;
@@ -167,17 +172,19 @@ export function ListInfo({
   }
 
   // Una lista general solo tiene nombre: no se muestran datos vacíos.
-  const general = !list.model && !list.serial && !list.engine && !list.identifier;
+  const general = !list.assetId;
 
   return (
     <div className={cn("border-b", editing && "bg-muted")}>
       <div className={cn("flex items-center justify-between gap-4 px-6", general ? "py-2" : "py-4")}>
         {general ? (
           <p className="text-sm text-muted-foreground">
-            Lista general: sin datos de un activo en particular.
+            Lista general: sin un activo en particular.
           </p>
         ) : (
           <div className="flex min-w-0 flex-wrap gap-x-12 gap-y-4">
+            <Datum icon={Tag01Icon} label="Tipo" value={ASSET_KIND_LABEL[list.kind as AssetKind] ?? ""} />
+            <Datum icon={Building03Icon} label="Marca" value={list.brand} />
             <Datum icon={Car01Icon} label="Modelo" value={list.model} />
             <Datum icon={BarCode01Icon} label="Serie" value={list.serial} />
             <Datum icon={EngineIcon} label="Motor" value={list.engine} />
@@ -316,12 +323,16 @@ export function NewListDialog({
     setSaving(true);
     setState(undefined);
     startTransition(async () => {
-      const res = await quickCreateAsset(
-        org,
-        String(data.get("asset_name") ?? ""),
-        String(data.get("asset_kind") ?? ""),
-        String(data.get("asset_model") ?? ""),
-      );
+      const get = (k: string) => String(data.get(k) ?? "");
+      const res = await quickCreateAsset(org, {
+        name: get("asset_name"),
+        kind: get("asset_kind"),
+        brand: get("asset_brand"),
+        model: get("asset_model"),
+        serial: get("asset_serial"),
+        engine: get("asset_engine"),
+        identifier: get("asset_identifier"),
+      });
       if (res?.asset) {
         setSaving(false);
         createFor(res.asset.name, res.asset.id);
@@ -349,7 +360,7 @@ export function NewListDialog({
         else reset();
       }}
     >
-      <DialogContent className="gap-0 p-0 sm:max-w-lg">
+      <DialogContent className="max-h-[90svh] gap-0 overflow-y-auto p-0 sm:max-w-xl">
         {step === "search" && (
           <>
             <DialogHeader className="border-b p-6">
@@ -362,7 +373,7 @@ export function NewListDialog({
                 autoFocus
                 autoComplete="off"
                 aria-label="Buscar activo"
-                placeholder="Nombre, marca, modelo o placa"
+                placeholder="Nombre, marca, modelo, serie o placa"
                 value={q}
                 onChange={(e) => search(e.target.value)}
               />
@@ -381,9 +392,9 @@ export function NewListDialog({
                     onClick={() => createFor(a.name, a.id)}
                   >
                     <span className="font-medium">{a.name}</span>
-                    {[a.brand, a.model, a.plate].some(Boolean) && (
+                    {[a.brand, a.model, a.serial].some(Boolean) && (
                       <span className="font-mono text-xs text-muted-foreground">
-                        {[a.brand, a.model, a.plate].filter(Boolean).join(" · ")}
+                        {[a.brand, a.model, a.serial].filter(Boolean).join(" · ")}
                       </span>
                     )}
                   </button>
@@ -412,10 +423,12 @@ export function NewListDialog({
               <DialogTitle>Nuevo activo</DialogTitle>
               <DialogDescription>Se guarda en el catálogo y se crea la lista con él.</DialogDescription>
             </DialogHeader>
-            <div className="flex flex-col gap-5 p-6">
-              <FormField name="asset_name" label="Nombre" error={errors.name}>
-                {(a11y) => <Input {...a11y} autoFocus autoComplete="off" maxLength={200} defaultValue={q} />}
-              </FormField>
+            <div className="grid gap-x-4 gap-y-5 p-6 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <FormField name="asset_name" label="Nombre" error={errors.name}>
+                  {(a11y) => <Input {...a11y} autoFocus autoComplete="off" maxLength={200} defaultValue={q} />}
+                </FormField>
+              </div>
               <FormField name="asset_kind" label="Tipo" error={errors.kind}>
                 {(a11y) => (
                   <NativeSelect {...a11y} className="w-full" defaultValue="">
@@ -428,10 +441,26 @@ export function NewListDialog({
                   </NativeSelect>
                 )}
               </FormField>
-              <FormField name="asset_model" label="Modelo (opcional)" error={errors.model}>
+              <FormField name="asset_brand" label="Marca" error={errors.brand}>
                 {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} />}
               </FormField>
-              {state?.error && <FieldError>{state.error}</FieldError>}
+              <FormField name="asset_model" label="Modelo" error={errors.model}>
+                {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} />}
+              </FormField>
+              <FormField name="asset_serial" label="Serie" error={errors.serial}>
+                {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" />}
+              </FormField>
+              <FormField name="asset_engine" label="Motor" error={errors.engine}>
+                {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" />}
+              </FormField>
+              <FormField name="asset_identifier" label="Identificador" error={errors.identifier}>
+                {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" />}
+              </FormField>
+              {state?.error && (
+                <div className="sm:col-span-2">
+                  <FieldError>{state.error}</FieldError>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 border-t p-4">
               <Button type="submit" disabled={saving} className="h-10">
@@ -471,7 +500,8 @@ export function NewListDialog({
   );
 }
 
-// Corrige los datos de una lista ya creada.
+// Corrige una lista ya creada. Si es de un activo, edita los datos del activo (son suyos);
+// una lista general solo tiene nombre.
 export function ListDetailsForm({
   org,
   contractId,
@@ -488,18 +518,18 @@ export function ListDetailsForm({
   const formRef = useRef<HTMLFormElement>(null);
   const { state, saving, submit } = useListSubmit(onDone);
   const errors = state?.fields ?? {};
+  const isAsset = Boolean(list.assetId);
 
   useEffect(() => {
     formRef.current?.scrollIntoView({ block: "nearest" });
     formRef.current?.querySelector<HTMLElement>('[name="name"]')?.focus();
   }, []);
 
-  const mono = "font-mono";
   return (
     <form
       ref={formRef}
       noValidate
-      className="grid gap-x-4 gap-y-5 md:grid-cols-4 md:items-start [&_input]:bg-background"
+      className="grid gap-x-4 gap-y-5 md:grid-cols-4 md:items-start [&_input]:bg-background [&_select]:bg-background"
       onSubmit={(e) => {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
@@ -509,29 +539,47 @@ export function ListDetailsForm({
         submit(() => updateList(org, contractId, list.id, data));
       }}
     >
-      <div className="md:col-span-2">
-        <FormField name="name" label="Nombre" error={errors.name}>
+      <div className={isAsset ? "md:col-span-2" : "md:col-span-4"}>
+        <FormField name="name" label={isAsset ? "Nombre del activo" : "Nombre de la lista"} error={errors.name}>
           {(a11y) => <Input {...a11y} autoComplete="off" maxLength={200} defaultValue={list.name} />}
         </FormField>
       </div>
-      <FormField name="model" label="Modelo" error={errors.model}>
-        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} defaultValue={list.model} />}
-      </FormField>
-      <FormField name="serial" label="Serie" error={errors.serial}>
-        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className={mono} defaultValue={list.serial} />}
-      </FormField>
-      <FormField name="engine" label="Motor" error={errors.engine}>
-        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className={mono} defaultValue={list.engine} />}
-      </FormField>
-      <FormField name="identifier" label="Identificador" error={errors.identifier}>
-        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className={mono} defaultValue={list.identifier} />}
-      </FormField>
-      <Field className="md:col-span-2">
-        <FieldLabel aria-hidden className="max-md:hidden">&nbsp;</FieldLabel>
+      {isAsset && (
+        <>
+          <FormField name="kind" label="Tipo" error={errors.kind}>
+            {(a11y) => (
+              <NativeSelect {...a11y} className="w-full" defaultValue={list.kind}>
+                <option value="">Selecciona…</option>
+                {Object.entries(ASSET_KIND_LABEL).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </NativeSelect>
+            )}
+          </FormField>
+          <FormField name="brand" label="Marca" error={errors.brand}>
+            {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} defaultValue={list.brand} />}
+          </FormField>
+          <FormField name="model" label="Modelo" error={errors.model}>
+            {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} defaultValue={list.model} />}
+          </FormField>
+          <FormField name="serial" label="Serie" error={errors.serial}>
+            {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" defaultValue={list.serial} />}
+          </FormField>
+          <FormField name="engine" label="Motor" error={errors.engine}>
+            {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" defaultValue={list.engine} />}
+          </FormField>
+          <FormField name="identifier" label="Identificador" error={errors.identifier}>
+            {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" defaultValue={list.identifier} />}
+          </FormField>
+        </>
+      )}
+      <Field className="md:col-span-4">
         <div className="flex gap-2">
           <Button type="submit" disabled={saving} className="h-10 gap-2">
             <HugeiconsIcon icon={Tick02Icon} className="size-5" strokeWidth={2} />
-            {saving ? "Guardando…" : "Guardar lista"}
+            {saving ? "Guardando…" : "Guardar"}
           </Button>
           {onCancel && (
             <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={onCancel}>

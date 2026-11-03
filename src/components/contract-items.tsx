@@ -25,7 +25,7 @@ async function Items({ params }: { params: IdParams }) {
       .order("created_at"),
     supabase
       .from("contract_lists")
-      .select("id, asset_id, name, model, serial, engine, identifier")
+      .select("id, asset_id, name")
       .eq("contract_id", id)
       .order("created_at"),
   ]);
@@ -64,25 +64,41 @@ async function Items({ params }: { params: IdParams }) {
     cpc: l.cpc ?? "",
   }));
 
-  const lists: ListView[] = (
-    (listsRes.data ?? []) as {
+  // Los datos de la máquina son del activo del catálogo; las listas generales no tienen.
+  const listRows = (listsRes.data ?? []) as { id: string; asset_id: string | null; name: string }[];
+  const assetIds = [...new Set(listRows.map((l) => l.asset_id).filter((x): x is string => !!x))];
+  const { data: assetRows } = assetIds.length
+    ? await supabase
+        .from("assets")
+        .select("id, kind, brand, model, serial, engine, identifier")
+        .in("id", assetIds)
+    : { data: [] };
+  const assetsById = new Map(
+    ((assetRows ?? []) as {
       id: string;
-      asset_id: string | null;
-      name: string;
+      kind: string;
+      brand: string | null;
       model: string | null;
       serial: string | null;
       engine: string | null;
       identifier: string | null;
-    }[]
-  ).map((l) => ({
-    id: l.id,
-    assetId: l.asset_id,
-    name: l.name,
-    model: l.model ?? "",
-    serial: l.serial ?? "",
-    engine: l.engine ?? "",
-    identifier: l.identifier ?? "",
-  }));
+    }[]).map((a) => [a.id, a]),
+  );
+
+  const lists: ListView[] = listRows.map((l) => {
+    const a = l.asset_id ? assetsById.get(l.asset_id) : undefined;
+    return {
+      id: l.id,
+      assetId: l.asset_id,
+      name: l.name,
+      kind: a?.kind ?? "",
+      brand: a?.brand ?? "",
+      model: a?.model ?? "",
+      serial: a?.serial ?? "",
+      engine: a?.engine ?? "",
+      identifier: a?.identifier ?? "",
+    };
+  });
 
   return <ReferenceList org={org} contractId={id} lists={lists} lines={lines} canAdd={c.status === "in_progress"} />;
 }

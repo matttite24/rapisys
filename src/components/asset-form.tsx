@@ -21,6 +21,9 @@ export type AssetData = {
   model: string | null;
   year: number | null;
   plate: string | null;
+  serial: string | null;
+  engine: string | null;
+  identifier: string | null;
 };
 
 export function AssetForm({
@@ -82,6 +85,15 @@ export function AssetForm({
             {(a11y) => (
               <NumericInput {...a11y} maxLength={4} className="font-mono" defaultValue={asset?.year ?? ""} />
             )}
+          </FormField>
+          <FormField name="serial" label="Serie (opcional)" error={errors.serial}>
+            {(a11y) => <Input {...a11y} className="font-mono" defaultValue={asset?.serial ?? ""} />}
+          </FormField>
+          <FormField name="engine" label="Motor (opcional)" error={errors.engine}>
+            {(a11y) => <Input {...a11y} className="font-mono" defaultValue={asset?.engine ?? ""} />}
+          </FormField>
+          <FormField name="identifier" label="Identificador (opcional)" error={errors.identifier}>
+            {(a11y) => <Input {...a11y} className="font-mono" defaultValue={asset?.identifier ?? ""} />}
           </FormField>
         </CellGrid>
       </PageSection>

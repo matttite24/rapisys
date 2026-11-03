@@ -126,7 +126,7 @@ async function EditForm({ params }: { params: IdParams }) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("assets")
-    .select("id, kind, name, brand, model, year, plate")
+    .select("id, kind, name, brand, model, year, plate, serial, engine, identifier")
     .eq("id", id)
     .eq("organization_id", orgId)
     .maybeSingle();

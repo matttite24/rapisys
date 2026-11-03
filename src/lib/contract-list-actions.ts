@@ -21,35 +21,9 @@ function friendly(error: DbError) {
   return "No se pudo completar la acción. Inténtalo de nuevo.";
 }
 
-const LIMITS: Record<string, number> = { name: 200, model: 100, serial: 100, engine: 100, identifier: 100 };
+const LIMITS = { name: 200 };
 
-function parseList(fd: FormData) {
-  const v = {
-    name: text(fd, "name"),
-    model: text(fd, "model"),
-    serial: text(fd, "serial"),
-    engine: text(fd, "engine"),
-    identifier: text(fd, "identifier"),
-    asset_id: text(fd, "asset_id"),
-  };
-  const fields: Record<string, string> = {};
-  if (!v.name) fields.name = "Escribe el nombre del activo.";
-  for (const [key, max] of Object.entries(LIMITS)) {
-    if (v[key as keyof typeof v].length > max) fields[key] = `Máximo ${max} caracteres.`;
-  }
-  return { v, fields };
-}
-
-// Datos de la lista que se corrigen después de crearla; el vínculo con el catálogo no cambia.
-const details = (v: ReturnType<typeof parseList>["v"]) => ({
-  name: v.name,
-  model: v.model || null,
-  serial: v.serial || null,
-  engine: v.engine || null,
-  identifier: v.identifier || null,
-});
-
-// Crear una lista pide solo el nombre. Si viene de un activo del catálogo, hereda su modelo.
+// Crear una lista pide solo el nombre. Si viene de un activo del catálogo, sus datos se leen del activo.
 export async function createList(org: string, contractId: string, formData: FormData): Promise<ListState> {
   const name = text(formData, "name");
   const assetId = text(formData, "asset_id");
@@ -67,19 +41,12 @@ export async function createList(org: string, contractId: string, formData: Form
     return { error: "Las listas se crean cuando el contrato está En ejecución." };
   }
 
-  let model: string | null = null;
-  if (assetId) {
-    const { data: asset } = await supabase.from("assets").select("model").eq("id", assetId).maybeSingle();
-    model = (asset?.model as string | null) ?? null;
-  }
-
   const { data, error } = await supabase
     .from("contract_lists")
     .insert({
       organization_id: contract.organization_id,
       contract_id: contractId,
       name,
-      model,
       asset_id: assetId || null,
     })
     .select("id")
@@ -89,19 +56,63 @@ export async function createList(org: string, contractId: string, formData: Form
   return { id: data.id as string };
 }
 
+// Corrige una lista ya creada. Si es de un activo del catálogo, los datos de la máquina
+// (tipo, marca, modelo, serie, motor, identificador) son del activo y se corrigen ahí.
 export async function updateList(
   org: string,
   contractId: string,
   listId: string,
   formData: FormData,
 ): Promise<ListState> {
-  const { v, fields } = parseList(formData);
+  const name = text(formData, "name");
+  const fields: Record<string, string> = {};
+  if (!name) fields.name = "Escribe el nombre del activo o de la lista.";
+  else if (name.length > LIMITS.name) fields.name = `Máximo ${LIMITS.name} caracteres.`;
+
+  const asset = {
+    brand: text(formData, "brand"),
+    model: text(formData, "model"),
+    serial: text(formData, "serial"),
+    engine: text(formData, "engine"),
+    identifier: text(formData, "identifier"),
+  };
+  const kind = text(formData, "kind");
+  for (const [key, value] of Object.entries(asset)) {
+    if (value.length > 100) fields[key] = "Máximo 100 caracteres.";
+  }
   if (Object.keys(fields).length) return { fields };
 
   const supabase = await createClient();
+  const { data: list } = await supabase
+    .from("contract_lists")
+    .select("asset_id")
+    .eq("id", listId)
+    .eq("contract_id", contractId)
+    .maybeSingle();
+  if (!list) return { error: "No encontramos la lista." };
+
+  if (list.asset_id) {
+    if (!(kind in ASSET_KIND_LABEL)) return { fields: { kind: "Elige el tipo de activo." } };
+    const { data, error } = await supabase
+      .from("assets")
+      .update({
+        kind: kind as AssetKind,
+        name,
+        brand: asset.brand || null,
+        model: asset.model || null,
+        serial: asset.serial || null,
+        engine: asset.engine || null,
+        identifier: asset.identifier || null,
+      })
+      .eq("id", list.asset_id)
+      .select("id");
+    if (error) return { error: friendly(error) };
+    if (!data?.length) return { error: "No tienes permiso para editar este activo." };
+  }
+
   const { data, error } = await supabase
     .from("contract_lists")
-    .update(details(v))
+    .update({ name })
     .eq("id", listId)
     .eq("contract_id", contractId)
     .select("id");
@@ -125,7 +136,13 @@ export async function deleteList(org: string, contractId: string, listId: string
   refresh(org, contractId);
 }
 
-export type AssetResult = { id: string; name: string; brand: string | null; model: string | null; plate: string | null };
+export type AssetResult = {
+  id: string;
+  name: string;
+  brand: string | null;
+  model: string | null;
+  serial: string | null;
+};
 
 // Busca activos del catálogo por nombre, marca, modelo o placa.
 export async function searchAssets(org: string, q: string): Promise<AssetResult[]> {
@@ -136,51 +153,69 @@ export async function searchAssets(org: string, q: string): Promise<AssetResult[
   const supabase = await createClient();
   let query = supabase
     .from("assets")
-    .select("id, name, brand, model, plate")
+    .select("id, name, brand, model, serial")
     .eq("organization_id", orgId)
     .order("name")
     .limit(30); // el selector avisa cuando llega a este tope
-  if (term) query = query.or(`name.ilike.%${term}%,brand.ilike.%${term}%,model.ilike.%${term}%,plate.ilike.%${term}%`);
+  if (term) query = query.or(`name.ilike.%${term}%,brand.ilike.%${term}%,model.ilike.%${term}%,serial.ilike.%${term}%,identifier.ilike.%${term}%,plate.ilike.%${term}%`);
   const { data } = await query;
   return (data ?? []) as AssetResult[];
 }
 
 export type QuickAssetState = { error?: string; fields?: Record<string, string>; asset?: AssetResult } | undefined;
 
-// Alta rápida de un activo en el catálogo, desde el cajón de búsqueda. Si ya existe uno con
-// ese nombre (sin distinguir mayúsculas) se reutiliza en vez de duplicarlo.
-export async function quickCreateAsset(
-  org: string,
-  name: string,
-  kind: string,
-  model: string,
-): Promise<QuickAssetState> {
-  const n = name.trim();
-  const m = model.trim();
+// Datos de un activo nuevo, desde el modal de crear lista.
+export type NewAsset = {
+  name: string;
+  kind: string;
+  brand: string;
+  model: string;
+  serial: string;
+  engine: string;
+  identifier: string;
+};
+
+// Alta de un activo en el catálogo. Si ya existe el mismo (mismo nombre y misma serie, sin
+// distinguir mayúsculas) se reutiliza en vez de duplicarlo.
+export async function quickCreateAsset(org: string, input: NewAsset): Promise<QuickAssetState> {
+  const v = Object.fromEntries(Object.entries(input).map(([k, val]) => [k, String(val ?? "").trim()])) as NewAsset;
   const fields: Record<string, string> = {};
-  if (!n) fields.name = "Escribe el nombre del activo.";
-  else if (n.length > 200) fields.name = "Máximo 200 caracteres.";
-  if (!(kind in ASSET_KIND_LABEL)) fields.kind = "Elige el tipo de activo.";
-  if (m.length > 100) fields.model = "Máximo 100 caracteres.";
+  if (!v.name) fields.name = "Escribe el nombre del activo.";
+  else if (v.name.length > 200) fields.name = "Máximo 200 caracteres.";
+  if (!(v.kind in ASSET_KIND_LABEL)) fields.kind = "Elige el tipo de activo.";
+  for (const key of ["brand", "model", "serial", "engine", "identifier"] as const) {
+    if (v[key].length > 100) fields[key] = "Máximo 100 caracteres.";
+  }
   if (Object.keys(fields).length) return { fields };
 
   const orgId = await getOrgId(org);
   if (!orgId) return { error: "No encontramos la organización." };
   const supabase = await createClient();
 
-  const { data: existing } = await supabase
+  const { data: sameName } = await supabase
     .from("assets")
-    .select("id, name, brand, model, plate")
+    .select("id, name, brand, model, serial")
     .eq("organization_id", orgId)
-    .ilike("name", n.replace(/[\\%_]/g, "\\$&"))
-    .limit(1)
-    .maybeSingle();
-  if (existing) return { asset: existing as AssetResult };
+    .ilike("name", v.name.replace(/[\\%_]/g, "\\$&"))
+    .limit(20);
+  const same = (sameName ?? []).find(
+    (a) => (a.serial ?? "").toLowerCase() === v.serial.toLowerCase(),
+  );
+  if (same) return { asset: same as AssetResult };
 
   const { data, error } = await supabase
     .from("assets")
-    .insert({ organization_id: orgId, kind: kind as AssetKind, name: n, model: m || null })
-    .select("id, name, brand, model, plate")
+    .insert({
+      organization_id: orgId,
+      kind: v.kind as AssetKind,
+      name: v.name,
+      brand: v.brand || null,
+      model: v.model || null,
+      serial: v.serial || null,
+      engine: v.engine || null,
+      identifier: v.identifier || null,
+    })
+    .select("id, name, brand, model, serial")
     .single();
   if (error) return { error: friendly(error) };
   return { asset: data as AssetResult };
