@@ -159,7 +159,7 @@ function BulkImport() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2.5" onClick={() => setOpen(true)}>
         <HugeiconsIcon icon={FileUploadIcon} className="size-4" />
         Carga masiva
       </Button>
