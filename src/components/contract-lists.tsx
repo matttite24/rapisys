@@ -11,6 +11,7 @@ import {
   EngineIcon,
   IdentityCardIcon,
   LeftToRightListBulletIcon,
+  Search01Icon,
   Tag01Icon,
   Tick02Icon,
 } from "@hugeicons/core-free-icons";
@@ -110,21 +111,27 @@ function AllLists({
         <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-5" />
       </button>
       <SheetContent side="left" className="gap-0 sm:max-w-md">
-        <SheetHeader className="border-b">
+        <SheetHeader>
           <SheetTitle>Listas del contrato</SheetTitle>
-          <SheetDescription>
+          <SheetDescription className="sr-only">
             {lists.length} {lists.length === 1 ? "lista" : "listas"}. Elige una para abrirla.
           </SheetDescription>
         </SheetHeader>
-        <div className="border-b p-4">
-          <Input
+        <div className="relative border-b">
+          <HugeiconsIcon
+            icon={Search01Icon}
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
             type="search"
             autoFocus
             autoComplete="off"
             aria-label="Buscar lista"
-            placeholder="Nombre, marca, modelo o serie"
+            placeholder="Buscar por nombre, marca, modelo o serie"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            className="h-12 w-full bg-transparent pr-4 pl-12 text-sm outline-none placeholder:text-muted-foreground focus-visible:bg-background"
           />
         </div>
         <ul aria-label="Listas" className="min-h-0 flex-1 divide-y overflow-y-auto">
