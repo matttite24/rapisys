@@ -4,6 +4,16 @@ import { startTransition, useEffect, useRef, useState } from "react";
 import { Add01Icon, Delete02Icon, Edit02Icon, LeftToRightListBulletIcon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FormField } from "@/components/form-field";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CellGrid } from "@/components/page-section";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -129,10 +139,7 @@ export function ListInfo({
     setError(undefined);
     const res = await deleteList(org, contractId, list.id);
     setPending(false);
-    if (res?.error) {
-      setError(res.error);
-      setConfirming(false);
-    }
+    if (res?.error) setError(res.error);
   }
 
   return (
@@ -144,47 +151,53 @@ export function ListInfo({
         <Datum label="Motor" value={list.engine} />
         <Datum label="Identificador" value={list.identifier} />
         <div className="flex items-start gap-1">
-          {canEdit &&
-            (confirming ? (
-              <span className="flex flex-col gap-2">
-                <span className="max-w-48 text-xs text-muted-foreground">
-                  Se eliminan también sus {lineCount} {lineCount === 1 ? "línea" : "líneas"}.
-                </span>
-                <span className="flex gap-2">
-                  <Button variant="destructive" disabled={pending} onClick={() => void remove()}>
-                    Eliminar
-                  </Button>
-                  <Button variant="outline" onClick={() => setConfirming(false)}>
-                    No
-                  </Button>
-                </span>
-              </span>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 text-muted-foreground"
-                  aria-label="Editar los datos de la lista"
-                  aria-pressed={editing}
-                  onClick={onEdit}
-                >
-                  <HugeiconsIcon icon={Edit02Icon} className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
-                  aria-label="Eliminar la lista"
-                  onClick={() => setConfirming(true)}
-                >
-                  <HugeiconsIcon icon={Delete02Icon} className="size-4" />
-                </Button>
-              </>
-            ))}
+          {canEdit && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground"
+                aria-label="Editar los datos de la lista"
+                aria-pressed={editing}
+                onClick={onEdit}
+              >
+                <HugeiconsIcon icon={Edit02Icon} className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
+                aria-label="Eliminar la lista"
+                disabled={pending}
+                onClick={() => setConfirming(true)}
+              >
+                <HugeiconsIcon icon={Delete02Icon} className="size-4" />
+              </Button>
+            </>
+          )}
         </div>
       </CellGrid>
       {error && <p role="alert" className="border-t p-3 text-sm text-destructive">{error}</p>}
+
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar la lista de {list.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {lineCount === 0
+                ? "La lista no tiene items."
+                : `Se eliminan también sus ${lineCount} ${lineCount === 1 ? "línea" : "líneas"}.`}{" "}
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => void remove()}>
+              Sí, eliminar lista
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
