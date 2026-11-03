@@ -20,4 +20,5 @@ select
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'assets' and column_name = 'serial'
   )                                                                        as "10_asset_machine_data",
-  to_regproc('public.add_contract_lines') is not null                      as "11_add_contract_lines";
+  to_regproc('public.add_contract_lines') is not null                      as "11_add_contract_lines",
+  to_regproc('public.contract_list_counts') is not null                    as "12_list_limits_and_counts";

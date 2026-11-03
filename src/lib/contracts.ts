@@ -53,3 +53,7 @@ export const STATUS_DOT: Record<string, string> = {
   pending_payment: "bg-amber-500",
   paid: "bg-emerald-600",
 };
+
+// Tope de líneas de una lista del contrato, y tamaño de página de la tabla.
+export const MAX_LINES_PER_LIST = 1000;
+export const LINES_PAGE_SIZE = 100;

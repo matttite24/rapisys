@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { STATUS_ORDER } from "@/lib/contracts";
+import { MAX_LINES_PER_LIST, STATUS_ORDER } from "@/lib/contracts";
 import { parseDecimal } from "@/lib/money";
 import { isUnit } from "@/lib/units";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +19,8 @@ function friendly(error: DbError) {
   if (isSchemaError(error)) return SCHEMA_MESSAGE;
   return "No se pudo completar la acción. Inténtalo de nuevo.";
 }
+
+const LIST_FULL = `La lista llegó al máximo de ${MAX_LINES_PER_LIST.toLocaleString("es-EC")} líneas.`;
 
 type LineValues = {
   partNumber: string | null;
@@ -103,6 +105,7 @@ export async function addLines(
     if (error.message === "not_in_progress") {
       return { error: "Los items se cargan cuando el contrato está En ejecución." };
     }
+    if (error.message === "list_full") return { error: LIST_FULL };
     return { error: friendly(error) };
   }
   refresh(org, contractId);
@@ -134,6 +137,7 @@ export async function addLine(
     if (error.message === "not_in_progress") {
       return { error: "Los items se cargan cuando el contrato está En ejecución." };
     }
+    if (error.message === "list_full") return { error: LIST_FULL };
     return { error: friendly(error) };
   }
   refresh(org, contractId);
@@ -231,4 +235,25 @@ export async function setContractStatus(
   if (!data?.length) return { error: "No tienes permiso para cambiar el estado." };
   revalidatePath(`/${org}/contratos`);
   refresh(org, contractId);
+}
+
+// Número de parte y descripción de todas las líneas de una lista (máx. 1.000), para avisar de
+// repetidos al revisar una carga masiva. Se pide solo al abrir la carga.
+export async function getListKeys(
+  contractId: string,
+  listId: string,
+): Promise<{ part: string; description: string }[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("contract_items")
+    .select("part_number, description")
+    .eq("contract_id", contractId)
+    .eq("list_id", listId)
+    .order("created_at")
+    .order("id")
+    .limit(MAX_LINES_PER_LIST);
+  return ((data ?? []) as { part_number: string | null; description: string }[]).map((r) => ({
+    part: r.part_number ?? "",
+    description: r.description,
+  }));
 }

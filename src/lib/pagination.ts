@@ -11,9 +11,9 @@ export function readPage(search: Search): number {
 }
 
 // Rango [desde, hasta] (incluyente) de una página, para `.range()`.
-export const pageRange = (page: number): [number, number] => [
-  (page - 1) * PAGE_SIZE,
-  page * PAGE_SIZE - 1,
+export const pageRange = (page: number, size = PAGE_SIZE): [number, number] => [
+  (page - 1) * size,
+  page * size - 1,
 ];
 
-export const pageCount = (total: number) => Math.max(1, Math.ceil(total / PAGE_SIZE));
+export const pageCount = (total: number, size = PAGE_SIZE) => Math.max(1, Math.ceil(total / size));

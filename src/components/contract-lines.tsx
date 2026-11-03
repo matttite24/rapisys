@@ -1,11 +1,13 @@
 "use client";
 
 import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
-import { startTransition, useEffect, useOptimistic, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { startTransition, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { cn } from "@/lib/utils";
-import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { findDuplicates } from "@/lib/duplicates";
+import { Pager } from "@/components/pager";
+import { pageCount } from "@/lib/pagination";
 import { BulkImport } from "@/components/bulk-import";
 import { ListDetailsForm, ListInfo, ListTabs, NewListDialog, type ListView } from "@/components/contract-lists";
 import { FormField } from "@/components/form-field";
@@ -25,7 +27,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { addLine, removeLine, setContractStatus, updateLine, type LineState } from "@/lib/contract-actions";
-import { STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
+import { LINES_PAGE_SIZE, MAX_LINES_PER_LIST, STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
 import { parseDecimal } from "@/lib/money";
 import { UNITS, isUnit, unitLabel } from "@/lib/units";
 
@@ -40,6 +42,9 @@ const TD = cn(TABLE_TD, "py-1.5 align-middle");
 export type LineView = {
   id: string;
   listId: string;
+  // Posición en la lista (1.º, 2.º…) y, si está repetida, a qué línea se parece.
+  n: number;
+  dupOf?: number;
   partNumber: string;
   description: string;
   quantity: number;
@@ -168,43 +173,93 @@ type OptimisticAction =
   | { type: "update"; line: LineView }
   | { type: "remove"; id: string };
 
-// Las listas del contrato (una por activo) con sus líneas. La lista y su formulario
-// comparten estado: la línea aparece al instante y el servidor la confirma por detrás.
+// Búsqueda dentro de la lista abierta: va al servidor (con una pausa corta al escribir) y vuelve a la página 1.
+function LineSearch({ q, onSearch }: { q: string; onSearch: (q: string) => void }) {
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [value, setValue] = useState(q);
+  return (
+    <div className="relative">
+      <HugeiconsIcon
+        icon={Search01Icon}
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground"
+      />
+      <input
+        type="search"
+        aria-label="Buscar en la lista"
+        placeholder="Buscar parte o descripción"
+        autoComplete="off"
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          clearTimeout(timer.current);
+          timer.current = setTimeout(() => onSearch(e.target.value.trim()), 350);
+        }}
+        className="h-7 w-52 border bg-background pr-2 pl-7 font-sans text-xs normal-case tracking-normal outline-none placeholder:text-muted-foreground focus-visible:border-ring"
+      />
+    </div>
+  );
+}
+
+// Las listas del contrato (una por activo). Solo llega la página abierta de la lista abierta:
+// el resto se pide al servidor al cambiar de lista, de página o al buscar. La lista y su
+// formulario comparten estado: la línea aparece al instante y el servidor la confirma por detrás.
 export function ReferenceList({
   org,
   contractId,
   lists,
   lines,
   canAdd,
+  basePath,
+  activeId,
+  page,
+  total,
+  q,
 }: {
   org: string;
   contractId: string;
   lists: ListView[];
   lines: LineView[];
   canAdd: boolean;
+  basePath: string;
+  activeId: string | null;
+  page: number;
+  // Líneas que cumplen la búsqueda (todas las de la lista si no hay búsqueda).
+  total: number;
+  q: string;
 }) {
+  const router = useRouter();
+  const [navigating, startNav] = useTransition();
   const [shown, apply] = useOptimistic(lines, (state, a: OptimisticAction) => {
     if (a.type === "add") return [...state, a.line];
     if (a.type === "update") return state.map((l) => (l.id === a.line.id ? a.line : l));
     return state.filter((l) => l.id !== a.id);
   });
   const [error, setError] = useState<string>();
-  const [activeId, setActiveId] = useState<string | null>(null);
   // Qué muestra el panel gris de arriba: una línea (agregar o editar) o los datos de la lista.
   const [panel, setPanel] = useState<"line" | "list-edit">("line");
   // Crear una lista va en un modal aparte, no en el panel.
   const [newOpen, setNewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Si la lista abierta ya no existe (se eliminó), se vuelve a la primera.
   const active = lists.find((l) => l.id === activeId) ?? lists[0] ?? null;
-  const listLines = active ? shown.filter((l) => l.listId === active.id) : [];
+  // Altas y bajas aún sin confirmar: ajustan los contadores al instante.
+  const delta = shown.length - lines.length;
   const counts: Record<string, number> = {};
-  for (const l of shown) counts[l.listId] = (counts[l.listId] ?? 0) + 1;
+  for (const l of lists) counts[l.id] = l.count + (l.id === active?.id ? delta : 0);
+  const listCount = active ? counts[active.id] : 0;
 
-  const editing = listLines.find((l) => l.id === editingId) ?? null;
-  const editingN = editing ? listLines.indexOf(editing) + 1 : 0;
+  const editing = shown.find((l) => l.id === editingId) ?? null;
   const mode = panel;
+  const pages = pageCount(total, LINES_PAGE_SIZE);
+
+  function go(next: { lista?: string; page?: number; q?: string }) {
+    const sp = new URLSearchParams();
+    sp.set("lista", next.lista ?? active?.id ?? "");
+    if (next.q) sp.set("q", next.q);
+    if (next.page && next.page > 1) sp.set("page", String(next.page));
+    startNav(() => router.push(`${basePath}?${sp}`, { scroll: false }));
+  }
 
   function resetPanel() {
     setPanel("line");
@@ -212,8 +267,8 @@ export function ReferenceList({
   }
 
   function select(id: string) {
-    setActiveId(id);
     resetPanel();
+    go({ lista: id });
   }
 
   function remove(id: string) {
@@ -226,7 +281,15 @@ export function ReferenceList({
     });
   }
 
-  const title = `Editar línea ${editingN}`;
+  // La línea nueva va al final: se ve al instante solo si esa página es la última y tiene lugar.
+  const addVisible = !q && page === pages && shown.length < LINES_PAGE_SIZE;
+  function onAdd(line: LineView) {
+    if (addVisible) apply({ type: "add", line: { ...line, n: listCount + 1 } });
+  }
+  // Si no estaba a la vista, se lleva al usuario a la última página, donde quedó.
+  function onAdded() {
+    if (!addVisible) go({ page: pageCount(total + 1, LINES_PAGE_SIZE) });
+  }
 
   if (lists.length === 0 && !canAdd) {
     return (
@@ -266,19 +329,22 @@ export function ReferenceList({
     );
   }
 
+  const full = listCount >= MAX_LINES_PER_LIST;
+  const label = q
+    ? `${total} de ${listCount} ${listCount === 1 ? "línea" : "líneas"}`
+    : `${listCount} ${listCount === 1 ? "línea" : "líneas"} de referencia`;
+
   return (
     <>
       {newListDialog}
-      {lists.length > 0 && (
-        <ListTabs
-          lists={lists}
-          counts={counts}
-          activeId={active?.id ?? null}
-          canAdd={canAdd}
-          onSelect={select}
-          onNew={() => setNewOpen(true)}
-        />
-      )}
+      <ListTabs
+        lists={lists}
+        counts={counts}
+        activeId={active?.id ?? null}
+        canAdd={canAdd}
+        onSelect={select}
+        onNew={() => setNewOpen(true)}
+      />
       {active && (
         <ListInfo
           // Al cambiar de lista se reinicia el estado de confirmación.
@@ -286,7 +352,7 @@ export function ReferenceList({
           org={org}
           contractId={contractId}
           list={active}
-          lineCount={counts[active.id] ?? 0}
+          lineCount={listCount}
           canEdit={canAdd}
           editing={mode === "list-edit"}
           onEdit={() => {
@@ -302,32 +368,38 @@ export function ReferenceList({
           {/* Agregar una línea es lo habitual: va sin barra de título para ocupar menos alto. */}
           {mode === "line" && editing && (
             <div className="flex h-10 items-center justify-between px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
-              <span>{title}</span>
-              {(
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
-                  onClick={resetPanel}
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
-                  Cancelar
-                </button>
-              )}
+              <span>Editar línea {editing.n}</span>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                onClick={resetPanel}
+              >
+                <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+                Cancelar
+              </button>
             </div>
           )}
           <div className={cn("px-6 pb-4", editing ? "pt-0" : "pt-4")}>
             {mode === "line" && active ? (
-              <LineForm
-                // Al cambiar de línea o de lista el formulario se rearma con sus valores.
-                key={`${active.id}:${editing?.id ?? "new"}`}
-                org={org}
-                contractId={contractId}
-                listId={active.id}
-                editing={editing}
-                onAdd={(line) => apply({ type: "add", line })}
-                onUpdate={(line) => apply({ type: "update", line })}
-                onDone={() => setEditingId(null)}
-              />
+              full && !editing ? (
+                <p className="py-2 text-sm">
+                  La lista llegó al máximo de {MAX_LINES_PER_LIST.toLocaleString("es-EC")} líneas. Crea otra lista para
+                  seguir cargando.
+                </p>
+              ) : (
+                <LineForm
+                  // Al cambiar de línea o de lista el formulario se rearma con sus valores.
+                  key={`${active.id}:${editing?.id ?? "new"}`}
+                  org={org}
+                  contractId={contractId}
+                  listId={active.id}
+                  editing={editing}
+                  onAdd={onAdd}
+                  onAdded={onAdded}
+                  onUpdate={(line) => apply({ type: "update", line })}
+                  onDone={() => setEditingId(null)}
+                />
+              )
             ) : (
               active && (
                 <ListDetailsForm
@@ -346,29 +418,55 @@ export function ReferenceList({
 
       {active && (
         <PageSection
-          label={`${listLines.length} ${listLines.length === 1 ? "línea" : "líneas"} de referencia`}
-          meta={canAdd ? <BulkImport org={org} contractId={contractId} listId={active.id} listName={active.name} existing={listLines.map((l) => ({ part: l.partNumber, description: l.description }))} /> : undefined}
+          label={label}
+          meta={
+            <span className="flex items-center gap-2">
+              <LineSearch key={active.id} q={q} onSearch={(next) => go({ q: next })} />
+              {canAdd && (
+                <BulkImport
+                  org={org}
+                  contractId={contractId}
+                  listId={active.id}
+                  listName={active.name}
+                  listCount={listCount}
+                />
+              )}
+            </span>
+          }
           className="p-0"
         >
-          {listLines.length === 0 ? (
-            <p className="p-6 text-muted-foreground">
-              {canAdd ? "Esta lista aún no tiene items. Agrega el primero arriba." : "Esta lista no tiene items."}
-            </p>
-          ) : (
-            <>
-              {error && <p role="alert" className="border-b p-3 text-sm text-destructive">{error}</p>}
-              <LinesTable
-                lines={listLines}
-                editingId={editingId}
-                canEdit={canAdd}
-                onEdit={(id) => {
-                  setPanel("line");
-                  setEditingId(id);
-                }}
-                onRemove={remove}
-              />
-            </>
-          )}
+          <div className={cn("transition-opacity", navigating && "opacity-50")} aria-busy={navigating}>
+            {shown.length === 0 ? (
+              <p className="p-6 text-muted-foreground">
+                {q
+                  ? `Ninguna línea coincide con «${q}».`
+                  : canAdd
+                    ? "Esta lista aún no tiene items. Agrega el primero arriba."
+                    : "Esta lista no tiene items."}
+              </p>
+            ) : (
+              <>
+                {error && <p role="alert" className="border-b p-3 text-sm text-destructive">{error}</p>}
+                <LinesTable
+                  lines={shown}
+                  editingId={editingId}
+                  canEdit={canAdd}
+                  onEdit={(id) => {
+                    setPanel("line");
+                    setEditingId(id);
+                  }}
+                  onRemove={remove}
+                />
+              </>
+            )}
+            <Pager
+              basePath={basePath}
+              page={page}
+              total={total}
+              size={LINES_PAGE_SIZE}
+              params={{ lista: active.id, ...(q ? { q } : {}) }}
+            />
+          </div>
         </PageSection>
       )}
     </>
@@ -388,11 +486,6 @@ function LinesTable({
   onEdit: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
-  // Repetidos dentro de la lista (mismo número de parte, o misma descripción si no lo tiene).
-  const dups = findDuplicates(
-    lines.map((l) => ({ part: l.partNumber, description: l.description })),
-    [],
-  );
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -408,12 +501,12 @@ function LinesTable({
           </tr>
         </thead>
         <tbody>
-          {lines.map((l, i) => (
+          {lines.map((l) => (
             <LineRow
               key={l.id}
               line={l}
-              n={i + 1}
-              duplicateOf={dups[i]?.ref}
+              n={l.n}
+              duplicateOf={l.dupOf}
               editing={l.id === editingId}
               canEdit={canEdit}
               onEdit={onEdit}
@@ -519,6 +612,7 @@ function LineForm({
   listId,
   editing,
   onAdd,
+  onAdded,
   onUpdate,
   onDone,
 }: {
@@ -527,6 +621,7 @@ function LineForm({
   listId: string;
   editing: LineView | null;
   onAdd: (line: LineView) => void;
+  onAdded: () => void;
   onUpdate: (line: LineView) => void;
   onDone: () => void;
 }) {
@@ -564,7 +659,7 @@ function LineForm({
     }
 
     setState(undefined);
-    const line = { listId, partNumber, description, quantity, unit, cpc };
+    const line = { listId, n: editing?.n ?? 0, partNumber, description, quantity, unit, cpc };
 
     if (editing) {
       // La fila cambia ya; el formulario sale de edición cuando el servidor confirma.
@@ -595,6 +690,8 @@ function LineForm({
           }
         }
         setState(res);
+      } else {
+        onAdded();
       }
     });
   }

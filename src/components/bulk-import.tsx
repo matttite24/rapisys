@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useRef, useState } from "react";
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Cancel01Icon, FileUploadIcon, ImageUploadIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/sheet";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { addLines } from "@/lib/contract-actions";
+import { addLines, getListKeys } from "@/lib/contract-actions";
+import { MAX_LINES_PER_LIST } from "@/lib/contracts";
 import { findDuplicates } from "@/lib/duplicates";
 import { groupWords, parseTable, type OcrLine, type OcrWord, type ParsedRow } from "@/lib/ocr-table";
 import { cn } from "@/lib/utils";
@@ -206,20 +207,75 @@ async function fillQuantities(rows: ParsedRow[], words: OcrWord[], ocr: Ocr) {
   }
 }
 
+const REVIEW_PAGE = 100;
+
+// Una fila de la revisión. Está memorizada: al escribir en una fila no se redibujan las demás.
+const ReviewRow = memo(function ReviewRow({
+  row: r,
+  index: i,
+  dupKind,
+  dupRef,
+  errors,
+  onPatch,
+  onRemove,
+}: {
+  row: Row;
+  index: number;
+  dupKind?: "batch" | "existing";
+  dupRef?: number;
+  errors: Record<string, string>;
+  onPatch: (id: number, change: Partial<Row>) => void;
+  onRemove: (id: number) => void;
+}) {
+  const err = (f: string) => errors[`${i}.${f}`];
+  return (
+    <tr className={cn("border-b align-top last:border-b-0", r.review && "bg-amber-500/10")}>
+      <td className="num px-4 py-2 text-right text-muted-foreground">{i + 1}</td>
+      <td className="px-2 py-1.5">
+        <Input aria-label={`Número de parte, fila ${i + 1}`} aria-invalid={!!err("part_number") || undefined} className="h-8 font-mono" value={r.part} onChange={(e) => onPatch(r.id, { part: e.target.value })} />
+      </td>
+      <td className="px-2 py-1.5">
+        <Input aria-label={`Descripción, fila ${i + 1}`} aria-invalid={!!err("description") || undefined} className="h-8" value={r.description} onChange={(e) => onPatch(r.id, { description: e.target.value })} />
+        {dupKind && (
+          <p className="pt-1 text-xs font-medium text-destructive">
+            {dupKind === "batch"
+              ? `Duplicado: igual a la fila ${dupRef} de esta carga`
+              : `Ya está en la lista (línea ${dupRef})`}
+          </p>
+        )}
+        {r.review && r.raw && <p className="pt-1 font-mono text-[0.6875rem] text-muted-foreground">Leído: {r.raw}</p>}
+        {(err("description") || err("part_number")) && <p className="pt-1 text-xs text-destructive">{err("description") ?? err("part_number")}</p>}
+      </td>
+      <td className="px-2 py-1.5">
+        <Input aria-label={`Cantidad, fila ${i + 1}`} aria-invalid={!!err("quantity") || undefined} inputMode="decimal" className="h-8 font-mono" value={r.quantity} onChange={(e) => onPatch(r.id, { quantity: e.target.value })} />
+        {err("quantity") && <p className="pt-1 text-xs text-destructive">{err("quantity")}</p>}
+      </td>
+      <td className="px-2 py-1.5">
+        <Input aria-label={`CPC, fila ${i + 1}`} aria-invalid={!!err("cpc") || undefined} className="h-8 font-mono" value={r.cpc} onChange={(e) => onPatch(r.id, { cpc: e.target.value })} />
+      </td>
+      <td className="px-3 py-1.5">
+        <Button type="button" variant="ghost" size="icon" className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Quitar la fila ${i + 1}`} onClick={() => onRemove(r.id)}>
+          <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+        </Button>
+      </td>
+    </tr>
+  );
+});
+
 // Carga masiva de la lista abierta: captura → lectura (OCR) → revisión editable → carga.
 export function BulkImport({
   org,
   contractId,
   listId,
   listName,
-  existing,
+  listCount,
 }: {
   org: string;
   contractId: string;
   listId: string;
   listName: string;
-  // Lo que la lista ya tiene, para avisar de repetidos al cargar.
-  existing: { part: string; description: string }[];
+  // Cuántas líneas tiene la lista (para respetar el tope al cargar).
+  listCount: number;
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("start");
@@ -234,6 +290,9 @@ export function BulkImport({
   const [dragging, setDragging] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [onlyDup, setOnlyDup] = useState(false);
+  // Lo que la lista ya tiene (se pide al abrir), para avisar de repetidos.
+  const [existing, setExisting] = useState<{ part: string; description: string }[]>([]);
+  const [reviewPage, setReviewPage] = useState(0);
   const nextId = useRef(1);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -251,6 +310,7 @@ export function BulkImport({
     setRowErrors({});
     setSaving(false);
     setOnlyDup(false);
+    setReviewPage(0);
   }
 
   async function start(file: Blob) {
@@ -302,9 +362,10 @@ export function BulkImport({
   }, [open, step]);
 
   // Tocar una fila la da por revisada: se le quita el resaltado.
-  function patch(id: number, change: Partial<Row>) {
+  const patch = useCallback((id: number, change: Partial<Row>) => {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...change, review: change.review ?? false } : r)));
-  }
+  }, []);
+  const removeRow = useCallback((id: number) => setRows((rs) => rs.filter((x) => x.id !== id)), []);
 
   function load() {
     if (saving) return;
@@ -331,11 +392,20 @@ export function BulkImport({
   }
 
   const toReview = rows.filter((r) => r.review).length;
-  const dups = findDuplicates(rows, existing);
+  const dups = useMemo(() => findDuplicates(rows, existing), [rows, existing]);
   const dupCount = dups.filter(Boolean).length;
   const repeats = dups.filter((d) => d?.kind === "batch").length;
   // Si ya no quedan duplicados, el filtro "solo duplicados" no tiene sentido.
   const showOnlyDup = onlyDup && dupCount > 0;
+
+  // Con muchas filas se revisa por páginas: dibujar cientos de campos editables a la vez es pesado.
+  const visible = rows.map((_, i) => i).filter((i) => !showOnlyDup || dups[i]);
+  const reviewPages = Math.max(1, Math.ceil(visible.length / REVIEW_PAGE));
+  const safePage = Math.min(reviewPage, reviewPages - 1);
+  const pageIdx = visible.slice(safePage * REVIEW_PAGE, (safePage + 1) * REVIEW_PAGE);
+
+  // El tope de la lista: lo ya cargado más lo nuevo no puede pasar de MAX_LINES_PER_LIST.
+  const overBy = listCount + rows.length - MAX_LINES_PER_LIST;
 
   // Quita lo repetido dentro de lo que se va a cargar (deja la primera aparición).
   // Lo que ya está en la lista no se toca solo: puede ser a propósito.
@@ -348,7 +418,15 @@ export function BulkImport({
 
   return (
     <>
-      <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2.5" onClick={() => setOpen(true)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1.5 px-2.5"
+        onClick={() => {
+          setOpen(true);
+          void getListKeys(contractId, listId).then(setExisting);
+        }}
+      >
         <HugeiconsIcon icon={FileUploadIcon} className="size-4" />
         Carga masiva
       </Button>
@@ -467,7 +545,10 @@ export function BulkImport({
                   </p>
                   {dupCount > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="outline" size="sm" aria-pressed={showOnlyDup} onClick={() => setOnlyDup((v) => !v)}>
+                      <Button type="button" variant="outline" size="sm" aria-pressed={showOnlyDup} onClick={() => {
+                          setOnlyDup((v) => !v);
+                          setReviewPage(0);
+                        }}>
                         {showOnlyDup ? "Ver todas las filas" : "Ver solo duplicados"}
                       </Button>
                       {repeats > 0 && (
@@ -505,55 +586,51 @@ export function BulkImport({
                         </td>
                       </tr>
                     )}
-                    {rows.map((r, i) => {
-                      if (showOnlyDup && !dups[i]) return null;
-                      const dup = dups[i];
-                      const err = (f: string) => rowErrors[`${i}.${f}`];
-                      return (
-                        <tr key={r.id} className={cn("border-b align-top last:border-b-0", r.review && "bg-amber-500/10")}>
-                          <td className="num px-4 py-2 text-right text-muted-foreground">{i + 1}</td>
-                          <td className="px-2 py-1.5">
-                            <Input aria-label={`Número de parte, fila ${i + 1}`} aria-invalid={!!err("part_number") || undefined} className="h-8 font-mono" value={r.part} onChange={(e) => patch(r.id, { part: e.target.value })} />
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <Input aria-label={`Descripción, fila ${i + 1}`} aria-invalid={!!err("description") || undefined} className="h-8" value={r.description} onChange={(e) => patch(r.id, { description: e.target.value })} />
-                            {dup && (
-                              <p className="pt-1 text-xs font-medium text-destructive">
-                                {dup.kind === "batch"
-                                  ? `Duplicado: igual a la fila ${dup.ref} de esta carga`
-                                  : `Ya está en la lista (línea ${dup.ref})`}
-                              </p>
-                            )}
-                            {r.review && r.raw && <p className="pt-1 font-mono text-[0.6875rem] text-muted-foreground">Leído: {r.raw}</p>}
-                            {(err("description") || err("part_number")) && <p className="pt-1 text-xs text-destructive">{err("description") ?? err("part_number")}</p>}
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <Input aria-label={`Cantidad, fila ${i + 1}`} aria-invalid={!!err("quantity") || undefined} inputMode="decimal" className="h-8 font-mono" value={r.quantity} onChange={(e) => patch(r.id, { quantity: e.target.value })} />
-                            {err("quantity") && <p className="pt-1 text-xs text-destructive">{err("quantity")}</p>}
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <Input aria-label={`CPC, fila ${i + 1}`} aria-invalid={!!err("cpc") || undefined} className="h-8 font-mono" value={r.cpc} onChange={(e) => patch(r.id, { cpc: e.target.value })} />
-                          </td>
-                          <td className="px-3 py-1.5">
-                            <Button type="button" variant="ghost" size="icon" className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Quitar la fila ${i + 1}`} onClick={() => setRows((rs) => rs.filter((x) => x.id !== r.id))}>
-                              <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {pageIdx.map((i) => (
+                      <ReviewRow
+                        key={rows[i].id}
+                        row={rows[i]}
+                        index={i}
+                        dupKind={dups[i]?.kind}
+                        dupRef={dups[i]?.ref}
+                        errors={rowErrors}
+                        onPatch={patch}
+                        onRemove={removeRow}
+                      />
+                    ))}
                   </tbody>
                 </table>
               </div>
+              {reviewPages > 1 && (
+                <div className="flex items-center justify-between gap-4 border-t px-4 py-2 font-mono text-xs uppercase tracking-[0.08em]">
+                  <Button type="button" variant="outline" size="sm" disabled={safePage === 0} onClick={() => setReviewPage(safePage - 1)}>
+                    ← Anteriores
+                  </Button>
+                  <span className="text-muted-foreground">
+                    Filas {safePage * REVIEW_PAGE + 1}–{Math.min(visible.length, (safePage + 1) * REVIEW_PAGE)} de {visible.length}
+                  </span>
+                  <Button type="button" variant="outline" size="sm" disabled={safePage >= reviewPages - 1} onClick={() => setReviewPage(safePage + 1)}>
+                    Siguientes →
+                  </Button>
+                </div>
+              )}
             </>
           )}
           </div>
 
           {step === "review" && (
             <div className="relative z-10 shrink-0 border-t bg-popover [box-shadow:0_-8px_16px_-10px_color-mix(in_oklch,var(--foreground)_30%,transparent)]">
+              {overBy > 0 && (
+                <div className="border-b p-4">
+                  <FieldError>
+                    La lista tendría {(listCount + rows.length).toLocaleString("es-EC")} líneas y el máximo es{" "}
+                    {MAX_LINES_PER_LIST.toLocaleString("es-EC")}. Quita {overBy} {overBy === 1 ? "fila" : "filas"} para poder cargar.
+                  </FieldError>
+                </div>
+              )}
               {error && <div className="border-b p-4"><FieldError>{error}</FieldError></div>}
               <div className="flex flex-wrap gap-2 p-4">
-                <Button type="button" className="h-10" disabled={saving || rows.length === 0} onClick={load}>
+                <Button type="button" className="h-10" disabled={saving || rows.length === 0 || overBy > 0} onClick={load}>
                   {saving ? "Cargando…" : `Cargar ${rows.length} ${rows.length === 1 ? "línea" : "líneas"}`}
                 </Button>
                 <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={reset}>

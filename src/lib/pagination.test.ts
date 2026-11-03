@@ -18,4 +18,10 @@ describe("paginación", () => {
     expect(pageCount(PAGE_SIZE)).toBe(1);
     expect(pageCount(PAGE_SIZE + 1)).toBe(2);
   });
+
+  it("acepta otro tamaño de página", () => {
+    expect(pageRange(3, 100)).toEqual([200, 299]);
+    expect(pageCount(1000, 100)).toBe(10);
+    expect(pageCount(1001, 100)).toBe(11);
+  });
 });

@@ -8,13 +8,15 @@ export function Pager({
   page,
   total,
   params = {},
+  size,
 }: {
   basePath: string;
   page: number;
   total: number;
   params?: Record<string, string>;
+  size?: number;
 }) {
-  const pages = pageCount(total);
+  const pages = pageCount(total, size);
   if (pages <= 1) return null;
 
   const href = (p: number) => {
