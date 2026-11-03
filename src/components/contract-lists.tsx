@@ -14,7 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CellGrid } from "@/components/page-section";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -103,12 +102,13 @@ export function ListTabs({
   );
 }
 
+// Dato del activo en línea: "SERIE  8LDCK…". El nombre ya está en la pestaña, no se repite.
 function Datum({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1">
+    <span className="inline-flex min-w-0 items-baseline gap-2">
       <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">{label}</span>
-      <span className="break-words">{value || "—"}</span>
-    </div>
+      <span className="break-all font-mono text-sm">{value || "—"}</span>
+    </span>
   );
 }
 
@@ -144,13 +144,14 @@ export function ListInfo({
 
   return (
     <div className={cn("border-b", editing && "bg-muted")}>
-      <CellGrid className="border-0 md:grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto]">
-        <Datum label="Activo" value={list.name} />
-        <Datum label="Modelo" value={list.model} />
-        <Datum label="Serie" value={list.serial} />
-        <Datum label="Motor" value={list.engine} />
-        <Datum label="Identificador" value={list.identifier} />
-        <div className="flex items-start gap-1">
+      <div className="flex items-center justify-between gap-4 px-6 py-1.5">
+        <div className="flex min-w-0 flex-wrap gap-x-8 gap-y-1">
+          <Datum label="Modelo" value={list.model} />
+          <Datum label="Serie" value={list.serial} />
+          <Datum label="Motor" value={list.engine} />
+          <Datum label="Identificador" value={list.identifier} />
+        </div>
+        <div className="-mr-2 flex shrink-0 items-center gap-1">
           {canEdit && (
             <>
               <Button
@@ -176,7 +177,7 @@ export function ListInfo({
             </>
           )}
         </div>
-      </CellGrid>
+      </div>
       {error && <p role="alert" className="border-t p-3 text-sm text-destructive">{error}</p>}
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
