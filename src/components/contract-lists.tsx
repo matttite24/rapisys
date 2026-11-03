@@ -1,8 +1,18 @@
 "use client";
 
 import { startTransition, useEffect, useRef, useState } from "react";
-import { Add01Icon, Delete02Icon, Edit02Icon, LeftToRightListBulletIcon, Tick02Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Add01Icon,
+  BarCode01Icon,
+  Car01Icon,
+  Delete02Icon,
+  Edit02Icon,
+  EngineIcon,
+  IdentityCardIcon,
+  LeftToRightListBulletIcon,
+  Tick02Icon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { FormField } from "@/components/form-field";
 import {
   AlertDialog,
@@ -102,13 +112,16 @@ export function ListTabs({
   );
 }
 
-// Dato del activo en línea: "SERIE  8LDCK…". El nombre ya está en la pestaña, no se repite.
-function Datum({ label, value }: { label: string; value: string }) {
+// Dato del activo con su ícono: etiqueta pequeña arriba y valor abajo. El nombre ya está en la pestaña.
+function Datum({ icon, label, value }: { icon: IconSvgElement; label: string; value: string }) {
   return (
-    <span className="inline-flex min-w-0 items-baseline gap-2">
-      <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">{label}</span>
-      <span className="break-all font-mono text-sm">{value || "—"}</span>
-    </span>
+    <div className="flex min-w-0 items-center gap-3">
+      <HugeiconsIcon icon={icon} className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+      <div className="flex min-w-0 flex-col">
+        <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">{label}</span>
+        <span className="break-all font-mono text-sm">{value || "—"}</span>
+      </div>
+    </div>
   );
 }
 
@@ -144,12 +157,12 @@ export function ListInfo({
 
   return (
     <div className={cn("border-b", editing && "bg-muted")}>
-      <div className="flex items-center justify-between gap-4 px-6 py-1.5">
-        <div className="flex min-w-0 flex-wrap gap-x-8 gap-y-1">
-          <Datum label="Modelo" value={list.model} />
-          <Datum label="Serie" value={list.serial} />
-          <Datum label="Motor" value={list.engine} />
-          <Datum label="Identificador" value={list.identifier} />
+      <div className="flex items-center justify-between gap-4 px-6 py-4">
+        <div className="flex min-w-0 flex-wrap gap-x-12 gap-y-4">
+          <Datum icon={Car01Icon} label="Modelo" value={list.model} />
+          <Datum icon={BarCode01Icon} label="Serie" value={list.serial} />
+          <Datum icon={EngineIcon} label="Motor" value={list.engine} />
+          <Datum icon={IdentityCardIcon} label="Identificador" value={list.identifier} />
         </div>
         <div className="-mr-2 flex shrink-0 items-center gap-1">
           {canEdit && (
