@@ -11,7 +11,7 @@ export type ListState = { error?: string; fields?: Record<string, string>; id?: 
 
 const text = (fd: FormData, key: string) => String(fd.get(key) ?? "").trim();
 const refresh = (org: string, contractId: string) =>
-  revalidatePath(`/${org}/contratos/${contractId}`, "layout");
+  revalidatePath(`/${org}/contratos/${contractId}`);
 
 function friendly(error: DbError) {
   if (error.code === "42501") return "No tienes permiso para hacer esto.";

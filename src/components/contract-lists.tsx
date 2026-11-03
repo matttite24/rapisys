@@ -8,7 +8,6 @@ import { CellGrid } from "@/components/page-section";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
 import {
   createList,
   deleteList,
@@ -30,112 +29,54 @@ export type ListView = {
   identifier: string;
 };
 
-type NavProps = {
+// Pestañas: una por lista, con su cantidad de líneas.
+export function ListTabs({
+  lists,
+  counts,
+  activeId,
+  canAdd,
+  onSelect,
+  onNew,
+}: {
   lists: ListView[];
   counts: Record<string, number>;
   activeId: string | null;
   canAdd: boolean;
   onSelect: (id: string) => void;
   onNew: () => void;
-};
-
-// Cuerpo de la columna de opciones: buscador, listas con scroll propio y "Nueva lista" fijo al pie.
-export function ListNav({ lists, counts, activeId, canAdd, onSelect, onNew }: NavProps) {
-  const [q, setQ] = useState("");
-  const term = q.trim().toLowerCase();
-  const shown = term
-    ? lists.filter((l) => [l.name, l.model, l.serial, l.identifier].some((v) => v.toLowerCase().includes(term)))
-    : lists;
-
+}) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-10 shrink-0 items-center justify-between border-b px-4 font-mono text-[0.6875rem] uppercase tracking-[0.12em]">
-        <span>Listas</span>
-        <span className="num text-muted-foreground">{lists.length}</span>
-      </div>
-      {lists.length > 6 && (
-        <div className="border-b p-2">
-          <Input
-            type="search"
-            aria-label="Buscar lista"
-            placeholder="Buscar activo, modelo, serie…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="bg-background"
-          />
-        </div>
-      )}
-      <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto" role="list">
-        {shown.length === 0 && <li className="p-4 text-sm text-muted-foreground">Ninguna lista coincide.</li>}
-        {shown.map((l) => {
-          const active = l.id === activeId;
-          return (
-            <li key={l.id} className="border-b">
-              <button
-                type="button"
-                onClick={() => onSelect(l.id)}
-                aria-current={active ? "true" : undefined}
-                className={cn(
-                  "flex w-full items-start gap-2 border-l-2 px-4 py-2.5 text-left transition-colors hover:bg-accent",
-                  active ? "border-l-brand bg-foreground/[0.06]" : "border-l-transparent",
-                )}
-              >
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span
-                    className={cn(
-                      "break-words font-mono text-xs uppercase tracking-[0.06em]",
-                      active ? "font-bold text-foreground" : "text-muted-foreground",
-                    )}
-                  >
-                    {l.name}
-                  </span>
-                  {(l.model || l.serial) && (
-                    <span className="truncate font-mono text-[0.6875rem] text-muted-foreground">
-                      {[l.model, l.serial].filter(Boolean).join(" · ")}
-                    </span>
-                  )}
-                </span>
-                <span className="num pt-0.5 text-xs text-muted-foreground">{counts[l.id] ?? 0}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+    <div role="tablist" aria-label="Listas del contrato" className="flex overflow-x-auto border-b">
+      {lists.map((l) => {
+        const active = l.id === activeId;
+        return (
+          <button
+            key={l.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onSelect(l.id)}
+            className={cn(
+              "flex h-11 max-w-72 shrink-0 items-center gap-2 border-r px-4 font-mono text-[0.6875rem] uppercase tracking-[0.1em]",
+              active
+                ? "-mb-px border-b-2 border-b-brand bg-background font-bold text-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <span className="truncate">{l.name}</span>
+            <span className="num">{counts[l.id] ?? 0}</span>
+          </button>
+        );
+      })}
       {canAdd && (
         <button
           type="button"
           onClick={onNew}
-          className="flex h-11 shrink-0 items-center gap-2 border-t px-4 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex h-11 shrink-0 items-center gap-2 px-4 font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <HugeiconsIcon icon={Add01Icon} className="size-4" />
           Nueva lista
         </button>
-      )}
-    </div>
-  );
-}
-
-// Versión compacta (móvil, o con la columna oculta): un selector y "Nueva lista".
-export function ListSelect({ lists, counts, activeId, canAdd, onSelect, onNew, className }: NavProps & { className?: string }) {
-  return (
-    <div className={cn("flex items-center gap-2 border-b p-4", className)}>
-      <NativeSelect
-        aria-label="Lista del contrato"
-        className="min-w-0 flex-1"
-        value={activeId ?? ""}
-        onChange={(e) => onSelect(e.target.value)}
-      >
-        {lists.map((l) => (
-          <option key={l.id} value={l.id}>
-            {l.name} ({counts[l.id] ?? 0})
-          </option>
-        ))}
-      </NativeSelect>
-      {canAdd && (
-        <Button variant="outline" onClick={onNew}>
-          <HugeiconsIcon icon={Add01Icon} className="size-4" />
-          Nueva
-        </Button>
       )}
     </div>
   );

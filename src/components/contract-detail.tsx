@@ -1,11 +1,14 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
+import type { ListView } from "@/components/contract-lists";
+import { ReferenceList, StatusControl, type LineView } from "@/components/contract-lines";
 import { ContractForm } from "@/components/contract-form";
+import { HeaderSlot, HeaderTitle } from "@/components/header-action";
 import { CellGrid, PageSection } from "@/components/page-section";
-import { getContract } from "@/lib/contract-data";
 import { addDaysIso, formatIso } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
+import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
 type IdParams = Promise<{ org: string; id: string }>;
@@ -21,14 +24,39 @@ function Cell({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-// Detalle del contrato. El cliente y el estado ya están en el encabezado (layout).
 async function Detail({ params }: { params: IdParams }) {
   await connection();
   const { org, id } = await params;
-  const found = await getContract(org, id);
-  if (!found) notFound();
-  const { orgId, c } = found;
+  const orgId = await getOrgId(org);
+  if (!orgId) notFound();
+
   const supabase = await createClient();
+  const { data: c } = await supabase
+    .from("contracts")
+    .select("*")
+    .eq("id", id)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (!c) notFound();
+
+  const deliveryIso = addDaysIso(c.start_date, Number(c.term_days));
+  const summary = {
+    code: c.code as string,
+    total: formatCents(Number(c.total_cents)),
+    delivery: deliveryIso ? formatIso(deliveryIso) : "—",
+  };
+
+  const header = (
+    <PageSection>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <p className="font-mono text-sm text-muted-foreground">{c.code}</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{c.name}</h1>
+        </div>
+        <StatusControl org={org} contractId={id} status={c.status} summary={summary} />
+      </div>
+    </PageSection>
+  );
 
   // En estado Nuevo se corrigen los datos del contrato; los items aún no se cargan.
   if (c.status === "new") {
@@ -38,9 +66,9 @@ async function Detail({ params }: { params: IdParams }) {
     ]);
     return (
       <>
+        {header}
         <PageSection>
-          <h1 className="text-lg leading-snug font-semibold">{c.name}</h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          <p className="max-w-2xl text-sm text-muted-foreground">
             El contrato está en <strong className="text-foreground">Nuevo</strong>: corrige aquí sus datos
             cuando haga falta. Los items se cargan y se trabajan desde{" "}
             <strong className="text-foreground">En ejecución</strong>.
@@ -65,35 +93,102 @@ async function Detail({ params }: { params: IdParams }) {
     );
   }
 
-  const { data: manager } = await supabase
-    .from("contract_managers")
-    .select("name, ruc")
-    .eq("id", c.manager_id)
-    .maybeSingle();
-  const end = addDaysIso(c.start_date, Number(c.term_days));
+  const [clientRes, managerRes, linesRes, listsRes] = await Promise.all([
+    supabase.from("clients").select("name, ruc").eq("id", c.client_id).maybeSingle(),
+    supabase.from("contract_managers").select("name, ruc").eq("id", c.manager_id).maybeSingle(),
+    supabase
+      .from("contract_items")
+      .select("id, list_id, part_number, description, quantity, unit, cpc")
+      .eq("contract_id", id)
+      .order("created_at"),
+    supabase
+      .from("contract_lists")
+      .select("id, asset_id, name, model, serial, engine, identifier")
+      .eq("contract_id", id)
+      .order("created_at"),
+  ]);
+
+  const lines: LineView[] = (
+    (linesRes.data ?? []) as {
+      id: string;
+      list_id: string;
+      part_number: string | null;
+      description: string;
+      quantity: number;
+      unit: string;
+      cpc: string | null;
+    }[]
+  ).map((l) => ({
+    id: l.id,
+    listId: l.list_id,
+    partNumber: l.part_number ?? "",
+    description: l.description,
+    quantity: Number(l.quantity),
+    unit: l.unit,
+    cpc: l.cpc ?? "",
+  }));
+
+  const lists: ListView[] = (
+    (listsRes.data ?? []) as {
+      id: string;
+      asset_id: string | null;
+      name: string;
+      model: string | null;
+      serial: string | null;
+      engine: string | null;
+      identifier: string | null;
+    }[]
+  ).map((l) => ({
+    id: l.id,
+    assetId: l.asset_id,
+    name: l.name,
+    model: l.model ?? "",
+    serial: l.serial ?? "",
+    engine: l.engine ?? "",
+    identifier: l.identifier ?? "",
+  }));
+
+  const contractTotal = Number(c.total_cents);
+  const end = deliveryIso;
 
   return (
-    <PageSection className="p-0">
-      <CellGrid className="border-0 md:grid-cols-[2fr_1.2fr_1fr_1.2fr]">
-        <Cell label="Contrato">
-          <h1 className="text-lg leading-snug font-semibold">{c.name}</h1>
-          <span className="block font-mono text-xs text-muted-foreground">{c.code}</span>
-        </Cell>
-        <Cell label="Responsable">
-          {manager?.name}
-          {manager?.ruc && <span className="block font-mono text-xs text-muted-foreground">{manager.ruc}</span>}
-        </Cell>
-        <Cell label="Monto del contrato (IVA incl.)">
-          <span className="num">{formatCents(Number(c.total_cents))}</span>
-        </Cell>
-        <Cell label="Plazo">
-          <span className="num">{c.term_days} {Number(c.term_days) === 1 ? "día" : "días"}</span>
-          <span className="block font-mono text-xs text-muted-foreground">
-            {formatIso(c.start_date)} → {end ? formatIso(end) : "—"}
-          </span>
-        </Cell>
-      </CellGrid>
-    </PageSection>
+    <>
+      {/* El cliente reemplaza el título del encabezado; estado y pasos van a su derecha. */}
+      <HeaderTitle>{clientRes.data?.name}</HeaderTitle>
+      <HeaderSlot>
+        <div className="hidden md:block">
+          <StatusControl org={org} contractId={id} status={c.status} summary={summary} inHeader />
+        </div>
+      </HeaderSlot>
+      <div className="border-b p-4 md:hidden">
+        <StatusControl org={org} contractId={id} status={c.status} summary={summary} />
+      </div>
+
+      {/* Fila 2: el contrato (código + nombre) y sus datos. */}
+      <PageSection className="p-0">
+        <CellGrid className="border-0 md:grid-cols-[2fr_1.2fr_1fr_1.2fr]">
+          <Cell label="Contrato">
+            <h1 className="text-lg leading-snug font-semibold">{c.name}</h1>
+            <span className="block font-mono text-xs text-muted-foreground">{c.code}</span>
+          </Cell>
+          <Cell label="Responsable">
+            {managerRes.data?.name}
+            {managerRes.data?.ruc && <span className="block font-mono text-xs text-muted-foreground">{managerRes.data.ruc}</span>}
+          </Cell>
+          <Cell label="Monto del contrato (IVA incl.)">
+            <span className="num">{formatCents(contractTotal)}</span>
+          </Cell>
+          <Cell label="Plazo">
+            <span className="num">{c.term_days} {Number(c.term_days) === 1 ? "día" : "días"}</span>
+            <span className="block font-mono text-xs text-muted-foreground">
+              {formatIso(c.start_date)} → {end ? formatIso(end) : "—"}
+            </span>
+          </Cell>
+        </CellGrid>
+      </PageSection>
+
+      <ReferenceList org={org} contractId={id} lists={lists} lines={lines} canAdd={c.status === "in_progress"} />
+    </>
   );
 }
 

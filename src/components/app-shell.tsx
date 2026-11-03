@@ -14,7 +14,6 @@ import { CELL_ROW as ROW, CellHeader } from "@/components/cell-header";
 import { HeaderSlotContext, HeaderTitleContext } from "@/components/header-action";
 import { modules, type NavModule } from "@/components/nav-config";
 import { OrgLogo } from "@/components/org-switcher-menu";
-import { PanelBodySlotContext, PanelTopContext } from "@/components/panel-slots";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -143,14 +142,9 @@ function Rail({
 // Columna 2: opciones del módulo/pantalla. Su celda superior es el selector de organización.
 function Panel({
   orgSwitcher,
-  panelTop,
-  setBodySlot,
   onNavigate,
 }: {
   orgSwitcher: React.ReactNode;
-  // Si una pantalla aporta celda superior, la columna pasa a modo contextual.
-  panelTop: React.ReactNode;
-  setBodySlot: (el: HTMLElement | null) => void;
   onNavigate?: () => void;
 }) {
   const { path, active, to } = useActiveModule();
@@ -158,20 +152,8 @@ function Panel({
 
   return (
     <div className="flex w-60 shrink-0 flex-col border-r bg-muted/50">
-      <div className={cn(ROW, "crosshair")}>{panelTop ?? orgSwitcher}</div>
+      <div className={cn(ROW, "crosshair")}>{orgSwitcher}</div>
 
-      {panelTop ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <Link
-            href={to("/contratos")}
-            className="flex h-10 shrink-0 items-center gap-2 border-b px-4 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <HugeiconsIcon icon={ArrowLeftDoubleIcon} className="size-4" />
-            Todos los contratos
-          </Link>
-          <div ref={setBodySlot} className="flex min-h-0 flex-1 flex-col" />
-        </div>
-      ) : (
       <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
         {active.groups.map((g, i) => (
           <div key={i} className="flex flex-col gap-0.5">
@@ -204,7 +186,6 @@ function Panel({
           </div>
         ))}
       </nav>
-      )}
     </div>
   );
 }
@@ -215,12 +196,10 @@ function Panel({
 function MobileNav({
   account,
   orgSwitcher,
-  panelTop,
   onNavigate,
 }: {
   account: React.ReactNode;
   orgSwitcher: React.ReactNode;
-  panelTop: React.ReactNode;
   onNavigate: () => void;
 }) {
   const { path, active, to } = useActiveModule();
@@ -248,16 +227,8 @@ function MobileNav({
         </span>
       </div>
 
-      {/* Fila 2: organización y cambiador (en un contrato, sus secciones) */}
-      {/* Un clic en un enlace del menú de secciones cierra el panel (el menú va en un portal, pero el evento sube igual). */}
-      <div
-        className={ROW}
-        onClick={(e) => {
-          if (panelTop && (e.target as HTMLElement).closest("a")) onNavigate();
-        }}
-      >
-        {panelTop ?? orgSwitcher}
-      </div>
+      {/* Fila 2: organización y cambiador */}
+      <div className={ROW}>{orgSwitcher}</div>
 
       {/* Columna de módulos del escritorio, en horizontal */}
       <nav aria-label="Módulos" className="grid grid-flow-col auto-cols-fr divide-x border-b">
@@ -368,15 +339,11 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const [title, setTitle] = useState<React.ReactNode>(null);
-  const [panelTop, setPanelTop] = useState<React.ReactNode>(null);
-  const [bodySlot, setBodySlot] = useState<HTMLElement | null>(null);
 
   return (
     <OrgContext.Provider value={org}>
       <HeaderSlotContext.Provider value={slot}>
       <HeaderTitleContext.Provider value={setTitle}>
-      <PanelTopContext.Provider value={setPanelTop}>
-      <PanelBodySlotContext.Provider value={bodySlot}>
       <div className="flex h-svh">
         {/* Escritorio */}
         <aside className="hidden shrink-0 md:flex">
@@ -385,7 +352,7 @@ export function AppShell({
             panelOpen={panelOpen}
             onTogglePanel={() => setPanelOpen((v) => !v)}
           />
-          {panelOpen && <Panel orgSwitcher={orgSwitcher} panelTop={panelTop} setBodySlot={setBodySlot} />}
+          {panelOpen && <Panel orgSwitcher={orgSwitcher} />}
         </aside>
 
         {/* Celda de contenido: encabezado de sección + página */}
@@ -416,7 +383,6 @@ export function AppShell({
                 <MobileNav
                   account={account}
                   orgSwitcher={orgSwitcher}
-                  panelTop={panelTop}
                   onNavigate={() => setMobileOpen(false)}
                 />
               </SheetContent>
@@ -426,8 +392,6 @@ export function AppShell({
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       </div>
-      </PanelBodySlotContext.Provider>
-      </PanelTopContext.Provider>
       </HeaderTitleContext.Provider>
       </HeaderSlotContext.Provider>
     </OrgContext.Provider>
