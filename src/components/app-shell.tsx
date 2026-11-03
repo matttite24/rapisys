@@ -11,7 +11,7 @@ import {
   Menu01Icon,
 } from "@hugeicons/core-free-icons";
 import { CELL_ROW as ROW, CellHeader } from "@/components/cell-header";
-import { HeaderSlotContext } from "@/components/header-action";
+import { HeaderSlotContext, HeaderTitleContext } from "@/components/header-action";
 import { modules, type NavModule } from "@/components/nav-config";
 import { OrgLogo } from "@/components/org-switcher-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -308,14 +308,16 @@ function MobileNav({
 function SectionHeader({
   leading,
   setSlot,
+  title,
 }: {
   leading: React.ReactNode;
   setSlot: (el: HTMLElement | null) => void;
+  title: React.ReactNode;
 }) {
   const { active } = useActiveModule();
   return (
     <CellHeader
-      title={active.title}
+      title={title ?? active.title}
       leading={leading}
       action={<div ref={setSlot} className="flex items-center gap-1 self-stretch" />}
     />
@@ -336,10 +338,12 @@ export function AppShell({
   const [panelOpen, setPanelOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const [title, setTitle] = useState<React.ReactNode>(null);
 
   return (
     <OrgContext.Provider value={org}>
       <HeaderSlotContext.Provider value={slot}>
+      <HeaderTitleContext.Provider value={setTitle}>
       <div className="flex h-svh">
         {/* Escritorio */}
         <aside className="hidden shrink-0 md:flex">
@@ -355,6 +359,7 @@ export function AppShell({
         <div className="flex min-w-0 flex-1 flex-col">
           <SectionHeader
             setSlot={setSlot}
+            title={title}
             leading={
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger
@@ -387,6 +392,7 @@ export function AppShell({
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       </div>
+      </HeaderTitleContext.Provider>
       </HeaderSlotContext.Provider>
     </OrgContext.Provider>
   );

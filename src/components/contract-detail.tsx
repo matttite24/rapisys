@@ -8,7 +8,7 @@ import {
   type LineView,
 } from "@/components/contract-lines";
 import { ContractForm } from "@/components/contract-form";
-import { HeaderSlot } from "@/components/header-action";
+import { HeaderSlot, HeaderTitle } from "@/components/header-action";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { addDaysIso, formatIso } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
@@ -111,30 +111,20 @@ async function Detail({ params }: { params: IdParams }) {
     (linesRes.data ?? []) as { id: string; description: string; quantity: number; unit: string }[]
   ).map((l) => ({ id: l.id, description: l.description, quantity: Number(l.quantity), unit: l.unit }));
 
-  const client = (
-    <div className="flex max-w-72 min-w-0 flex-col md:border-r md:pr-4">
-      <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Cliente</span>
-      <span className="truncate text-sm" title={clientRes.data?.name}>{clientRes.data?.name}</span>
-    </div>
-  );
-
   const contractTotal = Number(c.total_cents);
   const end = deliveryIso;
 
   return (
     <>
-      {/* Cliente, estado y pasos: en el encabezado principal; en móvil, en una fila propia. */}
+      {/* El cliente reemplaza el título del encabezado; estado y pasos van a su derecha. */}
+      <HeaderTitle>{clientRes.data?.name}</HeaderTitle>
       <HeaderSlot>
-        <div className="hidden items-center gap-4 md:flex">
-          {client}
+        <div className="hidden md:block">
           <StatusControl org={org} contractId={id} status={c.status} summary={summary} inHeader />
         </div>
       </HeaderSlot>
       <PageSection className="md:hidden">
-        <div className="flex flex-col gap-4">
-          {client}
-          <StatusControl org={org} contractId={id} status={c.status} summary={summary} />
-        </div>
+        <StatusControl org={org} contractId={id} status={c.status} summary={summary} />
       </PageSection>
 
       {/* Fila 2: el contrato (código + nombre) y sus datos. */}

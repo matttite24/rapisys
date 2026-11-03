@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -54,4 +54,17 @@ export function HeaderAction({ icon, label, href, onClick }: Props) {
 export function HeaderSlot({ children }: { children: React.ReactNode }) {
   const slot = useContext(HeaderSlotContext);
   return slot ? createPortal(children, slot) : null;
+}
+
+// Setter del título del encabezado; lo provee el shell.
+export const HeaderTitleContext = createContext<(title: React.ReactNode) => void>(() => {});
+
+// Reemplaza el título del módulo en el encabezado mientras la página está montada.
+export function HeaderTitle({ children }: { children: React.ReactNode }) {
+  const setTitle = useContext(HeaderTitleContext);
+  useEffect(() => {
+    setTitle(children);
+    return () => setTitle(null);
+  }, [children, setTitle]);
+  return null;
 }
