@@ -1,17 +1,18 @@
 import { cache } from "react";
-import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
-// Contrato de la URL (RLS: solo miembros). cache() lo comparte entre el layout y la página.
+// Contrato de la URL (RLS: solo miembros). Una sola consulta: el slug de la
+// organización se filtra con un join. cache() lo comparte entre el layout y la página.
 export const getContract = cache(async (org: string, id: string) => {
-  const orgId = await getOrgId(org);
-  if (!orgId) return null;
   const supabase = await createClient();
-  const { data: c } = await supabase
+  const { data } = await supabase
     .from("contracts")
-    .select("*")
+    .select("*, organizations!inner(slug)")
     .eq("id", id)
-    .eq("organization_id", orgId)
+    .eq("organizations.slug", org)
     .maybeSingle();
-  return c ? { orgId, c } : null;
+  if (!data) return null;
+  const { organizations: _org, ...c } = data;
+  void _org;
+  return { orgId: c.organization_id as string, c };
 });
