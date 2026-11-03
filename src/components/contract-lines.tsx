@@ -5,7 +5,7 @@ import { startTransition, useEffect, useOptimistic, useRef, useState } from "rea
 import { cn } from "@/lib/utils";
 import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, FileUploadIcon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ListForm, ListInfo, ListTabs, type ListView } from "@/components/contract-lists";
+import { ListDetailsForm, ListInfo, ListTabs, NewListDialog, type ListView } from "@/components/contract-lists";
 import { FormField } from "@/components/form-field";
 import { NumericInput } from "@/components/numeric-input";
 import {
@@ -215,8 +215,10 @@ export function ReferenceList({
   });
   const [error, setError] = useState<string>();
   const [activeId, setActiveId] = useState<string | null>(null);
-  // Qué muestra el panel gris de arriba: una línea (agregar o editar) o una lista.
-  const [panel, setPanel] = useState<"line" | "list-new" | "list-edit">("line");
+  // Qué muestra el panel gris de arriba: una línea (agregar o editar) o los datos de la lista.
+  const [panel, setPanel] = useState<"line" | "list-edit">("line");
+  // Crear una lista va en un modal aparte, no en el panel.
+  const [newOpen, setNewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Si la lista abierta ya no existe (se eliminó), se vuelve a la primera.
@@ -227,8 +229,7 @@ export function ReferenceList({
 
   const editing = listLines.find((l) => l.id === editingId) ?? null;
   const editingN = editing ? listLines.indexOf(editing) + 1 : 0;
-  // Sin listas, lo único posible es crear la primera.
-  const mode = lists.length === 0 ? "list-new" : panel;
+  const mode = panel;
 
   function resetPanel() {
     setPanel("line");
@@ -260,8 +261,39 @@ export function ReferenceList({
     );
   }
 
+  const newListDialog = canAdd && (
+    <NewListDialog
+      org={org}
+      contractId={contractId}
+      open={newOpen}
+      onOpenChange={setNewOpen}
+      onCreated={select}
+    />
+  );
+
+  // Sin listas todavía: se crea la primera desde el modal.
+  if (lists.length === 0) {
+    return (
+      <>
+        <PageSection label="0 listas">
+          <div className="flex flex-col items-start gap-4">
+            <p className="max-w-xl text-muted-foreground">
+              Cada lista reúne los items de un activo (o una lista general). Crea la primera para empezar a cargar items.
+            </p>
+            <Button className="h-10 gap-2" onClick={() => setNewOpen(true)}>
+              <HugeiconsIcon icon={Add01Icon} className="size-5" />
+              Crear lista
+            </Button>
+          </div>
+        </PageSection>
+        {newListDialog}
+      </>
+    );
+  }
+
   return (
     <>
+      {newListDialog}
       {lists.length > 0 && (
         <ListTabs
           lists={lists}
@@ -269,10 +301,7 @@ export function ReferenceList({
           activeId={active?.id ?? null}
           canAdd={canAdd}
           onSelect={select}
-          onNew={() => {
-            setEditingId(null);
-            setPanel("list-new");
-          }}
+          onNew={() => setNewOpen(true)}
         />
       )}
       {active && (
@@ -325,18 +354,16 @@ export function ReferenceList({
                 onDone={() => setEditingId(null)}
               />
             ) : (
-              <ListForm
-                key={mode === "list-edit" ? `edit:${active?.id}` : "new"}
-                org={org}
-                contractId={contractId}
-                editing={mode === "list-edit" ? active : null}
-                // Con la primera lista por crear no hay a dónde volver.
-                onCancel={lists.length > 0 ? resetPanel : undefined}
-                onDone={(id) => {
-                  if (id) setActiveId(id);
-                  resetPanel();
-                }}
-              />
+              active && (
+                <ListDetailsForm
+                  key={active.id}
+                  org={org}
+                  contractId={contractId}
+                  list={active}
+                  onCancel={resetPanel}
+                  onDone={resetPanel}
+                />
+              )
             )}
           </div>
         </section>
