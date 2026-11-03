@@ -1,9 +1,9 @@
 "use client";
 
 import { PageSection, TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
-import { startTransition, useOptimistic, useRef, useState } from "react";
+import { startTransition, useEffect, useOptimistic, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FormField } from "@/components/form-field";
 import { NumericInput } from "@/components/numeric-input";
@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { addLine, removeLine, setContractStatus, type LineState } from "@/lib/contract-actions";
+import { addLine, removeLine, setContractStatus, updateLine, type LineState } from "@/lib/contract-actions";
 import { STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
 import { parseDecimal } from "@/lib/money";
 import { UNITS, isUnit, unitLabel } from "@/lib/units";
@@ -151,7 +151,10 @@ export function StatusControl({
   );
 }
 
-type OptimisticAction = { type: "add"; line: LineView } | { type: "remove"; id: string };
+type OptimisticAction =
+  | { type: "add"; line: LineView }
+  | { type: "update"; line: LineView }
+  | { type: "remove"; id: string };
 
 // La lista y su formulario comparten estado: la línea aparece al instante y el
 // servidor la confirma por detrás (si falla, vuelve a desaparecer).
@@ -166,13 +169,20 @@ export function ReferenceList({
   lines: LineView[];
   canAdd: boolean;
 }) {
-  const [shown, apply] = useOptimistic(lines, (state, a: OptimisticAction) =>
-    a.type === "add" ? [...state, a.line] : state.filter((l) => l.id !== a.id),
-  );
+  const [shown, apply] = useOptimistic(lines, (state, a: OptimisticAction) => {
+    if (a.type === "add") return [...state, a.line];
+    if (a.type === "update") return state.map((l) => (l.id === a.line.id ? a.line : l));
+    return state.filter((l) => l.id !== a.id);
+  });
   const [error, setError] = useState<string>();
+  // Línea que se está editando en el formulario de arriba.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editing = shown.find((l) => l.id === editingId) ?? null;
+  const editingN = editing ? shown.indexOf(editing) + 1 : 0;
 
   function remove(id: string) {
     setError(undefined);
+    if (id === editingId) setEditingId(null);
     startTransition(async () => {
       apply({ type: "remove", id });
       const res = await removeLine(org, contractId, id);
@@ -185,14 +195,29 @@ export function ReferenceList({
       {/* La función principal de la pantalla: va primero y con fondo propio. */}
       {canAdd && (
         <section className="border-b border-l-4 border-l-brand bg-muted">
-          <div className="flex h-10 items-center px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
-            Agregar item a la lista
+          <div className="flex h-10 items-center justify-between px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
+            <span>{editing ? `Editar línea ${editingN}` : "Agregar item a la lista"}</span>
+            {editing && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                onClick={() => setEditingId(null)}
+              >
+                <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+                Cancelar
+              </button>
+            )}
           </div>
           <div className="px-6 pb-6">
-            <AddLineForm
+            <LineForm
+              // Al cambiar de línea el formulario se rearma con sus valores.
+              key={editing?.id ?? "new"}
               org={org}
               contractId={contractId}
+              editing={editing}
               onAdd={(line) => apply({ type: "add", line })}
+              onUpdate={(line) => apply({ type: "update", line })}
+              onDone={() => setEditingId(null)}
             />
           </div>
         </section>
@@ -209,7 +234,7 @@ export function ReferenceList({
         ) : (
           <>
             {error && <p role="alert" className="border-b p-3 text-sm text-destructive">{error}</p>}
-            <LinesTable lines={shown} onRemove={remove} />
+            <LinesTable lines={shown} editingId={editingId} canEdit={canAdd} onEdit={setEditingId} onRemove={remove} />
           </>
         )}
       </PageSection>
@@ -217,7 +242,19 @@ export function ReferenceList({
   );
 }
 
-function LinesTable({ lines, onRemove }: { lines: LineView[]; onRemove: (id: string) => void }) {
+function LinesTable({
+  lines,
+  editingId,
+  canEdit,
+  onEdit,
+  onRemove,
+}: {
+  lines: LineView[];
+  editingId: string | null;
+  canEdit: boolean;
+  onEdit: (id: string) => void;
+  onRemove: (id: string) => void;
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -232,7 +269,7 @@ function LinesTable({ lines, onRemove }: { lines: LineView[]; onRemove: (id: str
         </thead>
         <tbody>
           {lines.map((l, i) => (
-            <LineRow key={l.id} line={l} n={i + 1} onRemove={onRemove} />
+            <LineRow key={l.id} line={l} n={i + 1} editing={l.id === editingId} canEdit={canEdit} onEdit={onEdit} onRemove={onRemove} />
           ))}
         </tbody>
       </table>
@@ -243,10 +280,16 @@ function LinesTable({ lines, onRemove }: { lines: LineView[]; onRemove: (id: str
 function LineRow({
   line: l,
   n,
+  editing,
+  canEdit,
+  onEdit,
   onRemove,
 }: {
   line: LineView;
   n: number;
+  editing: boolean;
+  canEdit: boolean;
+  onEdit: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -254,7 +297,7 @@ function LineRow({
   const saving = l.id.startsWith(TEMP_PREFIX);
 
   return (
-    <tr className={cn("border-b last:border-b-0", saving && "opacity-60")}>
+    <tr className={cn("border-b last:border-b-0", saving && "opacity-60", editing && "bg-muted")}>
       <td className={`${TD} num text-right text-muted-foreground`}>{n}</td>
       <td className={`${TD} break-words`}>{l.description}</td>
       <td className={`${TD} num text-right`}>{l.quantity}</td>
@@ -268,15 +311,29 @@ function LineRow({
             <Button variant="outline" onClick={() => setConfirming(false)}>No</Button>
           </span>
         ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 text-muted-foreground"
-            aria-label={`Quitar la línea ${n} del contrato`}
-            onClick={() => setConfirming(true)}
-          >
-            <HugeiconsIcon icon={Delete02Icon} className="size-4" />
-          </Button>
+          <span className="flex gap-1">
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground"
+                aria-label={`Editar la línea ${n}`}
+                aria-pressed={editing}
+                onClick={() => onEdit(l.id)}
+              >
+                <HugeiconsIcon icon={Edit02Icon} className="size-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 text-muted-foreground"
+              aria-label={`Quitar la línea ${n} del contrato`}
+              onClick={() => setConfirming(true)}
+            >
+              <HugeiconsIcon icon={Delete02Icon} className="size-4" />
+            </Button>
+          </span>
         )}
       </td>
     </tr>
@@ -289,22 +346,37 @@ const MESSAGES = {
   unit: "Elige una unidad de medida.",
 };
 
-// Agrega una línea de la lista de referencia: descripción, cantidad y unidad.
-function AddLineForm({
+// Agrega o edita una línea de la lista de referencia: descripción, cantidad y unidad.
+function LineForm({
   org,
   contractId,
+  editing,
   onAdd,
+  onUpdate,
+  onDone,
 }: {
   org: string;
   contractId: string;
+  editing: LineView | null;
   onAdd: (line: LineView) => void;
+  onUpdate: (line: LineView) => void;
+  onDone: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [state, setState] = useState<LineState>();
+  const [saving, setSaving] = useState(false);
+
+  // Al pasar a editar una línea, el formulario se ve y toma el foco.
+  useEffect(() => {
+    if (!editing) return;
+    formRef.current?.scrollIntoView({ block: "nearest" });
+    formRef.current?.querySelector<HTMLElement>('[name="description"]')?.focus();
+  }, [editing]);
   const errors = state?.fields ?? {};
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (saving) return;
     const form = e.currentTarget;
     const data = new FormData(form);
     const description = String(data.get("description") ?? "").trim();
@@ -322,6 +394,20 @@ function AddLineForm({
     }
 
     setState(undefined);
+
+    if (editing) {
+      // La fila cambia ya; el formulario sale de edición cuando el servidor confirma.
+      setSaving(true);
+      startTransition(async () => {
+        onUpdate({ id: editing.id, description, quantity, unit });
+        const res = await updateLine(org, contractId, editing.id, data);
+        setSaving(false);
+        if (res?.error || res?.fields) setState(res);
+        else onDone();
+      });
+      return;
+    }
+
     startTransition(async () => {
       // La fila aparece ya y el formulario queda listo para la siguiente.
       onAdd({ id: `${TEMP_PREFIX}${Date.now()}`, description, quantity, unit });
@@ -358,14 +444,14 @@ function AddLineForm({
       className="grid gap-4 md:grid-cols-[1fr_8rem_11rem_3.5rem] md:items-start [&_input]:bg-background [&_select]:bg-background"
     >
       <FormField name="description" label="Descripción" error={errors.description}>
-        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={500} />}
+        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={500} defaultValue={editing?.description} />}
       </FormField>
       <FormField name="quantity" label="Cantidad" error={errors.quantity}>
-        {(a11y) => <NumericInput {...a11y} kind="decimal" className="font-mono" defaultValue="1" />}
+        {(a11y) => <NumericInput {...a11y} kind="decimal" className="font-mono" defaultValue={editing ? String(editing.quantity) : "1"} />}
       </FormField>
       <FormField name="unit" label="Unidad de medida" error={errors.unit}>
         {(a11y) => (
-          <NativeSelect {...a11y} className="w-full" defaultValue="unit">
+          <NativeSelect {...a11y} className="w-full" defaultValue={editing?.unit ?? "unit"}>
             {Object.entries(UNITS).map(([key, label]) => (
               <option key={key} value={key}>
                 {label}
@@ -377,8 +463,15 @@ function AddLineForm({
       {/* Etiqueta vacía del mismo alto que las demás: el botón queda a la altura de los campos. */}
       <Field>
         <FieldLabel aria-hidden className="max-md:hidden">&nbsp;</FieldLabel>
-        <Button type="submit" size="icon" className="h-10 w-full" aria-label="Agregar línea" title="Agregar línea">
-          <HugeiconsIcon icon={Add01Icon} className="size-6" strokeWidth={2} />
+        <Button
+          type="submit"
+          size="icon"
+          disabled={saving}
+          className="h-10 w-full"
+          aria-label={editing ? "Guardar cambios" : "Agregar línea"}
+          title={editing ? "Guardar cambios" : "Agregar línea"}
+        >
+          <HugeiconsIcon icon={editing ? Tick02Icon : Add01Icon} className="size-6" strokeWidth={2} />
         </Button>
       </Field>
       {state?.error && (

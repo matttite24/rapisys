@@ -57,6 +57,51 @@ export async function addLine(
   refresh(org, contractId);
 }
 
+export async function updateLine(
+  org: string,
+  contractId: string,
+  lineId: string,
+  formData: FormData,
+): Promise<LineState> {
+  const description = text(formData, "description");
+  const unit = text(formData, "unit");
+  const quantity = parseDecimal(text(formData, "quantity"));
+
+  const fields: Record<string, string> = {};
+  if (!description) fields.description = "Escribe la descripción del item.";
+  else if (description.length > 500) fields.description = "Máximo 500 caracteres.";
+  if (quantity === null || quantity <= 0 || quantity > 10_000_000) {
+    fields.quantity = "Escribe una cantidad mayor a 0, con máximo 2 decimales.";
+  }
+  if (!isUnit(unit)) fields.unit = "Elige una unidad de medida.";
+  if (Object.keys(fields).length) return { fields };
+
+  const supabase = await createClient();
+  const { data: contract } = await supabase
+    .from("contracts")
+    .select("status")
+    .eq("id", contractId)
+    .maybeSingle();
+  if (!contract) return { error: "No encontramos el contrato." };
+  if (contract.status !== "in_progress") {
+    return { error: "Los items se editan cuando el contrato está En ejecución." };
+  }
+
+  const { data, error } = await supabase
+    .from("contract_items")
+    .update({ description, quantity, unit })
+    .eq("id", lineId)
+    .eq("contract_id", contractId)
+    .select("id");
+  if (error) {
+    // La cantidad no puede quedar por debajo de lo ya recibido.
+    if (error.code === "23514") return { fields: { quantity: "La cantidad es menor a lo ya recibido." } };
+    return { error: friendly(error) };
+  }
+  if (!data?.length) return { error: "No tienes permiso para editar esta línea." };
+  refresh(org, contractId);
+}
+
 export async function removeLine(org: string, contractId: string, lineId: string): Promise<LineState> {
   const supabase = await createClient();
   const { data, error } = await supabase
