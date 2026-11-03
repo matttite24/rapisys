@@ -418,7 +418,7 @@ export function AppShell({
             inert={!panelOpen}
             aria-hidden={!panelOpen}
             className={cn(
-              "shrink-0 overflow-hidden transition-[width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
+              "flex shrink-0 overflow-hidden transition-[width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
               panelOpen ? "w-60" : "w-0",
             )}
           >
