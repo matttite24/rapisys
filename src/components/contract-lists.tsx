@@ -46,7 +46,7 @@ export function ListTabs({
   onNew: () => void;
 }) {
   return (
-    <div role="tablist" aria-label="Listas del contrato" className="flex overflow-x-auto border-b">
+    <div role="tablist" aria-label="Listas del contrato" className="flex gap-6 overflow-x-auto border-b px-6">
       {lists.map((l) => {
         const active = l.id === activeId;
         return (
@@ -57,14 +57,21 @@ export function ListTabs({
             aria-selected={active}
             onClick={() => onSelect(l.id)}
             className={cn(
-              "flex h-11 max-w-72 shrink-0 items-center gap-2 border-r px-4 font-mono text-[0.6875rem] uppercase tracking-[0.1em]",
+              "-mb-px flex h-12 max-w-64 shrink-0 items-center gap-2 border-b-2 font-mono text-xs uppercase tracking-[0.08em] transition-colors",
               active
-                ? "-mb-px border-b-2 border-b-brand bg-background font-bold text-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                ? "border-b-brand font-bold text-foreground"
+                : "border-b-transparent text-muted-foreground hover:text-foreground",
             )}
           >
             <span className="truncate">{l.name}</span>
-            <span className="num">{counts[l.id] ?? 0}</span>
+            <span
+              className={cn(
+                "num rounded-full px-1.5 py-0.5 text-[0.6875rem] leading-none",
+                active ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground",
+              )}
+            >
+              {counts[l.id] ?? 0}
+            </span>
           </button>
         );
       })}
@@ -72,7 +79,7 @@ export function ListTabs({
         <button
           type="button"
           onClick={onNew}
-          className="flex h-11 shrink-0 items-center gap-2 px-4 font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="flex h-12 shrink-0 items-center gap-1.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-foreground"
         >
           <HugeiconsIcon icon={Add01Icon} className="size-4" />
           Nueva lista
