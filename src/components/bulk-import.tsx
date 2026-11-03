@@ -5,12 +5,22 @@ import { Cancel01Icon, FileUploadIcon, ImageUploadIcon } from "@hugeicons/core-f
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { addLines } from "@/lib/contract-actions";
@@ -218,6 +228,7 @@ export function BulkImport({
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
   const nextId = useRef(1);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -321,25 +332,35 @@ export function BulkImport({
         <HugeiconsIcon icon={FileUploadIcon} className="size-4" />
         Carga masiva
       </Button>
-      <Dialog
+      <Sheet
         open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          if (!next) reset();
+        onOpenChange={(next, details) => {
+          if (next) return setOpen(true);
+          // Un clic afuera nunca cierra: se pierde lo cargado con demasiada facilidad.
+          if (details.reason === "outside-press") return details.cancel();
+          // Con datos leídos o en proceso, cerrar (X o Esc) pide confirmación.
+          if (step !== "start") {
+            details.cancel();
+            return setConfirmClose(true);
+          }
+          setOpen(false);
+          reset();
         }}
       >
-        <DialogContent className="max-h-[92svh] gap-0 overflow-y-auto p-0 sm:max-w-6xl">
-          <DialogHeader className="border-b p-6 pr-16">
-            <DialogTitle>Carga masiva en «{listName}»</DialogTitle>
-            <DialogDescription>
-              {step === "review"
-                ? "Revisa lo que leyó la captura y corrige lo que haga falta antes de cargar."
-                : "Pega una captura de la tabla del contrato. Se lee en tu navegador: la imagen no sale de tu equipo."}
-            </DialogDescription>
-          </DialogHeader>
+        <SheetContent side="bottom" className="h-[92svh] gap-0">
+          <SheetHeader>
+            <SheetTitle>Carga masiva en «{listName}»</SheetTitle>
+            <SheetDescription className="sr-only">
+              Pega una captura de la tabla del contrato, revisa lo que se leyó y cárgalo a la lista.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto">
 
           {step === "start" && (
             <div className="p-6">
+              <p className="pb-4 text-sm text-muted-foreground">
+                Pega una captura de la tabla del contrato. Se lee en tu navegador: la imagen no sale de tu equipo.
+              </p>
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -426,8 +447,8 @@ export function BulkImport({
               {/* Fila 2: la tabla, a todo el ancho. */}
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[40rem] text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50 text-left font-mono text-[0.6875rem] font-bold uppercase tracking-[0.1em]">
+                  <thead className="sticky top-0 z-10 bg-muted">
+                    <tr className="border-b text-left font-mono text-[0.6875rem] font-bold uppercase tracking-[0.1em]">
                       <th className="w-px px-4 py-2 text-right">N.º</th>
                       <th className="w-56 px-2 py-2">Part. num.</th>
                       <th className="px-2 py-2">Descripción</th>
@@ -479,8 +500,14 @@ export function BulkImport({
                   </tbody>
                 </table>
               </div>
-              {error && <div className="border-t p-4"><FieldError>{error}</FieldError></div>}
-              <div className="flex flex-wrap gap-2 border-t p-4">
+            </>
+          )}
+          </div>
+
+          {step === "review" && (
+            <div className="shrink-0 border-t bg-popover">
+              {error && <div className="border-b p-4"><FieldError>{error}</FieldError></div>}
+              <div className="flex flex-wrap gap-2 p-4">
                 <Button type="button" className="h-10" disabled={saving || rows.length === 0} onClick={load}>
                   {saving ? "Cargando…" : `Cargar ${rows.length} ${rows.length === 1 ? "línea" : "líneas"}`}
                 </Button>
@@ -488,10 +515,34 @@ export function BulkImport({
                   Otra captura
                 </Button>
               </div>
-            </>
+            </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Descartar la carga masiva?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se pierde lo que se leyó de la captura y lo que hayas corregido. Las líneas no se han cargado a la lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Seguir editando</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                setConfirmClose(false);
+                setOpen(false);
+                reset();
+              }}
+            >
+              Sí, descartar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
