@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useEffect, useRef, useState } from "react";
-import { Add01Icon, Car01Icon, Delete02Icon, Edit02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Delete02Icon, Edit02Icon, LeftToRightListBulletIcon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FormField } from "@/components/form-field";
 import { CellGrid } from "@/components/page-section";
@@ -47,6 +47,10 @@ export function ListTabs({
 }) {
   return (
     <div role="tablist" aria-label="Listas del contrato" className="flex gap-6 overflow-x-auto border-b px-6">
+      {/* Un solo ícono para toda la fila: indica que son las listas del contrato. */}
+      <span className="flex h-12 shrink-0 items-center text-muted-foreground" title="Listas">
+        <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-5" aria-hidden />
+      </span>
       {lists.map((l) => {
         const active = l.id === activeId;
         return (
@@ -63,7 +67,6 @@ export function ListTabs({
                 : "border-b-transparent text-muted-foreground hover:text-foreground",
             )}
           >
-            <HugeiconsIcon icon={Car01Icon} className={cn("size-4 shrink-0", active && "text-brand")} />
             <span className="truncate">{l.name}</span>
             <span
               className={cn(
