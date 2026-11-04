@@ -73,7 +73,7 @@ async function List({
   const newHref = `/${org}/contratos/nuevo`;
 
   return (
-    <PageSection className="p-0">
+    <PageSection className={view === "grid" ? "flex min-h-[calc(100svh-4rem)] flex-col p-0" : "p-0"}>
       <HeaderAction icon={Add01Icon} label="Nuevo contrato" href={newHref} />
       <ContractToolbar q={q} view={view} />
       {rows.length === 0 ? (
@@ -86,7 +86,7 @@ async function List({
           )}
         </div>
       ) : view === "grid" ? (
-        <ul className="grid sm:grid-cols-2 xl:grid-cols-3 [&>li]:border-r [&>li]:border-b">
+        <ul className="grid flex-1 auto-rows-fr sm:grid-cols-2 xl:grid-cols-3 [&>li]:border-r [&>li]:border-b">
           {rows.map((r) => (
             <li key={r.id}>
               <Link
