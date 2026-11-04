@@ -81,8 +81,8 @@
   /* Fondo de la zona de trabajo principal (agregar items): más marcado que muted. */
   --surface-strong: oklch(0.885 0.012 85);
   /* Tres capas del marco: 1 = barra principal (la más oscura), 2 = opciones cambiantes, 3 = contenido (--background). */
-  --layer-1: oklch(0.905 0.01 85);
-  --layer-2: oklch(0.935 0.008 85);
+  --layer-1: oklch(0.855 0.012 85);
+  --layer-2: oklch(0.91 0.009 85);
   --muted-foreground: oklch(0.43 0.01 85);
   --accent: oklch(0.925 0.006 85);
   --accent-foreground: oklch(0.16 0.01 85);
