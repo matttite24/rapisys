@@ -214,14 +214,11 @@
   height: 2.5rem;
   padding-inline: 1rem;
 }
-/* Los botones son planos: sin sombra. Al pulsar un botón principal se hunde 1 px. */
+/* Los botones son planos: sin sombra y sin movimiento; al pulsar solo cambia el color. */
 [data-slot="button"] {
-  transition-property: background-color, color, border-color, transform;
+  transition-property: background-color, color, border-color;
   transition-duration: 120ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
-}
-[data-slot="button"].bg-primary:active:not(:disabled) {
-  transform: translateY(1px);
 }
 @media (prefers-reduced-motion: reduce) {
   [data-slot="button"] {
@@ -292,6 +289,9 @@
  */
 [data-slot="button"].bg-primary:hover:not(:disabled) {
   background-color: color-mix(in oklch, var(--primary) 86%, black);
+}
+[data-slot="button"].bg-primary:active:not(:disabled) {
+  background-color: color-mix(in oklch, var(--primary) 70%, black);
 }
 
 /* Quien pidió menos movimiento no recibe transiciones ni animaciones. */
