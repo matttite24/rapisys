@@ -28,7 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type Row = {
-  key: number;
+  key: string;
   item: ItemOption | null;
   quantity: string;
   cost: string; // costo unitario s/IVA, canónico ("12.50")
@@ -40,8 +40,8 @@ type Row = {
 // Columnas de cada línea de la factura; el encabezado y las filas comparten la misma rejilla.
 const ROW_GRID = "grid items-center gap-3 md:grid-cols-[2rem_minmax(0,1fr)_6.5rem_9rem_5rem_15rem_2.5rem]";
 
-let seq = 0;
-const blank = (): Row => ({ key: ++seq, item: null, quantity: "1", cost: "", vat: "15", target: null, assign: "" });
+// Clave única por fila (no un contador del módulo: con la recarga en caliente el contador vuelve a 0 y repite claves).
+const blank = (): Row => ({ key: crypto.randomUUID(), item: null, quantity: "1", cost: "", vat: "15", target: null, assign: "" });
 
 // Factura de compra de un contrato: proveedor, número, fecha y líneas. Cada línea puede asignarse
 // de una vez a una línea de la lista de referencia; lo que no se asigne queda como sobrante.
@@ -63,11 +63,11 @@ export function PurchaseForm({
   const [error, setError] = useState<string>();
   const [saving, setSaving] = useState(false);
 
-  const patch = (key: number, change: Partial<Row>) =>
+  const patch = (key: string, change: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...change } : r)));
 
   // Al elegir el producto, se propone el costo que ese proveedor tiene registrado.
-  function pickItem(key: number, item: ItemOption) {
+  function pickItem(key: string, item: ItemOption) {
     const price = item.prices.find((p) => p.supplierId === supplierId);
     patch(key, {
       item,
