@@ -6,6 +6,7 @@ import type { PriceRow, SpecRow } from "@/lib/items";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
+import { requireUser } from "@/lib/auth";
 
 export type ItemState =
   | { error?: string; fields?: Record<string, string> }
@@ -135,6 +136,7 @@ export async function saveItem(
 }
 
 export async function deleteItem(org: string, id: string): Promise<ItemState> {
+  await requireUser();
   const orgId = await getOrgId(org);
   if (!orgId) return { error: "No encontramos la organización." };
 

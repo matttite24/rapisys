@@ -19,6 +19,14 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type Params = Promise<{ org: string }>;
+// Fecha de un lote, en la hora de Ecuador (se arma una vez, no en cada render).
+const LOT_DATE = new Intl.DateTimeFormat("es-EC", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "America/Guayaquil",
+});
+
 type IdParams = Promise<{ org: string; id: string }>;
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
@@ -314,12 +322,6 @@ async function EditForm({ params }: { params: IdParams }) {
   };
 
   const supplierName = new Map(options.suppliers.map((sp) => [sp.id, sp.name]));
-  const date = new Intl.DateTimeFormat("es-EC", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "America/Guayaquil",
-  });
   const lots: LotView[] = (
     (lotsRes.data ?? []) as {
       id: string;
@@ -333,7 +335,7 @@ async function EditForm({ params }: { params: IdParams }) {
     }[]
   ).map((l) => ({
     id: l.id,
-    date: date.format(new Date(l.created_at)),
+    date: LOT_DATE.format(new Date(l.created_at)),
     supplier: l.supplier_id ? (supplierName.get(l.supplier_id) ?? "") : "",
     costCents: l.unit_cost_cents === null ? null : Number(l.unit_cost_cents),
     received: Number(l.received_qty),

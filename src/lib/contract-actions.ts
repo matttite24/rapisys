@@ -6,6 +6,7 @@ import { parseDecimal } from "@/lib/money";
 import { isUnit } from "@/lib/units";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
+import { requireUser } from "@/lib/auth";
 
 export type LineState = { error?: string; fields?: Record<string, string> } | undefined;
 
@@ -150,6 +151,7 @@ export async function updateLine(
   lineId: string,
   formData: FormData,
 ): Promise<LineState> {
+  await requireUser();
   const parsed = parseLine(formData);
   if ("fields" in parsed) return { fields: parsed.fields };
   const v = parsed.values;
@@ -190,6 +192,7 @@ export async function updateLine(
 }
 
 export async function removeLine(org: string, contractId: string, lineId: string): Promise<LineState> {
+  await requireUser();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contract_items")
@@ -206,6 +209,7 @@ export async function setContractStatus(
   contractId: string,
   status: string,
 ): Promise<LineState> {
+  await requireUser();
   if (!(STATUS_ORDER as readonly string[]).includes(status)) return { error: "Estado no válido." };
 
   const supabase = await createClient();

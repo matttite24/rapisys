@@ -82,9 +82,12 @@ export function StatusControl({
   async function go(target: string) {
     setPending(true);
     setError(undefined);
-    const res = await setContractStatus(org, contractId, target);
-    setPending(false);
-    setError(res?.error);
+    try {
+      const res = await setContractStatus(org, contractId, target);
+      setError(res?.error);
+    } finally {
+      setPending(false);
+    }
   }
 
   return (

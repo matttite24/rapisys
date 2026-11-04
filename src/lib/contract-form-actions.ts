@@ -7,6 +7,7 @@ import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
 import { parseCents } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 
 // `fields` asocia cada mensaje con el campo que lo causó; `error` es general.
 export type ContractState =
@@ -111,6 +112,7 @@ function saveError(scope: string, error: { code?: string; message?: string }): C
 }
 
 export async function createContract(_: ContractState, formData: FormData): Promise<ContractState> {
+  await requireUser();
   const org = text(formData, "org");
   const parsed = parseForm(formData);
   if ("fields" in parsed) return { fields: parsed.fields };
@@ -149,6 +151,7 @@ export async function updateContract(
   _: ContractState,
   formData: FormData,
 ): Promise<ContractState> {
+  await requireUser();
   const parsed = parseForm(formData);
   if ("fields" in parsed) return { fields: parsed.fields };
   const v = parsed.values;

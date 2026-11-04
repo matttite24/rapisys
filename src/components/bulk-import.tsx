@@ -110,8 +110,8 @@ type Ocr = {
 // Abre Tesseract en el navegador (la captura no sale de tu equipo; los datos de idioma se
 // descargan una vez, unos MB) y lo cierra al terminar `run`.
 async function withOcr<T>(file: Blob, onProgress: (p: number) => void, run: (ocr: Ocr) => Promise<T>): Promise<T> {
-  const { blob: image, pixels } = await prepare(file);
-  const mod = await import("tesseract.js");
+  // La imagen se prepara mientras se descarga el lector.
+  const [{ blob: image, pixels }, mod] = await Promise.all([prepare(file), import("tesseract.js")]);
   const { createWorker } = (mod as unknown as { default?: typeof mod }).default ?? mod;
   const worker = await createWorker(["eng", "spa"], 1, {
     logger: (m) => {
@@ -488,6 +488,7 @@ export function BulkImport({
                   ref={fileInput}
                   type="file"
                   accept="image/*"
+                  aria-label="Elegir la imagen de la captura"
                   className="sr-only"
                   tabIndex={-1}
                   onChange={(e) => {

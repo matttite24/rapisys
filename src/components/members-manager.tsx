@@ -1,7 +1,7 @@
 "use client";
 
 import { TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
-import { startTransition, useActionState, useState } from "react";
+import { startTransition, useActionState, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
   changeRole,
@@ -82,8 +82,12 @@ function MemberRow({
   async function run(fn: () => Promise<MemberState>, after?: () => void) {
     setPending(true);
     setError(undefined);
-    const res = await fn();
-    setPending(false);
+    let res: MemberState;
+    try {
+      res = await fn();
+    } finally {
+      setPending(false);
+    }
     if (res?.error) {
       setError(res.error);
       setConfirming(false);
@@ -154,10 +158,13 @@ function MemberRow({
 export function InviteForm({ org }: { org: string }) {
   const [state, action, pending] = useActionState(inviteMember.bind(null, org), undefined);
   const [copied, setCopied] = useState(false);
-  const link =
-    state?.token && typeof window !== "undefined"
-      ? `${window.location.origin}/invitacion/${state.token}`
-      : undefined;
+  // El origen solo existe en el navegador: así no difiere entre el servidor y la hidratación.
+  const origin = useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => "",
+  );
+  const link = state?.token && origin ? `${origin}/invitacion/${state.token}` : undefined;
 
   return (
     <div className="flex flex-col gap-4">

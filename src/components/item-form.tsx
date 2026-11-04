@@ -71,11 +71,12 @@ export function ItemForm({
   const errors = state?.fields ?? {};
 
   const [category, setCategory] = useState(item?.category_id ?? "");
-  const [specs, setSpecs] = useState<SpecRow[]>(
+  const [specs, setSpecs] = useState<SpecRow[]>(() =>
     Object.entries(item?.specs ?? {}).map(([key, value]) => ({ key, value })),
   );
   const [prices, setPrices] = useState<PriceRow[]>(item?.prices ?? []);
   const [assetIds, setAssetIds] = useState<string[]>(item?.asset_ids ?? []);
+  const assetSet = useMemo(() => new Set(assetIds), [assetIds]);
   const inPresets = item ? (MARGIN_PRESETS as readonly number[]).includes(item.margin_percent) : true;
   const [margin, setMargin] = useState(inPresets ? String(item?.margin_percent ?? 40) : "custom");
   const [customMargin, setCustomMargin] = useState(inPresets ? "" : String(item?.margin_percent));
@@ -378,7 +379,7 @@ export function ItemForm({
                     <input
                       type="checkbox"
                       className="size-4 accent-[var(--brand)]"
-                      checked={assetIds.includes(a.id)}
+                      checked={assetSet.has(a.id)}
                       onChange={(e) =>
                         setAssetIds((ids) => (e.target.checked ? [...ids, a.id] : ids.filter((x) => x !== a.id)))
                       }

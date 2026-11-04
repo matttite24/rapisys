@@ -5,6 +5,7 @@ import { PARTIES, rucError, type PartyKind } from "@/lib/parties";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
+import { requireUser } from "@/lib/auth";
 
 export type PartyState =
   | { error?: string; fields?: Record<string, string> }
@@ -19,6 +20,7 @@ export async function saveParty(
   _: PartyState,
   formData: FormData,
 ): Promise<PartyState> {
+  await requireUser();
   // La tabla sale de una lista cerrada, nunca del cliente.
   const cfg = PARTIES[kind];
   if (!cfg) return { error: "Catálogo no válido." };
@@ -76,6 +78,7 @@ export async function deleteParty(
   org: string,
   id: string,
 ): Promise<PartyState> {
+  await requireUser();
   const cfg = PARTIES[kind];
   if (!cfg) return { error: "Catálogo no válido." };
   const orgId = await getOrgId(org);

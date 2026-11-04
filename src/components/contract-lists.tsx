@@ -269,9 +269,12 @@ export function ListInfo({
   async function remove() {
     setPending(true);
     setError(undefined);
-    const res = await deleteList(org, contractId, list.id);
-    setPending(false);
-    if (res?.error) setError(res.error);
+    try {
+      const res = await deleteList(org, contractId, list.id);
+      if (res?.error) setError(res.error);
+    } finally {
+      setPending(false);
+    }
   }
 
   // Una lista general solo tiene nombre: no se muestran datos vacíos.

@@ -6,6 +6,7 @@ import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 import { cleanSearch } from "@/lib/search";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
+import { requireUser } from "@/lib/auth";
 
 // `id` solo viene al crear: la lista nueva, para abrirla.
 export type ListState = { error?: string; fields?: Record<string, string>; id?: string } | undefined;
@@ -26,6 +27,7 @@ const LIMITS = { name: 200 };
 
 // Crear una lista pide solo el nombre. Si viene de un activo del catálogo, sus datos se leen del activo.
 export async function createList(org: string, contractId: string, formData: FormData): Promise<ListState> {
+  await requireUser();
   const name = text(formData, "name");
   const assetId = text(formData, "asset_id");
   if (!name) return { fields: { name: "Escribe el nombre del activo o de la lista." } };
@@ -65,6 +67,7 @@ export async function updateList(
   listId: string,
   formData: FormData,
 ): Promise<ListState> {
+  await requireUser();
   const name = text(formData, "name");
   const fields: Record<string, string> = {};
   if (!name) fields.name = "Escribe el nombre del activo o de la lista.";
@@ -125,6 +128,7 @@ export async function updateList(
 
 // Borra la lista con todas sus líneas.
 export async function deleteList(org: string, contractId: string, listId: string): Promise<ListState> {
+  await requireUser();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contract_lists")
@@ -179,6 +183,7 @@ export type NewAsset = {
 // Alta de un activo en el catálogo. Si ya existe el mismo (mismo nombre y misma serie, sin
 // distinguir mayúsculas) se reutiliza en vez de duplicarlo.
 export async function quickCreateAsset(org: string, input: NewAsset): Promise<QuickAssetState> {
+  await requireUser();
   const v = Object.fromEntries(Object.entries(input).map(([k, val]) => [k, String(val ?? "").trim()])) as NewAsset;
   const fields: Record<string, string> = {};
   if (!v.name) fields.name = "Escribe el nombre del activo.";

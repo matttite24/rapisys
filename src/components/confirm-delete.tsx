@@ -40,10 +40,13 @@ export function ConfirmDelete({
         className="min-h-11 sm:min-h-10"
         onClick={async () => {
           setPending(true);
-          const res = await onConfirm();
-          setPending(false);
-          setError(res?.error);
-          if (res?.error) setConfirming(false);
+          try {
+            const res = await onConfirm();
+            setError(res?.error);
+            if (res?.error) setConfirming(false);
+          } finally {
+            setPending(false);
+          }
         }}
       >
         Sí, eliminar

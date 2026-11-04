@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
+import { requireUser } from "@/lib/auth";
 
 export type MemberState = { error?: string; token?: string; email?: string } | undefined;
 
@@ -27,6 +28,7 @@ export async function inviteMember(
   _: MemberState,
   formData: FormData,
 ): Promise<MemberState> {
+  await requireUser();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const role = String(formData.get("role") ?? "");
   if (!EMAIL.test(email)) return { error: "Escribe un correo válido." };
@@ -48,6 +50,7 @@ export async function inviteMember(
 }
 
 export async function revokeInvitation(org: string, id: string): Promise<MemberState> {
+  await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.from("invitations").delete().eq("id", id);
   if (error) return { error: friendly(error) };
@@ -59,6 +62,7 @@ export async function changeRole(
   userId: string,
   role: string,
 ): Promise<MemberState> {
+  await requireUser();
   if (!ROLES.includes(role)) return { error: "Rol no válido." };
   const orgId = await getOrgId(org);
   if (!orgId) return { error: "No encontramos la organización." };
@@ -76,6 +80,7 @@ export async function changeRole(
 }
 
 export async function removeMember(org: string, userId: string): Promise<MemberState> {
+  await requireUser();
   const orgId = await getOrgId(org);
   if (!orgId) return { error: "No encontramos la organización." };
 

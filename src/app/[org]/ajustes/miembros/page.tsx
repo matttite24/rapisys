@@ -20,9 +20,7 @@ async function Members({ params }: { params: PageProps<"/[org]/ajustes/miembros"
   const orgId = await getOrgId(org);
   if (!orgId) notFound();
 
-  const supabase = await createClient();
-  const user = await getUser();
-  const role = await getMyRole(orgId);
+  const [supabase, user, role] = await Promise.all([createClient(), getUser(), getMyRole(orgId)]);
   const isAdmin = role === "admin";
 
   const [membersRes, invitesRes] = await Promise.all([

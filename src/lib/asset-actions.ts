@@ -5,6 +5,7 @@ import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
+import { requireUser } from "@/lib/auth";
 
 export type AssetState =
   | { error?: string; fields?: Record<string, string> }
@@ -18,6 +19,7 @@ export async function saveAsset(
   _: AssetState,
   formData: FormData,
 ): Promise<AssetState> {
+  await requireUser();
   const kind = text(formData, "kind");
   const name = text(formData, "name");
   const yearRaw = text(formData, "year");
@@ -80,6 +82,7 @@ export async function saveAsset(
 }
 
 export async function deleteAsset(org: string, id: string): Promise<AssetState> {
+  await requireUser();
   const orgId = await getOrgId(org);
   if (!orgId) return { error: "No encontramos la organización." };
 

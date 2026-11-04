@@ -8,8 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 async function Form({ params }: { params: PageProps<"/[org]/contratos/nuevo">["params"] }) {
   await connection();
   const { org } = await params;
-  const orgId = await getOrgId(org);
-  const supabase = await createClient();
+  const [orgId, supabase] = await Promise.all([getOrgId(org), createClient()]);
 
   const [clients, managers] = await Promise.all([
     supabase.from("clients").select("id, name").eq("organization_id", orgId ?? "").order("name"),

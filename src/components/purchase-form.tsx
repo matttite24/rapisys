@@ -354,14 +354,15 @@ function TargetPicker({
 }) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
+  // Lo que se escribió en la búsqueda: solo se lee al abrir, no hace falta que redibuje.
+  const qRef = useRef("");
   const [results, setResults] = useState<CoverableLine[] | null>(null);
 
   // Al abrir, se propone buscar por el número de parte del producto elegido.
   useEffect(() => {
     if (!open) return;
     let alive = true;
-    const start = q || row.item?.partNumbers[0] || "";
+    const start = qRef.current || row.item?.partNumbers[0] || "";
     void searchCoverable(contractId, start).then((r) => alive && setResults(r));
     return () => {
       alive = false;
@@ -416,7 +417,7 @@ function TargetPicker({
         placeholder="Número de parte o descripción de la línea del contrato"
         defaultValue={row.item?.partNumbers[0] ?? ""}
         onChange={(e) => {
-          setQ(e.target.value);
+          qRef.current = e.target.value;
           clearTimeout(timer.current);
           timer.current = setTimeout(async () => setResults(await searchCoverable(contractId, e.target.value)), 250);
         }}
