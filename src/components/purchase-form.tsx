@@ -39,7 +39,7 @@ type Row = {
 };
 
 // Columnas de cada línea de la factura; el encabezado y las filas comparten la misma rejilla.
-const ROW_GRID = "grid items-center gap-2 md:grid-cols-[2rem_minmax(0,1fr)_4.5rem_8rem_4.5rem_minmax(12rem,16rem)_2rem]";
+const ROW_GRID = "grid items-center gap-2 md:grid-cols-[2rem_minmax(0,1fr)_4.5rem_8rem_4.5rem_11rem_2rem]";
 
 // Clave única por fila (no un contador del módulo: con la recarga en caliente el contador vuelve a 0 y repite claves).
 const blank = (): Row => ({ key: crypto.randomUUID(), item: null, quantity: "1", cost: "", vat: "15", target: null, assign: "" });
@@ -406,19 +406,15 @@ function TargetAction({
   return (
     <>
       {row.target ? (
-        <div className="flex items-center gap-2" title={`«${row.target.listName}»: ${row.target.description}. Faltan ${row.target.open}.`}>
+        <div className="flex items-center gap-2" title={`${row.target.partNumber ? `${row.target.partNumber} · ` : ""}${row.target.description} («${row.target.listName}»). Faltan ${row.target.open}.`}>
           <span className="min-w-0 flex-1 truncate text-sm">
             <span className="font-mono text-xs text-muted-foreground">Línea </span>
             <span className="num">{row.target.n}</span>
-            <span className="ml-1 text-xs text-muted-foreground">
-              {row.target.partNumber ? `${row.target.partNumber} · ` : ""}
-              {row.target.description}
-            </span>
           </span>
           <NumericInput
             kind="decimal"
             aria-label={`Unidades de la línea ${n} que se asignan a esa línea del contrato`}
-            className="h-8 w-16 shrink-0 font-mono"
+            className="h-8 w-14 shrink-0 font-mono"
             value={row.assign || row.quantity}
             onChange={(e) => onPatch({ assign: e.target.value })}
           />
