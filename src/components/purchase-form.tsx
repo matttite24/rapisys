@@ -3,9 +3,10 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Add01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Cancel01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { DatePicker, toIsoDate } from "@/components/date-picker";
+import { HeaderSlot } from "@/components/header-action";
 import { FormField } from "@/components/form-field";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/money-input";
@@ -115,7 +116,21 @@ export function PurchaseForm({
 
   return (
     <>
-      <PageSection label="Factura" className="p-0">
+      <HeaderSlot>
+        <div className="flex h-full items-stretch gap-1">
+          <Link
+            href={`/${org}/contratos/${contractId}/compras`}
+            className={cn(buttonVariants({ variant: "ghost" }), "h-auto! self-stretch px-4")}
+          >
+            Cancelar
+          </Link>
+          <Button className="-mr-4 h-auto! gap-2 border-0! bg-clip-border! px-5" disabled={saving} onClick={submit}>
+            <HugeiconsIcon icon={Tick02Icon} className="size-4" />
+            {saving ? "Guardando…" : "Guardar"}
+          </Button>
+        </div>
+      </HeaderSlot>
+      <PageSection label="Registrar nueva factura" className="p-0">
         <div className="grid gap-4 p-6 md:grid-cols-[1.5fr_1fr_12rem_2fr]">
           <FormField name="supplier" label="Proveedor">
             {(a11y) => (
@@ -186,14 +201,6 @@ export function PurchaseForm({
           <dd className="num text-right font-medium">{formatCents(totals.total)}</dd>
         </dl>
         {error && <FieldError>{error}</FieldError>}
-        <div className="flex gap-2">
-          <Button className="h-10" disabled={saving} onClick={submit}>
-            {saving ? "Guardando…" : "Guardar factura"}
-          </Button>
-          <Link href={`/${org}/contratos/${contractId}/compras`} className={cn(buttonVariants({ variant: "outline" }), "h-10")}>
-            Cancelar
-          </Link>
-        </div>
       </div>
     </>
   );
