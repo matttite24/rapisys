@@ -95,8 +95,8 @@ function RailLink({ module: m }: { module: NavModule }) {
             href={to(m.groups[0].items[0].href)}
             aria-label={label}
             className={cn(
-              "grid size-10 place-items-center rounded-none text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-              active === m && "bg-foreground/[0.06] text-brand hover:text-brand",
+              "grid size-10 place-items-center rounded-none text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground",
+              active === m && "bg-background text-brand hover:bg-background hover:text-brand",
             )}
             aria-current={active === m ? "page" : undefined}
           />
@@ -121,7 +121,7 @@ function Rail({
   onTogglePanel?: () => void;
 }) {
   return (
-    <div className="flex w-16 shrink-0 flex-col border-r">
+    <div className="flex w-16 shrink-0 flex-col border-r bg-layer-1">
       <div className={cn(ROW, "bg-brand text-brand-foreground")}>
         {onTogglePanel ? (
           <Tooltip>
@@ -195,7 +195,7 @@ function Panel({
   const current = activeHref(path, groups.flatMap((g) => g.items.map((i) => i.href)));
 
   return (
-    <div className="flex w-60 shrink-0 flex-col border-r bg-muted/50">
+    <div className="flex w-60 shrink-0 flex-col border-r bg-layer-2">
       <div className={cn(ROW, "crosshair")}>{panelTop ?? orgSwitcher}</div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
@@ -212,9 +212,9 @@ function Panel({
                 href={to(item.href)}
                 onClick={onNavigate}
                 className={cn(
-                  "flex min-h-10 items-center gap-2.5 rounded-none px-2 py-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                  "flex min-h-10 items-center gap-2.5 rounded-none px-2 py-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground",
                   current === item.href &&
-                    "bg-foreground/[0.06] font-medium text-foreground",
+                    "bg-background font-medium text-foreground hover:bg-background",
                 )}
                 aria-current={current === item.href ? "page" : undefined}
               >
