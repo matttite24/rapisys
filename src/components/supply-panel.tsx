@@ -63,6 +63,7 @@ function PanelBody({
   canAct: boolean;
 }) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const searchSeq = useRef(0);
   const [sources, setSources] = useState<SourceView[] | null>(null);
   const [results, setResults] = useState<StockResult[] | null>(null);
   const [invoices, setInvoices] = useState<PurchaseOption[] | null>(null);
@@ -89,11 +90,14 @@ function PanelBody({
   function search(value: string) {
     setQ(value);
     clearTimeout(timer.current);
+    const id = ++searchSeq.current;
     timer.current = setTimeout(async () => {
       const [stock, inv] = await Promise.all([searchStock(org, value), getPurchaseOptions(contractId, value)]);
+      // Una búsqueda más nueva ya salió: esta respuesta llegó tarde y se descarta.
+      if (id !== searchSeq.current) return;
       setResults(stock);
       setInvoices(inv);
-    }, 250);
+    }, 300);
   }
 
   // Lo reservado en bodega y lo comprado por recibir (si ya se cargaron los tramos, de ahí; si no, de la línea).

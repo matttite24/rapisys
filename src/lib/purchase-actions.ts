@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { MAX_CENTS, parseDecimal } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
+import { findItems } from "@/lib/item-search";
 import { cleanSearch } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
@@ -47,20 +48,7 @@ export async function searchItems(org: string, q: string): Promise<ItemOption[]>
   if (!orgId) return [];
   const term = cleanSearch(q);
   const supabase = await createClient();
-  let query = supabase
-    .from("items")
-    .select("id, sku, name, part_numbers")
-    .eq("organization_id", orgId)
-    .eq("is_active", true)
-    .order("name")
-    .limit(15);
-  if (term) {
-    query = query.or(
-      `name.ilike.%${term}%,sku.ilike.%${term}%,part_numbers.cs.{${term}},part_numbers.cs.{${term.toUpperCase()}}`,
-    );
-  }
-  const { data } = await query;
-  const rows = (data ?? []) as { id: string; sku: string | null; name: string; part_numbers: string[] }[];
+  const rows = await findItems(supabase, orgId, term);
   if (!rows.length) return [];
 
   const { data: prices } = await supabase

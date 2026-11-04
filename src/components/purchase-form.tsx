@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Add01Icon, Cancel01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
@@ -25,6 +25,7 @@ import {
   type ItemOption,
   type PurchaseInput,
 } from "@/lib/purchase-actions";
+import { useDebouncedSearch } from "@/lib/use-debounced-search";
 import { cn } from "@/lib/utils";
 
 type Row = {
@@ -292,9 +293,8 @@ function ItemPicker({
   onPick: (item: ItemOption) => void;
   onClear: () => void;
 }) {
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<ItemOption[] | null>(null);
+  const { results, loading, run, clear } = useDebouncedSearch((text: string) => searchItems(org, text));
 
   if (item) {
     return (
@@ -322,15 +322,23 @@ function ItemPicker({
         value={q}
         onChange={(e) => {
           setQ(e.target.value);
-          clearTimeout(timer.current);
-          timer.current = setTimeout(async () => setResults(await searchItems(org, e.target.value)), 250);
+          run(e.target.value);
         }}
-        onFocus={() => results === null && void searchItems(org, q).then(setResults)}
-        onKeyDown={(e) => e.key === "Escape" && setResults(null)}
+        onFocus={() => results === null && run(q, 0)}
+        onKeyDown={(e) => e.key === "Escape" && clear()}
       />
-      {results !== null && (
-        <ul aria-label="Productos" className="absolute top-full right-0 left-0 z-20 mt-1 max-h-64 divide-y overflow-y-auto border bg-popover shadow-overlay">
-          {results.length === 0 ? (
+      {(results !== null || loading) && (
+        <ul
+          aria-label="Productos"
+          aria-busy={loading}
+          className={cn(
+            "absolute top-full right-0 left-0 z-20 mt-1 max-h-64 divide-y overflow-y-auto border bg-popover shadow-overlay transition-opacity",
+            loading && results !== null && "opacity-60",
+          )}
+        >
+          {results === null ? (
+            <li className="px-3 py-2 text-sm text-muted-foreground">Buscando…</li>
+          ) : results.length === 0 ? (
             <li className="flex flex-col gap-1 px-3 py-2 text-sm text-muted-foreground">
               Ningún producto coincide.
               <Link
@@ -349,7 +357,7 @@ function ItemPicker({
                   className="flex min-h-11 w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-accent"
                   onClick={() => {
                     onPick(r);
-                    setResults(null);
+                    clear();
                     setQ("");
                   }}
                 >
@@ -443,18 +451,11 @@ function TargetDialog({
   row: Row;
   onPick: (line: CoverableLine) => void;
 }) {
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const qRef = useRef("");
-  const [results, setResults] = useState<CoverableLine[] | null>(null);
+  const { results, loading, run } = useDebouncedSearch((text: string) => searchCoverable(contractId, text));
 
+  // Al abrir, busca de inmediato con el número de parte del producto.
   useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    qRef.current = row.item?.partNumbers[0] ?? "";
-    void searchCoverable(contractId, qRef.current).then((r) => alive && setResults(r));
-    return () => {
-      alive = false;
-    };
+    if (open) run(row.item?.partNumbers[0] ?? "", 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -475,14 +476,10 @@ function TargetDialog({
             aria-label="Buscar línea del contrato"
             placeholder="Número de parte o descripción de la línea"
             defaultValue={row.item?.partNumbers[0] ?? ""}
-            onChange={(e) => {
-              qRef.current = e.target.value;
-              clearTimeout(timer.current);
-              timer.current = setTimeout(async () => setResults(await searchCoverable(contractId, e.target.value)), 250);
-            }}
+            onChange={(e) => run(e.target.value)}
           />
         </div>
-        <ul className="max-h-80 divide-y overflow-y-auto">
+        <ul aria-busy={loading} className={cn("max-h-80 divide-y overflow-y-auto transition-opacity", loading && results !== null && "opacity-60")}>
           {results === null && <li className="px-6 py-4 text-sm text-muted-foreground">Buscando…</li>}
           {results?.length === 0 && (
             <li className="px-6 py-4 text-sm text-muted-foreground">Ninguna línea pendiente coincide.</li>
