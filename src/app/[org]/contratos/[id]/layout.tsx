@@ -43,7 +43,7 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
       </HeaderTitle>
       <HeaderSlot>
         <OnlyAtDetail>
-          <div className="hidden md:block">
+          <div className="hidden self-stretch md:flex">
             <StatusControl org={org} contractId={id} status={c.status} summary={summary} blocker={blocker} inHeader />
           </div>
         </OnlyAtDetail>

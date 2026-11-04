@@ -59,8 +59,8 @@ export function StatusControl({
   }
 
   return (
-    <div className={inHeader ? "relative h-full" : "flex flex-col gap-2"}>
-      <div className={inHeader ? "flex h-full items-stretch gap-2" : "flex flex-wrap items-center gap-2"}>
+    <div className={inHeader ? "relative flex" : "flex flex-col gap-2"}>
+      <div className={inHeader ? "flex items-stretch gap-2" : "flex flex-wrap items-center gap-2"}>
         {/* En el encabezado el estado ya está en la columna de opciones y no se retrocede: solo el paso siguiente. */}
         {!inHeader && (
         <span className="inline-flex items-center gap-2 bg-muted px-2.5 py-1.5 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-foreground select-none">
@@ -76,10 +76,10 @@ export function StatusControl({
         {next && (
           // Pasar a En ejecución fija los datos del contrato: pide confirmación.
           // Con motivo pendiente queda inactivo y el motivo se ve al pasar el cursor (el botón inactivo no recibe eventos).
-          <span className={cn(inHeader && "self-stretch")} title={blocker ?? undefined}>
+          <span className={cn(inHeader && "flex")} title={blocker ?? undefined}>
             <Button
               disabled={pending || Boolean(blocker)}
-              className={cn(inHeader && "-mr-4 h-full! gap-2 border-0! bg-clip-border! px-5")}
+              className={cn(inHeader && "-mr-4 h-auto! gap-2 border-0! bg-clip-border! px-5")}
               onClick={() => (next === "in_progress" ? setConfirmOpen(true) : go(next))}
             >
               {STATUS_LABEL[next]}
