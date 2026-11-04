@@ -3,7 +3,7 @@
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ListInfo, ListTabs, type ListView } from "@/components/contract-lists";
+import { ListTabs, type ListView } from "@/components/contract-lists";
 import { LineSearch } from "@/components/line-search";
 import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
 import { Pager } from "@/components/pager";
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { formatCents } from "@/lib/money";
+import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
 import { unitLabel } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import { Search01Icon } from "@hugeicons/core-free-icons";
@@ -108,6 +109,8 @@ export function SupplyBoard({
 
   const listCounts: Record<string, number> = {};
   for (const l of lists) listCounts[l.id] = l.count;
+  const showCost = lines.some((l) => l.costCents !== null);
+  const nextId = canAct ? lines.find((l) => l.state === "pending" || l.state === "partial")?.id : undefined;
   const totalLines = counts.pending + counts.partial + counts.purchased + counts.in_stock + counts.delivered;
 
   return (
@@ -120,54 +123,43 @@ export function SupplyBoard({
         onSelect={(id) => go({ lista: id, q: "", estado: "" })}
         onNew={() => {}}
       />
-      {loaded && (
-        <ListInfo
-          key={loaded.id}
-          org={org}
-          contractId={contractId}
-          list={loaded}
-          lineCount={loaded.count}
-          canEdit={false}
-          editing={false}
-          onEdit={() => {}}
-        />
-      )}
-
-      {/* Resumen por estado: cada celda filtra la tabla. */}
-      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-5 [&>*]:bg-surface-strong/50">
-        {STATE_ORDER.map((s) => (
-          <button
-            key={s}
-            type="button"
-            aria-pressed={estado === s}
-            onClick={() => go({ estado: estado === s ? "" : s })}
-            className={cn(
-              "flex flex-col items-start gap-1 px-6 py-3 text-left transition-colors hover:bg-background/70",
-              estado === s && "bg-background! shadow-[inset_0_-2px_0_var(--brand)]",
-            )}
-          >
-            <span className="flex items-center gap-2 font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
-              <span aria-hidden className={cn("size-2", STATE[s].dot)} />
-              {STATE[s].label}
-            </span>
-            <span className="num text-2xl">{counts[s]}</span>
-          </button>
-        ))}
-      </div>
+      {loaded && <AssetLine list={loaded} />}
 
       <section className="border-b">
-        <div className="flex h-12 items-stretch border-b">
-          <LineSearch key={`${loaded?.id}:${q}`} q={q} onSearch={(next) => go({ q: next })} />
-          {loaded && (
-            <DeliveryActions
-              org={org}
-              contractId={contractId}
-              listId={loaded.id}
-              listName={loaded.name}
-              canAct={canAct}
-              deliveries={deliveries}
-            />
-          )}
+        {/* Una sola barra: resumen por estado (filtra), búsqueda y acciones de entrega. */}
+        <div className="flex flex-col border-b xl:h-12 xl:flex-row xl:items-stretch">
+          <div className="flex shrink-0 divide-x overflow-x-auto border-b bg-surface-strong/50 xl:border-b-0 xl:border-r">
+            {STATE_ORDER.map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={estado === s}
+                onClick={() => go({ estado: estado === s ? "" : s })}
+                className={cn(
+                  "flex h-12 shrink-0 items-center gap-2 px-4 text-left transition-colors hover:bg-background/70 xl:h-auto",
+                  estado === s && "bg-background! shadow-[inset_0_-2px_0_var(--brand)]",
+                )}
+              >
+                <span aria-hidden className={cn("size-2", STATE[s].dot)} />
+                <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">{STATE[s].label}</span>
+                <span className="num text-base font-medium">{counts[s]}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex h-12 min-w-0 flex-1 items-stretch xl:h-auto">
+            <LineSearch key={`${loaded?.id}:${q}`} q={q} onSearch={(next) => go({ q: next })} />
+            {loaded && (
+              <DeliveryActions
+                org={org}
+                contractId={contractId}
+                listId={loaded.id}
+                listName={loaded.name}
+                canAct={canAct}
+                deliveries={deliveries}
+                ready={counts.in_stock}
+              />
+            )}
+          </div>
         </div>
 
         {navigating || switching ? (
@@ -188,7 +180,7 @@ export function SupplyBoard({
                       <th scope="col" className={TH}>Descripción</th>
                       <th scope="col" className={`${TH} text-right`}>Cantidad</th>
                       <th scope="col" className={TH}>Estado y avance</th>
-                      <th scope="col" className={`${TH} text-right`}>Costo unit.</th>
+                      {showCost && <th scope="col" className={`${TH} text-right`}>Costo unit.</th>}
                       <th scope="col" className={`${TH} w-px`}><span className="sr-only">Acciones</span></th>
                     </tr>
                   </thead>
@@ -214,9 +206,17 @@ export function SupplyBoard({
                             <Progress stock={l.reserved} purchased={l.purchased} delivered={l.delivered} total={l.quantity} />
                           </div>
                         </td>
-                        <td className={`${TD} num text-right`}>{l.costCents === null ? "—" : formatCents(l.costCents)}</td>
+                        {showCost && <td className={`${TD} num text-right`}>{l.costCents === null ? "—" : formatCents(l.costCents)}</td>}
                         <td className={cn(TD, "p-1")}>
-                          <Button variant="ghost" size="sm" className="h-8 font-medium text-foreground" onClick={() => setSelectedId(l.id)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              "h-8 font-medium text-foreground",
+                              l.id === nextId && "bg-brand text-brand-foreground hover:bg-brand hover:text-brand-foreground hover:brightness-90",
+                            )}
+                            onClick={() => setSelectedId(l.id)}
+                          >
                             {canAct ? "Abastecer" : "Ver"}
                           </Button>
                         </td>
@@ -233,9 +233,11 @@ export function SupplyBoard({
               size={LINES_PAGE_SIZE}
               params={{ lista: loaded?.id ?? "", ...(q ? { q } : {}), ...(estado ? { estado } : {}) }}
             />
-            <p className="border-t px-6 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {q || estado ? `${total} de ${totalLines} líneas` : `${totalLines} ${totalLines === 1 ? "línea" : "líneas"}`}
-            </p>
+            {(q || estado) && (
+              <p className="border-t px-6 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+                {total} de {totalLines} líneas
+              </p>
+            )}
           </div>
         )}
       </section>
@@ -248,6 +250,31 @@ export function SupplyBoard({
         onClose={() => setSelectedId(null)}
       />
     </>
+  );
+}
+
+// Datos del activo en una línea: solo los que existen. Una lista general no muestra nada.
+function AssetLine({ list }: { list: ListView }) {
+  if (!list.assetId) return null;
+  const parts: [string, string][] = [
+    ["Tipo", ASSET_KIND_LABEL[list.kind as AssetKind] ?? ""],
+    ["Marca", list.brand],
+    ["Modelo", list.model],
+    ["Serie", list.serial],
+    ["Motor", list.engine],
+    ["ID", list.identifier],
+  ];
+  const shown = parts.filter(([, v]) => v);
+  if (shown.length === 0) return null;
+  return (
+    <p className="flex flex-wrap gap-x-6 gap-y-1 border-b px-6 py-2 text-xs">
+      {shown.map(([label, value]) => (
+        <span key={label} className="whitespace-nowrap">
+          <span className="font-mono uppercase tracking-[0.1em] text-muted-foreground">{label}</span>{" "}
+          <span className="font-medium">{value}</span>
+        </span>
+      ))}
+    </p>
   );
 }
 
@@ -296,13 +323,12 @@ export function SupplySkeleton() {
           <Skeleton key={i} className="h-4" style={{ width: `${w * 4}px` }} />
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-5 [&>*]:bg-surface-strong/50">
+      <div className="flex h-12 divide-x overflow-hidden border-b bg-surface-strong/50">
         {STATE_ORDER.map((s) => (
-          <div key={s} className="flex flex-col gap-2 px-6 py-3">
-            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
-              {STATE[s].label}
-            </span>
-            <Skeleton className="h-7 w-10" />
+          <div key={s} className="flex shrink-0 items-center gap-2 px-4">
+            <span aria-hidden className={cn("size-2", STATE[s].dot)} />
+            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">{STATE[s].label}</span>
+            <Skeleton className="h-4 w-5" />
           </div>
         ))}
       </div>

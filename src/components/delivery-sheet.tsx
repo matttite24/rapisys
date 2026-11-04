@@ -23,6 +23,7 @@ export function DeliveryActions({
   listName,
   canAct,
   deliveries,
+  ready,
 }: {
   org: string;
   contractId: string;
@@ -30,6 +31,8 @@ export function DeliveryActions({
   listName: string;
   canAct: boolean;
   deliveries: number;
+  // Líneas con su stock completo, listas para entregar.
+  ready: number;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -41,10 +44,12 @@ export function DeliveryActions({
         Entregas <span className="num text-muted-foreground">{deliveries}</span>
       </Link>
       {canAct && (
-        <Button size="sm" className="h-8 gap-1.5 px-3" onClick={() => setOpen(true)}>
-          <HugeiconsIcon icon={DeliveryTruck01Icon} className="size-4" />
-          Generar entrega
-        </Button>
+        <span title={ready === 0 ? "Aún ninguna línea tiene su stock completo" : undefined}>
+          <Button size="sm" className="h-8 gap-1.5 px-3" disabled={ready === 0} onClick={() => setOpen(true)}>
+            <HugeiconsIcon icon={DeliveryTruck01Icon} className="size-4" />
+            Generar entrega{ready > 0 && <span className="num opacity-70">{ready}</span>}
+          </Button>
+        </span>
       )}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="bottom" className="h-[92svh] gap-0">
