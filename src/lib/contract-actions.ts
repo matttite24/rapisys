@@ -177,6 +177,9 @@ export async function updateLine(
     .eq("contract_id", contractId)
     .select("id");
   if (error) {
+    if (error.message === "below_reserved") {
+      return { fields: { quantity: "La cantidad no puede ser menor a lo ya reservado en bodega." } };
+    }
     // La cantidad no puede quedar por debajo de lo ya recibido.
     if (error.code === "23514") return { fields: { quantity: "La cantidad es menor a lo ya recibido." } };
     return { error: friendly(error) };

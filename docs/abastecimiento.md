@@ -1,5 +1,8 @@
 # Abastecimiento: plan
 
+> **Avance:** etapa 1 (existencias por lote) y etapa 2 (asociar y reservar desde la bodega) hechas.
+> Falta: compras, recepción, proforma, listo para entrega, resumen en Detalle y rentabilidad.
+
 Pantalla del contrato donde se va **línea por línea** de la lista de referencia y se resuelve cada
 producto, desde la **bodega** o desde **facturas de compra**, hasta dejarlo listo para entrega.
 

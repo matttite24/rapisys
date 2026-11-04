@@ -176,7 +176,7 @@ type OptimisticAction =
 
 // Búsqueda dentro de la lista abierta: ocupa la fila desde el inicio. Va al servidor (con una
 // pausa corta al escribir) y vuelve a la página 1.
-function LineSearch({ q, onSearch }: { q: string; onSearch: (q: string) => void }) {
+export function LineSearch({ q, onSearch }: { q: string; onSearch: (q: string) => void }) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [value, setValue] = useState(q);
   return (

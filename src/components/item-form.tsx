@@ -52,9 +52,12 @@ export function ItemForm({
   suppliers,
   assets,
   canDelete,
+  defaults,
 }: {
   org: string;
   item?: ItemData;
+  // Datos de partida de un item nuevo (p. ej. venido de una línea del contrato).
+  defaults?: { name?: string; part?: string };
   categories: Option[];
   suppliers: Option[];
   assets: AssetOption[];
@@ -119,7 +122,7 @@ export function ItemForm({
       <PageSection index="01" label="Identificación" className="p-0">
         <CellGrid className="border-0 md:grid-cols-3">
           <FormField name="name" label="Nombre" error={errors.name}>
-            {(a11y) => <Input {...a11y} required autoFocus defaultValue={item?.name} />}
+            {(a11y) => <Input {...a11y} required autoFocus defaultValue={item?.name ?? defaults?.name} />}
           </FormField>
           <FormField name="sku" label="SKU (opcional)" error={errors.sku}>
             {(a11y) => <Input {...a11y} className="font-mono" defaultValue={item?.sku ?? ""} />}
@@ -168,7 +171,7 @@ export function ItemForm({
           {[1, 2, 3].map((n) => (
             <FormField key={n} name={`part_${n}`} label={`Número de parte ${n}`}>
               {(a11y) => (
-                <Input {...a11y} className="font-mono" defaultValue={item?.part_numbers[n - 1] ?? ""} />
+                <Input {...a11y} className="font-mono" defaultValue={item?.part_numbers[n - 1] ?? (n === 1 ? (defaults?.part ?? "") : "")} />
               )}
             </FormField>
           ))}

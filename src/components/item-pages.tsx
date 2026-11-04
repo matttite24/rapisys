@@ -232,22 +232,30 @@ async function formOptions(orgId: string) {
   };
 }
 
-async function NewForm({ params }: { params: Params }) {
+async function NewForm({ params, searchParams }: { params: Params; searchParams: Search }) {
   await connection();
   const { org } = await params;
+  const sp = await searchParams;
   const orgId = await getOrgId(org);
   if (!orgId) notFound();
-  return <ItemForm org={org} {...(await formOptions(orgId))} />;
+  const one = (v: string | string[] | undefined) => (typeof v === "string" ? v.slice(0, 200) : undefined);
+  return (
+    <ItemForm
+      org={org}
+      defaults={{ name: one(sp.nombre), part: one(sp.parte) }}
+      {...(await formOptions(orgId))}
+    />
+  );
 }
 
-export function ItemNewPage({ params }: { params: Params }) {
+export function ItemNewPage({ params, searchParams }: { params: Params; searchParams: Search }) {
   return (
     <>
       <PageSection>
         <h1 className="text-3xl font-semibold tracking-tight">Nuevo item</h1>
       </PageSection>
       <Suspense>
-        <NewForm params={params} />
+        <NewForm params={params} searchParams={searchParams} />
       </Suspense>
     </>
   );
