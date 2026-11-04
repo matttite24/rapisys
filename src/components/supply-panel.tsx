@@ -12,6 +12,7 @@ import { FieldError } from "@/components/ui/field";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatCents } from "@/lib/money";
 import { releaseSource, reserveStock, getLineSupply, searchStock, type SourceView, type StockResult } from "@/lib/supply-actions";
+import { assignPurchase, getPurchaseOptions, type PurchaseOption } from "@/lib/purchase-actions";
 import { unitLabel } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +59,7 @@ function PanelBody({
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [sources, setSources] = useState<SourceView[] | null>(null);
   const [results, setResults] = useState<StockResult[] | null>(null);
+  const [invoices, setInvoices] = useState<PurchaseOption[] | null>(null);
   const [q, setQ] = useState(line.partNumber || line.description);
   const [qty, setQty] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -71,21 +73,37 @@ function PanelBody({
     let alive = true;
     void getLineSupply(line.id).then((r) => alive && setSources(r));
     void searchStock(org, line.partNumber || line.description).then((r) => alive && setResults(r));
+    void getPurchaseOptions(contractId, line.partNumber || line.description).then((r) => alive && setInvoices(r));
     return () => {
       alive = false;
     };
-  }, [line.id, line.partNumber, line.description, org]);
+  }, [line.id, line.partNumber, line.description, org, contractId]);
 
   function search(value: string) {
     setQ(value);
     clearTimeout(timer.current);
-    timer.current = setTimeout(async () => setResults(await searchStock(org, value)), 250);
+    timer.current = setTimeout(async () => {
+      const [stock, inv] = await Promise.all([searchStock(org, value), getPurchaseOptions(contractId, value)]);
+      setResults(stock);
+      setInvoices(inv);
+    }, 250);
   }
 
-  const reserved = sources ? sources.reduce((s, x) => s + x.quantity, 0) : line.reserved;
-  const pending = Math.max(0, line.quantity - reserved);
+  // Lo reservado en bodega y lo comprado por recibir (si ya se cargaron los tramos, de ahí; si no, de la línea).
+  const stockQty = sources ? sources.filter((x) => x.kind === "bodega").reduce((s, x) => s + x.quantity, 0) : line.reserved;
+  const purchasedQty = sources ? sources.filter((x) => x.kind === "compra").reduce((s, x) => s + x.quantity, 0) : line.purchased;
+  const covered = stockQty + purchasedQty;
+  const pending = Math.max(0, line.quantity - covered);
   const state =
-    line.delivered >= line.quantity ? "delivered" : reserved === 0 ? "pending" : reserved < line.quantity ? "partial" : "in_stock";
+    line.delivered >= line.quantity
+      ? "delivered"
+      : covered === 0
+        ? "pending"
+        : covered < line.quantity
+          ? "partial"
+          : stockQty >= line.quantity
+            ? "in_stock"
+            : "purchased";
 
   function run(key: string, fn: () => Promise<{ error?: string; ok?: boolean } | undefined>) {
     if (busy) return;
@@ -97,7 +115,9 @@ function PanelBody({
       else {
         // Lo reservado y las existencias cambiaron: se vuelven a pedir.
         await reloadSources();
-        setResults(await searchStock(org, q));
+        const [stock, inv] = await Promise.all([searchStock(org, q), getPurchaseOptions(contractId, q)]);
+        setResults(stock);
+        setInvoices(inv);
       }
       setBusy(null);
       setReleasing(null);
@@ -115,7 +135,7 @@ function PanelBody({
           Piden <span className="num text-foreground">{line.quantity}</span> {unitLabel(line.unit).toLowerCase()}
           {line.quantity === 1 ? "" : "s"}
         </p>
-        <Progress done={reserved} total={line.quantity} delivered={line.delivered} />
+        <Progress stock={stockQty} purchased={purchasedQty} delivered={line.delivered} total={line.quantity} />
         <span className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.06em]">
           <span aria-hidden className={cn("size-2", STATE[state].dot)} />
           {STATE[state].label}
@@ -130,12 +150,12 @@ function PanelBody({
 
       <section className="border-b">
         <h3 className="flex h-10 items-center border-b px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
-          Reservado para esta línea
+          Cubierto para esta línea
         </h3>
         {sources === null ? (
           <p className="p-6 text-sm text-muted-foreground">Cargando…</p>
         ) : sources.length === 0 ? (
-          <p className="p-6 text-sm text-muted-foreground">Aún no se reservó nada.</p>
+          <p className="p-6 text-sm text-muted-foreground">Aún no se cubrió nada.</p>
         ) : (
           <ul className="divide-y">
             {sources.map((s) => (
@@ -143,7 +163,12 @@ function PanelBody({
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate">{s.itemName}</span>
                   <span className="truncate font-mono text-xs text-muted-foreground">
-                    {[s.itemSku, s.supplier || "Sin proveedor", s.costCents === null ? "sin costo" : formatCents(s.costCents)]
+                    {[
+                      s.kind === "compra" ? `Factura ${s.invoice} · por recibir` : "En bodega",
+                      s.itemSku,
+                      s.supplier || "Sin proveedor",
+                      s.costCents === null ? "sin costo" : formatCents(s.costCents),
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>
@@ -268,6 +293,44 @@ function PanelBody({
                 );
               })}
             </ul>
+          )}
+          {pending > 0 && invoices && invoices.length > 0 && (
+            <>
+              <h3 className="flex h-10 items-center border-y px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
+                En facturas del contrato, por asignar
+              </h3>
+              <ul className="divide-y">
+                {invoices.map((o) => {
+                  const value = qty[`inv:${o.id}`] ?? String(Math.min(o.available, pending));
+                  return (
+                    <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3">
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate">{o.itemName}</span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          Factura {o.invoice} · {o.supplier || "Sin proveedor"} · {formatCents(o.unitCostCents)} · sin asignar{" "}
+                          <span className="num">{o.available}</span>
+                        </span>
+                      </div>
+                      <NumericInput
+                        kind="decimal"
+                        aria-label={`Cantidad a asignar de la factura ${o.invoice}`}
+                        className="h-8 w-20 font-mono"
+                        value={value}
+                        onChange={(e) => setQty((m) => ({ ...m, [`inv:${o.id}`]: e.target.value }))}
+                      />
+                      <Button
+                        size="sm"
+                        className="h-8"
+                        disabled={busy !== null}
+                        onClick={() => run(`inv:${o.id}`, () => assignPurchase(org, contractId, o.id, line.id, value))}
+                      >
+                        {busy === `inv:${o.id}` ? "Asignando…" : "Asignar"}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           )}
         </section>
       )}

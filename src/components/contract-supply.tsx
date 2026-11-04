@@ -14,7 +14,7 @@ type IdParams = Promise<{ org: string; id: string }>;
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-const STATES: SupplyState[] = ["pending", "partial", "in_stock", "delivered"];
+const STATES: SupplyState[] = ["pending", "partial", "purchased", "in_stock", "delivered"];
 
 type View = {
   status: string;
@@ -46,6 +46,7 @@ type View = {
     unit: string;
     cpc: string | null;
     reserved: number;
+    purchased: number;
     delivered: number;
     cost_cents: number | null;
     state: SupplyState;
@@ -119,6 +120,7 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     unit: l.unit,
     cpc: l.cpc ?? "",
     reserved: Number(l.reserved),
+    purchased: Number(l.purchased),
     delivered: Number(l.delivered),
     costCents: l.cost_cents === null ? null : Number(l.cost_cents),
     state: l.state,
@@ -133,6 +135,7 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
       counts={{
         pending: view.counts.pending ?? 0,
         partial: view.counts.partial ?? 0,
+        purchased: view.counts.purchased ?? 0,
         in_stock: view.counts.in_stock ?? 0,
         delivered: view.counts.delivered ?? 0,
       }}

@@ -1,7 +1,10 @@
 # Abastecimiento: plan
 
-> **Avance:** etapa 1 (existencias por lote) y etapa 2 (asociar y reservar desde la bodega) hechas.
-> Falta: compras, recepción, proforma, listo para entrega, resumen en Detalle y rentabilidad.
+> **Avance:** hechas la etapa 1 (existencias por lote), la 2 (reservar desde la bodega), el **reporte de
+> entrega** (entregas parciales de lo que ya tiene stock) y la 3 (compras: facturas por contrato,
+> asignadas a líneas de la lista). La factura queda sin adjunto: los archivos se hacen con el módulo
+> Archivos (Storage).
+> Falta: recepción (etapa 4), proforma, listo para entrega, resumen en Detalle y rentabilidad.
 
 Pantalla del contrato donde se va **línea por línea** de la lista de referencia y se resuelve cada
 producto, desde la **bodega** o desde **facturas de compra**, hasta dejarlo listo para entrega.

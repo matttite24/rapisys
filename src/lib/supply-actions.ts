@@ -28,6 +28,9 @@ const refresh = (org: string, contractId: string) => {
 
 export type SourceView = {
   id: string;
+  kind: "bodega" | "compra";
+  // Para una compra: número de la factura.
+  invoice: string;
   itemName: string;
   itemSku: string | null;
   supplier: string;
@@ -40,13 +43,15 @@ export async function getLineSupply(lineId: string): Promise<SourceView[]> {
   const supabase = await createClient();
   const { data: rows } = await supabase
     .from("supply_sources")
-    .select("id, item_id, supplier_id, unit_cost_cents, quantity")
+    .select("id, kind, item_id, supplier_id, purchase_line_id, unit_cost_cents, quantity")
     .eq("contract_item_id", lineId)
     .order("created_at");
   const sources = (rows ?? []) as {
     id: string;
+    kind: "bodega" | "compra";
     item_id: string;
     supplier_id: string | null;
+    purchase_line_id: string | null;
     unit_cost_cents: number | null;
     quantity: number;
   }[];
@@ -54,15 +59,25 @@ export async function getLineSupply(lineId: string): Promise<SourceView[]> {
 
   const itemIds = [...new Set(sources.map((s) => s.item_id))];
   const supplierIds = [...new Set(sources.map((s) => s.supplier_id).filter((x): x is string => !!x))];
-  const [items, suppliers] = await Promise.all([
+  const plIds = sources.map((s) => s.purchase_line_id).filter((x): x is string => !!x);
+  const [items, suppliers, pls] = await Promise.all([
     supabase.from("items").select("id, name, sku").in("id", itemIds),
     supplierIds.length ? supabase.from("suppliers").select("id, name").in("id", supplierIds) : { data: [] },
+    plIds.length ? supabase.from("purchase_lines").select("id, purchase_id").in("id", plIds) : { data: [] },
   ]);
+  const plRows = (pls.data ?? []) as { id: string; purchase_id: string }[];
+  const { data: purchaseRows } = plRows.length
+    ? await supabase.from("purchases").select("id, number").in("id", [...new Set(plRows.map((p) => p.purchase_id))])
+    : { data: [] };
+  const numberByPurchase = new Map(((purchaseRows ?? []) as { id: string; number: string }[]).map((p) => [p.id, p.number]));
+  const invoiceByLine = new Map(plRows.map((p) => [p.id, numberByPurchase.get(p.purchase_id) ?? ""]));
   const itemById = new Map(((items.data ?? []) as { id: string; name: string; sku: string | null }[]).map((i) => [i.id, i]));
   const supplierById = new Map(((suppliers.data ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]));
 
   return sources.map((s) => ({
     id: s.id,
+    kind: s.kind,
+    invoice: s.purchase_line_id ? (invoiceByLine.get(s.purchase_line_id) ?? "") : "",
     itemName: itemById.get(s.item_id)?.name ?? "Producto eliminado",
     itemSku: itemById.get(s.item_id)?.sku ?? null,
     supplier: s.supplier_id ? (supplierById.get(s.supplier_id) ?? "") : "",

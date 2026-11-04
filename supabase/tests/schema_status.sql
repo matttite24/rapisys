@@ -25,4 +25,5 @@ select
   to_regproc('public.contract_items_view') is not null                     as "13_contract_items_view",
   to_regclass('public.stock_lots') is not null                             as "14_stock",
   to_regclass('public.supply_sources') is not null                         as "15_supply_sources",
-  to_regclass('public.deliveries') is not null                             as "16_deliveries";
+  to_regclass('public.deliveries') is not null                             as "16_deliveries",
+  to_regclass('public.purchases') is not null                              as "17_purchases";

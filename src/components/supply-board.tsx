@@ -28,6 +28,7 @@ export type SupplyLine = {
   unit: string;
   cpc: string;
   reserved: number;
+  purchased: number;
   delivered: number;
   costCents: number | null;
   state: SupplyState;
@@ -36,7 +37,7 @@ export type SupplyLine = {
 const TH = cn(TABLE_TH, "font-bold text-foreground");
 const TD = cn(TABLE_TD, "py-2 align-middle");
 
-const STATE_ORDER: SupplyState[] = ["pending", "partial", "in_stock", "delivered"];
+const STATE_ORDER: SupplyState[] = ["pending", "partial", "purchased", "in_stock", "delivered"];
 
 export type { SupplyState };
 
@@ -107,7 +108,7 @@ export function SupplyBoard({
 
   const listCounts: Record<string, number> = {};
   for (const l of lists) listCounts[l.id] = l.count;
-  const totalLines = counts.pending + counts.partial + counts.in_stock + counts.delivered;
+  const totalLines = counts.pending + counts.partial + counts.purchased + counts.in_stock + counts.delivered;
 
   return (
     <>
@@ -133,7 +134,7 @@ export function SupplyBoard({
       )}
 
       {/* Resumen por estado: cada celda filtra la tabla. */}
-      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-4 [&>*]:bg-background">
+      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-5 [&>*]:bg-background">
         {STATE_ORDER.map((s) => (
           <button
             key={s}
@@ -201,7 +202,7 @@ export function SupplyBoard({
                         <td className={`${TD} num whitespace-nowrap text-right`}>
                           {l.quantity} <span className="font-sans text-xs text-muted-foreground">{unitLabel(l.unit)}</span>
                         </td>
-                        <td className={TD}><Progress done={l.reserved} total={l.quantity} delivered={l.delivered} /></td>
+                        <td className={TD}><Progress stock={l.reserved} purchased={l.purchased} delivered={l.delivered} total={l.quantity} /></td>
                         <td className={`${TD} whitespace-nowrap`}>
                           <span className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.06em]">
                             <span aria-hidden className={cn("size-2", STATE[l.state].dot)} />
@@ -292,7 +293,7 @@ export function SupplySkeleton() {
           <Skeleton key={i} className="h-4" style={{ width: `${w * 4}px` }} />
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-4 [&>*]:bg-background">
+      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-5 [&>*]:bg-background">
         {STATE_ORDER.map((s) => (
           <div key={s} className="flex flex-col gap-2 px-6 py-3">
             <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
