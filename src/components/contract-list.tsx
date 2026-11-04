@@ -117,7 +117,7 @@ async function List({
                   <div>
                     <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Plazo</dt>
                     <dd>
-                      <span className="num">{r.term_days} d</span>
+                      <span className="num">{r.term_days} {r.term_days === 1 ? "día" : "días"}</span>
                       <span className="text-xs text-muted-foreground"> · desde {formatIso(r.start_date)}</span>
                     </dd>
                   </div>
@@ -160,7 +160,7 @@ async function List({
                   <td className={TD}>{r.contract_managers?.name}</td>
                   <td className={`${TD} num text-right`}>{formatCents(Number(r.total_cents))}</td>
                   <td className={`${TD} whitespace-nowrap`}>
-                    <span className="num">{r.term_days} d</span>
+                    <span className="num">{r.term_days} {r.term_days === 1 ? "día" : "días"}</span>
                     <span className="block text-xs text-muted-foreground">desde {formatIso(r.start_date)}</span>
                   </td>
                   <td className={TD}>
