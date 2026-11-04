@@ -39,7 +39,7 @@ type Row = {
 };
 
 // Columnas de cada línea de la factura; el encabezado y las filas comparten la misma rejilla.
-const ROW_GRID = "grid items-center gap-3 md:grid-cols-[2rem_minmax(0,1fr)_6.5rem_9rem_5rem_15rem_2.5rem]";
+const ROW_GRID = "grid items-center gap-2 md:grid-cols-[2rem_minmax(0,1fr)_6.5rem_9rem_5rem_15rem_2.5rem]";
 
 // Clave única por fila (no un contador del módulo: con la recarga en caliente el contador vuelve a 0 y repite claves).
 const blank = (): Row => ({ key: crypto.randomUUID(), item: null, quantity: "1", cost: "", vat: "15", target: null, assign: "" });
@@ -184,12 +184,14 @@ export function PurchaseForm({
             />
           ))}
         </ul>
-        <div className="border-t p-4">
-          <Button variant="outline" className="h-10 gap-2" onClick={() => setRows((rs) => [...rs, blank()])}>
-            <HugeiconsIcon icon={Add01Icon} className="size-5" />
-            Agregar línea
-          </Button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setRows((rs) => [...rs, blank()])}
+          className="flex h-12 w-full items-center justify-center gap-2 border-t bg-surface-strong/50 font-mono text-xs font-medium uppercase tracking-[0.1em] transition-colors hover:bg-surface-strong focus-visible:bg-surface-strong focus-visible:outline-none"
+        >
+          <HugeiconsIcon icon={Add01Icon} className="size-4" />
+          Agregar línea
+        </button>
       </PageSection>
 
       <div className="flex flex-col gap-4 p-6">
@@ -228,7 +230,7 @@ function PurchaseRow({
 }) {
   const hint = "font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground md:hidden";
   return (
-    <li className="px-6 py-3">
+    <li className="px-6 py-1.5">
       <div className={ROW_GRID}>
         <span className="num text-muted-foreground max-md:hidden">{n}</span>
         <ItemPicker org={org} item={row.item} onPick={onPick} onClear={() => onPatch({ item: null })} />
@@ -237,7 +239,7 @@ function PurchaseRow({
           <NumericInput
             kind="decimal"
             aria-label={`Cantidad de la línea ${n}`}
-            className="font-mono"
+            className="h-8 font-mono"
             value={row.quantity}
             onChange={(e) => onPatch({ quantity: e.target.value })}
           />
@@ -246,6 +248,7 @@ function PurchaseRow({
           <span className={hint}>Costo unit. s/IVA</span>
           <MoneyInput
             aria-label={`Costo unitario sin IVA de la línea ${n}`}
+            className="h-8"
             name={`cost-${row.key}`}
             value={row.cost}
             onChange={(cost) => onPatch({ cost })}
@@ -256,7 +259,7 @@ function PurchaseRow({
           <NumericInput
             kind="decimal"
             aria-label={`IVA de la línea ${n}`}
-            className="font-mono"
+            className="h-8 font-mono"
             value={row.vat}
             onChange={(e) => onPatch({ vat: e.target.value })}
           />
@@ -267,7 +270,7 @@ function PurchaseRow({
             <Button
               variant="ghost"
               size="icon"
-              className="size-10 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               aria-label={`Quitar la línea ${n} de la factura`}
               onClick={onRemove}
             >
@@ -298,14 +301,14 @@ function ItemPicker({
 
   if (item) {
     return (
-      <div className="flex min-h-10 items-center justify-between gap-2 border px-3 py-1.5 text-sm">
+      <div className="flex h-8 items-center justify-between gap-2 border px-3 text-sm">
         <span className="min-w-0 truncate">
           {item.name}
           <span className="ml-2 font-mono text-xs text-muted-foreground">
             {[item.sku, ...item.partNumbers].filter(Boolean).join(" · ")}
           </span>
         </span>
-        <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+        <Button type="button" variant="ghost" size="sm" className="h-[1.5rem]" onClick={onClear}>
           Cambiar
         </Button>
       </div>
@@ -317,6 +320,7 @@ function ItemPicker({
       <Input
         type="search"
         aria-label="Producto: busca en la bodega"
+        className="h-8"
         autoComplete="off"
         placeholder="Número de parte, SKU o nombre"
         value={q}
@@ -402,7 +406,7 @@ function TargetAction({
           <NumericInput
             kind="decimal"
             aria-label={`Unidades de la línea ${n} que se asignan a esa línea del contrato`}
-            className="h-9 w-16 shrink-0 font-mono"
+            className="h-8 w-16 shrink-0 font-mono"
             value={row.assign || row.quantity}
             onChange={(e) => onPatch({ assign: e.target.value })}
           />
@@ -410,7 +414,7 @@ function TargetAction({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8 shrink-0 text-muted-foreground"
+            className="size-7 shrink-0 text-muted-foreground"
             aria-label="Quitar la asignación"
             onClick={() => onPatch({ target: null, assign: "" })}
           >
@@ -418,7 +422,7 @@ function TargetAction({
           </Button>
         </div>
       ) : (
-        <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => setOpen(true)}>
+        <Button type="button" variant="outline" size="sm" className="h-[2rem] justify-self-start" onClick={() => setOpen(true)}>
           Asignar a una línea
         </Button>
       )}
