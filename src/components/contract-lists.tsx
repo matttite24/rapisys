@@ -175,16 +175,12 @@ export function ListTabs({
   lists,
   counts,
   activeId,
-  canAdd,
   onSelect,
-  onNew,
 }: {
   lists: ListView[];
   counts: Record<string, number>;
   activeId: string | null;
-  canAdd: boolean;
   onSelect: (id: string) => void;
-  onNew: () => void;
 }) {
   return (
     <div role="tablist" aria-label="Listas del contrato" className="flex gap-6 overflow-x-auto border-b px-6">
@@ -217,16 +213,6 @@ export function ListTabs({
           </button>
         );
       })}
-      {canAdd && (
-        <button
-          type="button"
-          onClick={onNew}
-          className="flex h-12 shrink-0 items-center gap-1.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <HugeiconsIcon icon={Add01Icon} className="size-4" />
-          Nueva lista
-        </button>
-      )}
     </div>
   );
 }

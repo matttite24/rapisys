@@ -7,6 +7,8 @@ import { DeletePurchase } from "@/components/purchase-actions-ui";
 import { PurchaseForm } from "@/components/purchase-form";
 import { ReceiveAll, ReceiveLine } from "@/components/receive-controls";
 import { buttonVariants } from "@/components/ui/button";
+import { Upload01Icon } from "@hugeicons/core-free-icons";
+import { HeaderAction } from "@/components/header-action";
 import { getContract } from "@/lib/contract-data";
 import { formatIso } from "@/lib/dates";
 import { formatCents, lineAmounts } from "@/lib/money";
@@ -18,7 +20,7 @@ type PurchaseParams = Promise<{ org: string; id: string; purchaseId: string }>;
 
 const NEW_BTN = (org: string, id: string) => (
   <Link href={`/${org}/contratos/${id}/compras/nueva`} className={cn(buttonVariants(), "h-10")}>
-    Nueva factura
+    Subir factura
   </Link>
 );
 
@@ -63,9 +65,9 @@ async function List({ params }: { params: IdParams }) {
   return (
     <PageSection
       label={`${purchases.length} ${purchases.length === 1 ? "factura" : "facturas"}`}
-      meta={canAct ? NEW_BTN(org, id) : undefined}
       className="p-0"
     >
+      {canAct && <HeaderAction icon={Upload01Icon} label="Subir factura" href={`/${org}/contratos/${id}/compras/nueva`} />}
       {purchases.length === 0 ? (
         <div className="flex flex-col items-start gap-4 p-6">
           <p className="max-w-xl text-muted-foreground">

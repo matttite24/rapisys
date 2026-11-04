@@ -1,5 +1,6 @@
 "use client";
 
+import { HeaderAction } from "@/components/header-action";
 import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
@@ -156,13 +157,16 @@ export function ReferenceList({
   }
 
   const newListDialog = canAdd && (
-    <NewListDialog
-      org={org}
-      contractId={contractId}
-      open={newOpen}
-      onOpenChange={setNewOpen}
-      onCreated={select}
-    />
+    <>
+      <HeaderAction icon={Add01Icon} label="Nueva lista" onClick={() => setNewOpen(true)} />
+      <NewListDialog
+        org={org}
+        contractId={contractId}
+        open={newOpen}
+        onOpenChange={setNewOpen}
+        onCreated={select}
+      />
+    </>
   );
 
   // Sin listas todavía: se crea la primera desde el modal.
@@ -197,9 +201,7 @@ export function ReferenceList({
         lists={lists}
         counts={counts}
         activeId={active?.id ?? null}
-        canAdd={canAdd}
         onSelect={select}
-        onNew={() => setNewOpen(true)}
       />
       {active && (
         <ListInfo

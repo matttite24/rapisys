@@ -15,13 +15,16 @@ type Props = {
   label: string;
   href?: string;
   onClick?: () => void;
+  // Botón presente pero aún sin función: se ve inactivo y explica por qué.
+  disabled?: boolean;
+  title?: string;
 };
 
 // Uso desde cualquier página: <HeaderAction icon={Add01Icon} label="Nuevo" href="…" />
 // Se muestra en el encabezado de la sección como una celda al borde derecho: alto
 // completo, pegada a la línea (anula el padding del encabezado). En móvil queda
 // como un cuadrado con solo el ícono; el texto sigue disponible para lectores de pantalla.
-export function HeaderAction({ icon, label, href, onClick }: Props) {
+export function HeaderAction({ icon, label, href, onClick, disabled, title }: Props) {
   const slot = useContext(HeaderSlotContext);
   if (!slot) return null;
 
@@ -37,12 +40,12 @@ export function HeaderAction({ icon, label, href, onClick }: Props) {
   );
 
   return createPortal(
-    href ? (
+    href && !disabled ? (
       <Link href={href} data-slot="button" className={className}>
         {content}
       </Link>
     ) : (
-      <Button className={className} onClick={onClick}>
+      <Button className={className} onClick={onClick} disabled={disabled} title={title}>
         {content}
       </Button>
     ),

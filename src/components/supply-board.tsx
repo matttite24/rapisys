@@ -118,9 +118,7 @@ export function SupplyBoard({
         lists={lists}
         counts={listCounts}
         activeId={active?.id ?? null}
-        canAdd={false}
         onSelect={(id) => go({ lista: id, q: "", estado: "" })}
-        onNew={() => {}}
       />
       {loaded && (
         <ListInfo
