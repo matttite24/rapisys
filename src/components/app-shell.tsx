@@ -95,7 +95,7 @@ function RailLink({ module: m }: { module: NavModule }) {
             href={to(m.groups[0].items[0].href)}
             aria-label={label}
             className={cn(
-              "grid size-10 place-items-center rounded-none text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground",
+              "grid h-10 w-full place-items-center rounded-none text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground",
               active === m && "bg-foreground/[0.06] text-brand shadow-[inset_3px_0_0_var(--brand)] hover:bg-foreground/[0.06] hover:text-brand",
             )}
             aria-current={active === m ? "page" : undefined}
@@ -198,11 +198,11 @@ function Panel({
     <div className="flex w-60 shrink-0 flex-col border-r bg-layer-2">
       <div className={cn(ROW, "crosshair")}>{panelTop ?? orgSwitcher}</div>
 
-      <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
+      <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-3">
         {groups.map((g, i) => (
           <div key={i} className="flex flex-col gap-0.5">
             {g.label && (
-              <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
+              <p className="px-5 pb-1 text-xs font-medium text-muted-foreground">
                 {g.label}
               </p>
             )}
@@ -212,7 +212,7 @@ function Panel({
                 href={to(item.href)}
                 onClick={onNavigate}
                 className={cn(
-                  "flex min-h-10 items-center gap-2.5 rounded-none px-2 py-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground",
+                  "flex min-h-10 items-center gap-2.5 rounded-none px-5 py-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground",
                   current === item.href &&
                     "bg-foreground/[0.06] font-medium text-foreground shadow-[inset_3px_0_0_var(--brand)] hover:bg-foreground/[0.06]",
                 )}
