@@ -22,4 +22,5 @@ select
   )                                                                        as "10_asset_machine_data",
   to_regproc('public.add_contract_lines') is not null                      as "11_add_contract_lines",
   to_regproc('public.contract_list_counts') is not null                    as "12_list_limits_and_counts",
-  to_regproc('public.contract_items_view') is not null                     as "13_contract_items_view";
+  to_regproc('public.contract_items_view') is not null                     as "13_contract_items_view",
+  to_regclass('public.stock_lots') is not null                             as "14_stock";

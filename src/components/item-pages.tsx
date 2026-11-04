@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { HeaderAction } from "@/components/header-action";
 import { ItemForm, type AssetOption, type ItemData } from "@/components/item-form";
+import { StockPanel, type LotView } from "@/components/stock-panel";
 import { PageSection, TABLE_TH as TH, TABLE_TD as TD } from "@/components/page-section";
 import { Pager } from "@/components/pager";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { pageRange, readPage } from "@/lib/pagination";
 import { cleanSearch } from "@/lib/search";
 import { getMyRole, getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 type Params = Promise<{ org: string }>;
 type IdParams = Promise<{ org: string; id: string }>;
@@ -74,6 +76,17 @@ async function List({ params, searchParams }: { params: Params; searchParams: Se
       if (!best.has(p.item_id) || cost < best.get(p.item_id)!) best.set(p.item_id, cost);
     }
   }
+  // Existencias de los items de esta página.
+  const stock = new Map<string, number>();
+  if (rows.length) {
+    const { data: onHand } = await supabase
+      .from("item_stock")
+      .select("item_id, on_hand")
+      .in("item_id", rows.map((r) => r.id));
+    for (const s of (onHand ?? []) as { item_id: string; on_hand: number }[]) {
+      stock.set(s.item_id, Number(s.on_hand));
+    }
+  }
   const newHref = `/${org}/bodega/nuevo`;
 
   return (
@@ -121,6 +134,7 @@ async function List({ params, searchParams }: { params: Params; searchParams: Se
                   <th scope="col" className={TH}>Item</th>
                   <th scope="col" className={TH}>Línea / categoría</th>
                   <th scope="col" className={TH}>N.º de parte</th>
+                  <th scope="col" className={`${TH} text-right`}>Existencias</th>
                   <th scope="col" className={`${TH} text-right`}>Costo s/IVA</th>
                   <th scope="col" className={`${TH} text-right`}>Margen</th>
                   <th scope="col" className={`${TH} text-right`}>Venta s/IVA</th>
@@ -150,6 +164,9 @@ async function List({ params, searchParams }: { params: Params; searchParams: Se
                         {r.part_numbers.length > 1 && (
                           <span className="ml-1 text-muted-foreground">+{r.part_numbers.length - 1}</span>
                         )}
+                      </td>
+                      <td className={cn(TD, "num text-right", !stock.get(r.id) && "text-muted-foreground")}>
+                        {stock.get(r.id) ?? 0}
                       </td>
                       <td className={`${TD} num text-right`}>{cost !== undefined ? formatCents(cost) : "—"}</td>
                       <td className={`${TD} num text-right`}>{Number(r.margin_percent)}%</td>
@@ -243,7 +260,7 @@ async function EditForm({ params }: { params: IdParams }) {
   if (!orgId) notFound();
 
   const supabase = await createClient();
-  const [itemRes, pricesRes, linksRes, options, role] = await Promise.all([
+  const [itemRes, pricesRes, linksRes, options, role, lotsRes] = await Promise.all([
     supabase.from("items").select("*").eq("id", id).eq("organization_id", orgId).maybeSingle(),
     supabase
       .from("item_supplier_prices")
@@ -253,6 +270,12 @@ async function EditForm({ params }: { params: IdParams }) {
     supabase.from("item_assets").select("asset_id").eq("item_id", id),
     formOptions(orgId),
     getMyRole(orgId),
+    supabase
+      .from("stock_lots")
+      .select("id, supplier_id, unit_cost_cents, received_qty, remaining_qty, kind, note, created_at")
+      .eq("item_id", id)
+      .order("created_at", { ascending: false })
+      .limit(200),
   ]);
   const row = itemRes.data;
   if (!row) notFound();
@@ -282,7 +305,41 @@ async function EditForm({ params }: { params: IdParams }) {
     asset_ids: ((linksRes.data ?? []) as { asset_id: string }[]).map((l) => l.asset_id),
   };
 
-  return <ItemForm org={org} item={item} canDelete={role === "admin"} {...options} />;
+  const supplierName = new Map(options.suppliers.map((sp) => [sp.id, sp.name]));
+  const date = new Intl.DateTimeFormat("es-EC", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "America/Guayaquil",
+  });
+  const lots: LotView[] = (
+    (lotsRes.data ?? []) as {
+      id: string;
+      supplier_id: string | null;
+      unit_cost_cents: number | null;
+      received_qty: number;
+      remaining_qty: number;
+      kind: "compra" | "ajuste";
+      note: string | null;
+      created_at: string;
+    }[]
+  ).map((l) => ({
+    id: l.id,
+    date: date.format(new Date(l.created_at)),
+    supplier: l.supplier_id ? (supplierName.get(l.supplier_id) ?? "") : "",
+    costCents: l.unit_cost_cents === null ? null : Number(l.unit_cost_cents),
+    received: Number(l.received_qty),
+    remaining: Number(l.remaining_qty),
+    kind: l.kind,
+    note: l.note ?? "",
+  }));
+
+  return (
+    <>
+      <ItemForm org={org} item={item} canDelete={role === "admin"} {...options} />
+      <StockPanel org={org} itemId={id} lots={lots} suppliers={options.suppliers} canEdit={role !== null} />
+    </>
+  );
 }
 
 export function ItemEditPage({ params }: { params: IdParams }) {
