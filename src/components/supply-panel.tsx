@@ -217,7 +217,6 @@ function PanelBody({
             <p className="p-6 text-sm text-muted-foreground">La línea está cubierta por completo.</p>
           ) : (
             <>
-              <h3 className={TITLE}>Cubrir las {pending} que faltan</h3>
               <div role="tablist" aria-label="De dónde cubrirlo" className="flex divide-x border-b">
                 {(
                   [
