@@ -3,7 +3,7 @@
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ListTabs, type ListView } from "@/components/contract-lists";
+import { ListInfo, ListTabs, type ListView } from "@/components/contract-lists";
 import { LineSearch } from "@/components/line-search";
 import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
 import { Pager } from "@/components/pager";
@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { formatCents } from "@/lib/money";
-import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
 import { unitLabel } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import { Search01Icon } from "@hugeicons/core-free-icons";
@@ -123,7 +122,18 @@ export function SupplyBoard({
         onSelect={(id) => go({ lista: id, q: "", estado: "" })}
         onNew={() => {}}
       />
-      {loaded && <AssetLine list={loaded} />}
+      {loaded && (
+        <ListInfo
+          key={loaded.id}
+          org={org}
+          contractId={contractId}
+          list={loaded}
+          lineCount={loaded.count}
+          canEdit={false}
+          editing={false}
+          onEdit={() => {}}
+        />
+      )}
 
       <section className="border-b">
         {/* Fila 1: resumen por estado; cada celda filtra la tabla. */}
@@ -271,31 +281,6 @@ export function SupplyBoard({
         onClose={() => setSelectedId(null)}
       />
     </>
-  );
-}
-
-// Datos del activo en una línea: solo los que existen. Una lista general no muestra nada.
-function AssetLine({ list }: { list: ListView }) {
-  if (!list.assetId) return null;
-  const parts: [string, string][] = [
-    ["Tipo", ASSET_KIND_LABEL[list.kind as AssetKind] ?? ""],
-    ["Marca", list.brand],
-    ["Modelo", list.model],
-    ["Serie", list.serial],
-    ["Motor", list.engine],
-    ["ID", list.identifier],
-  ];
-  const shown = parts.filter(([, v]) => v);
-  if (shown.length === 0) return null;
-  return (
-    <p className="flex flex-wrap gap-x-6 gap-y-1 border-b px-6 py-2 text-xs">
-      {shown.map(([label, value]) => (
-        <span key={label} className="whitespace-nowrap">
-          <span className="font-mono uppercase tracking-[0.1em] text-muted-foreground">{label}</span>{" "}
-          <span className="font-medium">{value}</span>
-        </span>
-      ))}
-    </p>
   );
 }
 
