@@ -164,7 +164,7 @@ export function PurchaseForm({
           <span>N.º</span>
           <span>Producto (busca en la bodega)</span>
           <span className="text-right">Cantidad</span>
-          <span className="text-right">Costo unit. s/IVA</span>
+          <span className="text-right">Costo s/IVA</span>
           <span className="text-right">IVA %</span>
           <span>Asignar a</span>
           <span />
@@ -245,7 +245,7 @@ function PurchaseRow({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className={hint}>Costo unit. s/IVA</span>
+          <span className={hint}>Costo s/IVA</span>
           <MoneyInput
             aria-label={`Costo unitario sin IVA de la línea ${n}`}
             className="h-8"
@@ -434,7 +434,7 @@ function TargetAction({
           </Button>
         </div>
       ) : (
-        <Button type="button" variant="outline" size="sm" className="h-[2rem] justify-self-start" onClick={() => setOpen(true)}>
+        <Button type="button" variant="outline" size="sm" className="h-[2rem] w-full" onClick={() => setOpen(true)}>
           Asignar
         </Button>
       )}
