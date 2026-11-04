@@ -39,7 +39,7 @@ type Row = {
 };
 
 // Columnas de cada línea de la factura; el encabezado y las filas comparten la misma rejilla.
-const ROW_GRID = "grid items-center gap-2 md:grid-cols-[2rem_minmax(0,1fr)_4.5rem_8rem_4.5rem_12rem_2rem]";
+const ROW_GRID = "grid items-center gap-2 md:grid-cols-[2rem_minmax(0,2fr)_4.5rem_8rem_4.5rem_minmax(12rem,1fr)_2rem]";
 
 // Clave única por fila (no un contador del módulo: con la recarga en caliente el contador vuelve a 0 y repite claves).
 const blank = (): Row => ({ key: crypto.randomUUID(), item: null, quantity: "1", cost: "", vat: "15", target: null, assign: "" });
@@ -410,7 +410,10 @@ function TargetAction({
           <span className="min-w-0 flex-1 truncate text-sm">
             <span className="font-mono text-xs text-muted-foreground">Línea </span>
             <span className="num">{row.target.n}</span>
-            <span className="ml-1 text-xs text-muted-foreground">de {row.target.listName}</span>
+            <span className="ml-1 text-xs text-muted-foreground">
+              {row.target.partNumber ? `${row.target.partNumber} · ` : ""}
+              {row.target.description}
+            </span>
           </span>
           <NumericInput
             kind="decimal"
