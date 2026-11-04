@@ -65,6 +65,7 @@ function PanelBody({
   const [busy, setBusy] = useState<string | null>(null);
   const [releasing, setReleasing] = useState<string | null>(null);
   const [error, setError] = useState<string>();
+  const [tab, setTab] = useState<"bodega" | "facturas">("bodega");
 
   const reloadSources = useCallback(() => getLineSupply(line.id).then(setSources), [line.id]);
 
@@ -124,22 +125,39 @@ function PanelBody({
     });
   }
 
+  const inStock = results?.filter((r) => r.onHand > 0) ?? [];
+  const noStock = results?.filter((r) => r.onHand === 0) ?? [];
+  const TITLE = "flex h-10 items-center border-b px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]";
+
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="flex flex-col gap-3 border-b p-6">
+      {/* Qué línea es y cuánto falta: lo primero que se necesita saber. */}
+      <div className="flex flex-col gap-4 border-b p-6">
         <div className="flex flex-col gap-1">
           <span className="font-mono text-xs text-muted-foreground">{line.partNumber || "Sin número de parte"}</span>
-          <span className="text-base font-medium">{line.description}</span>
+          <span className="text-lg font-medium">{line.description}</span>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Piden <span className="num text-foreground">{line.quantity}</span> {unitLabel(line.unit).toLowerCase()}
-          {line.quantity === 1 ? "" : "s"}
-        </p>
-        <Progress stock={stockQty} purchased={purchasedQty} delivered={line.delivered} total={line.quantity} />
-        <span className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.06em]">
-          <span aria-hidden className={cn("size-2", STATE[state].dot)} />
-          {STATE[state].label}
-        </span>
+        <dl className="grid grid-cols-3 gap-px border bg-border [&>div]:bg-background [&>div]:px-3 [&>div]:py-2">
+          <div>
+            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Piden</dt>
+            <dd className="num text-xl">{line.quantity} <span className="font-sans text-xs text-muted-foreground">{unitLabel(line.unit)}</span></dd>
+          </div>
+          <div>
+            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Cubierto</dt>
+            <dd className="num text-xl">{covered}</dd>
+          </div>
+          <div className={cn(pending > 0 && "bg-brand/10!")}>
+            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Faltan</dt>
+            <dd className={cn("num text-xl", pending > 0 && "text-brand font-medium")}>{pending}</dd>
+          </div>
+        </dl>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 font-mono text-xs uppercase tracking-[0.06em]", STATE[state].chip)}>
+            <span aria-hidden className={cn("size-2", STATE[state].dot)} />
+            {STATE[state].label}
+          </span>
+          <Progress stock={stockQty} purchased={purchasedQty} delivered={line.delivered} total={line.quantity} />
+        </div>
       </div>
 
       {error && (
@@ -148,188 +166,231 @@ function PanelBody({
         </div>
       )}
 
-      <section className="border-b">
-        <h3 className="flex h-10 items-center border-b px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
-          Cubierto para esta línea
-        </h3>
-        {sources === null ? (
-          <p className="p-6 text-sm text-muted-foreground">Cargando…</p>
-        ) : sources.length === 0 ? (
-          <p className="p-6 text-sm text-muted-foreground">Aún no se cubrió nada.</p>
-        ) : (
-          <ul className="divide-y">
-            {sources.map((s) => (
-              <li key={s.id} className="flex items-center gap-3 px-6 py-3">
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate">{s.itemName}</span>
-                  <span className="truncate font-mono text-xs text-muted-foreground">
-                    {[
-                      s.kind === "compra" ? `Factura ${s.invoice} · por recibir` : "En bodega",
-                      s.itemSku,
-                      s.supplier || "Sin proveedor",
-                      s.costCents === null ? "sin costo" : formatCents(s.costCents),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </div>
-                <span className="num">{s.quantity}</span>
-                {canAct &&
-                  (releasing === s.id ? (
-                    <span className="flex gap-1">
-                      <Button size="sm" variant="destructive" disabled={busy !== null} onClick={() => run(s.id, () => releaseSource(org, contractId, s.id))}>
+      {/* Lo ya cubierto: solo si hay algo. */}
+      {sources === null ? (
+        <p className="border-b p-6 text-sm text-muted-foreground">Cargando…</p>
+      ) : (
+        sources.length > 0 && (
+          <section className="border-b">
+            <h3 className={TITLE}>Ya cubierto · {sources.length}</h3>
+            <ul className="divide-y">
+              {sources.map((s) => (
+                <li key={s.id} className="flex items-center gap-3 px-6 py-3">
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate">{s.itemName}</span>
+                    <span className="truncate font-mono text-xs text-muted-foreground">
+                      {[
+                        s.kind === "compra" ? `Factura ${s.invoice} · por recibir` : "En bodega",
+                        s.supplier || "Sin proveedor",
+                        s.costCents === null ? "sin costo" : formatCents(s.costCents),
+                      ].join(" · ")}
+                    </span>
+                  </div>
+                  <span className="num">{s.quantity}</span>
+                  {canAct &&
+                    (releasing === s.id ? (
+                      <span className="flex gap-1">
+                        <Button size="sm" variant="destructive" disabled={busy !== null} onClick={() => run(s.id, () => releaseSource(org, contractId, s.id))}>
+                          Liberar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setReleasing(null)}>
+                          No
+                        </Button>
+                      </span>
+                    ) : (
+                      <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setReleasing(s.id)}>
                         Liberar
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => setReleasing(null)}>
-                        No
-                      </Button>
-                    </span>
-                  ) : (
-                    <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setReleasing(s.id)}>
-                      Liberar
-                    </Button>
-                  ))}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                    ))}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      )}
 
       {canAct && (
         <section>
-          <h3 className="flex h-10 items-center border-b px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
-            Buscar en la bodega
-          </h3>
-          <div className="relative border-b">
-            <HugeiconsIcon icon={Search01Icon} aria-hidden className="pointer-events-none absolute top-1/2 left-6 size-5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              aria-label="Buscar en la bodega"
-              placeholder="Número de parte, SKU o nombre"
-              autoComplete="off"
-              value={q}
-              onChange={(e) => search(e.target.value)}
-              className="h-12 w-full bg-transparent pr-4 pl-14 text-sm outline-none placeholder:text-muted-foreground focus-visible:bg-background"
-            />
-          </div>
-
           {pending === 0 ? (
             <p className="p-6 text-sm text-muted-foreground">La línea está cubierta por completo.</p>
-          ) : results === null ? (
-            <p className="p-6 text-sm text-muted-foreground">Buscando…</p>
-          ) : results.length === 0 ? (
-            <div className="flex flex-col items-start gap-3 p-6 text-sm text-muted-foreground">
-              <p>Ningún producto de la bodega coincide.</p>
-              <Link
-                href={`/${org}/bodega/nuevo?parte=${encodeURIComponent(line.partNumber)}&nombre=${encodeURIComponent(line.description)}`}
-                target="_blank"
-                className="text-foreground underline underline-offset-4"
-              >
-                Crear el producto en la bodega
-              </Link>
-            </div>
           ) : (
-            <ul className="divide-y">
-              {results.map((r) => {
-                const matches = line.partNumber && r.partNumbers.some((p) => norm(p) === norm(line.partNumber));
-                return (
-                  <li key={r.id} className="flex flex-col gap-2 px-6 py-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 flex-col">
-                        <span className="font-medium">{r.name}</span>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {[r.sku, ...r.partNumbers].filter(Boolean).join(" · ") || "Sin SKU ni número de parte"}
-                        </span>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span className={cn("num text-sm", r.onHand === 0 && "text-muted-foreground")}>{r.onHand} en bodega</span>
-                        {matches && (
-                          <span className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-brand">Mismo número de parte</span>
-                        )}
-                      </div>
-                    </div>
-                    {r.lots.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        Sin existencias.{" "}
-                        <Link href={`/${org}/bodega/${r.id}`} target="_blank" className="underline underline-offset-4">
-                          Registrar una entrada
-                        </Link>
+            <>
+              <h3 className={TITLE}>Cubrir las {pending} que faltan</h3>
+              <div role="tablist" aria-label="De dónde cubrirlo" className="flex divide-x border-b">
+                {(
+                  [
+                    ["bodega", "Desde la bodega", results === null ? null : inStock.length],
+                    ["facturas", "Desde facturas", invoices === null ? null : invoices.length],
+                  ] as const
+                ).map(([key, label, n]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === key}
+                    onClick={() => setTab(key)}
+                    className={cn(
+                      "flex h-11 flex-1 items-center justify-center gap-2 text-sm transition-colors hover:bg-accent",
+                      tab === key ? "bg-background font-medium shadow-[inset_0_-2px_0_var(--brand)]" : "bg-surface-strong/50 text-muted-foreground",
+                    )}
+                  >
+                    {label}
+                    {n !== null && <span className="num text-xs text-muted-foreground">{n}</span>}
+                  </button>
+                ))}
+              </div>
+              <div className="relative border-b">
+                <HugeiconsIcon icon={Search01Icon} aria-hidden className="pointer-events-none absolute top-1/2 left-6 size-5 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="search"
+                  aria-label="Buscar producto"
+                  placeholder="Número de parte, SKU o nombre"
+                  autoComplete="off"
+                  value={q}
+                  onChange={(e) => search(e.target.value)}
+                  className="h-12 w-full bg-transparent pr-4 pl-14 text-sm outline-none placeholder:text-muted-foreground focus-visible:bg-background"
+                />
+              </div>
+
+              {tab === "bodega" &&
+                (results === null ? (
+                  <p className="p-6 text-sm text-muted-foreground">Buscando…</p>
+                ) : results.length === 0 ? (
+                  <div className="flex flex-col items-start gap-3 p-6 text-sm text-muted-foreground">
+                    <p>Ningún producto de la bodega coincide con esta búsqueda.</p>
+                    <Link
+                      href={`/${org}/bodega/nuevo?parte=${encodeURIComponent(line.partNumber)}&nombre=${encodeURIComponent(line.description)}`}
+                      target="_blank"
+                      className="text-foreground underline underline-offset-4"
+                    >
+                      Crear el producto en la bodega
+                    </Link>
+                  </div>
+                ) : (
+                  <>
+                    {inStock.length === 0 && (
+                      <p className="border-b p-6 text-sm text-muted-foreground">
+                        Hay productos que coinciden, pero ninguno tiene existencias. Cubre la línea con una factura o registra una entrada.
                       </p>
-                    ) : (
-                      <ul className="flex flex-col gap-px border bg-border [&>li]:bg-background">
-                        {r.lots.map((lot, i) => {
-                          const value = qty[lot.id] ?? String(Math.min(lot.remaining, pending));
-                          return (
-                            <li key={lot.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2">
-                              <div className="flex min-w-0 flex-1 flex-col">
-                                <span className="truncate text-sm">{lot.supplier || "Sin proveedor"}</span>
+                    )}
+                    <ul className="divide-y">
+                      {inStock.map((r) => {
+                        const matches = line.partNumber && r.partNumbers.some((p) => norm(p) === norm(line.partNumber));
+                        return (
+                          <li key={r.id} className="flex flex-col gap-3 px-6 py-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 flex-col">
+                                <span className="font-medium">{r.name}</span>
                                 <span className="font-mono text-xs text-muted-foreground">
-                                  {lot.costCents === null ? "sin costo" : formatCents(lot.costCents)} · quedan{" "}
-                                  <span className="num">{lot.remaining}</span>
-                                  {i === 0 && lot.costCents !== null && r.lots.length > 1 && " · más barato"}
+                                  {[r.sku, ...r.partNumbers].filter(Boolean).join(" · ") || "Sin SKU ni número de parte"}
                                 </span>
                               </div>
-                              <NumericInput
-                                kind="decimal"
-                                aria-label={`Cantidad a reservar del lote de ${lot.supplier || "sin proveedor"}`}
-                                className="h-8 w-20 font-mono"
-                                value={value}
-                                onChange={(e) => setQty((m) => ({ ...m, [lot.id]: e.target.value }))}
-                              />
-                              <Button
-                                size="sm"
-                                className="h-8"
-                                disabled={busy !== null}
-                                onClick={() => run(lot.id, () => reserveStock(org, contractId, line.id, lot.id, value))}
-                              >
-                                {busy === lot.id ? "Reservando…" : "Reservar"}
-                              </Button>
-                            </li>
-                          );
-                        })}
+                              <div className="flex shrink-0 flex-col items-end gap-1">
+                                <span className="num text-sm">{r.onHand} en bodega</span>
+                                {matches && (
+                                  <span className="bg-brand/10 px-1.5 py-0.5 font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-brand">Mismo n.º de parte</span>
+                                )}
+                              </div>
+                            </div>
+                            <ul className="flex flex-col gap-px border bg-border [&>li]:bg-background">
+                              {r.lots.map((lot, i) => {
+                                const value = qty[lot.id] ?? String(Math.min(lot.remaining, pending));
+                                return (
+                                  <li key={lot.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2">
+                                    <div className="flex min-w-0 flex-1 flex-col">
+                                      <span className="truncate text-sm">{lot.supplier || "Sin proveedor"}</span>
+                                      <span className="font-mono text-xs text-muted-foreground">
+                                        {lot.costCents === null ? "sin costo" : formatCents(lot.costCents)} · quedan{" "}
+                                        <span className="num">{lot.remaining}</span>
+                                        {i === 0 && lot.costCents !== null && r.lots.length > 1 && " · más barato"}
+                                      </span>
+                                    </div>
+                                    <NumericInput
+                                      kind="decimal"
+                                      aria-label={`Cantidad a reservar del lote de ${lot.supplier || "sin proveedor"}`}
+                                      className="h-8 w-20 font-mono"
+                                      value={value}
+                                      onChange={(e) => setQty((m) => ({ ...m, [lot.id]: e.target.value }))}
+                                    />
+                                    <Button
+                                      size="sm"
+                                      className="h-8"
+                                      disabled={busy !== null}
+                                      onClick={() => run(lot.id, () => reserveStock(org, contractId, line.id, lot.id, value))}
+                                    >
+                                      {busy === lot.id ? "Reservando…" : "Reservar"}
+                                    </Button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {noStock.length > 0 && (
+                      <ul className="divide-y border-t bg-surface-strong/30">
+                        {noStock.map((r) => (
+                          <li key={r.id} className="flex items-center justify-between gap-3 px-6 py-3 text-sm text-muted-foreground">
+                            <span className="min-w-0 truncate">
+                              {r.name} <span className="font-mono text-xs">{[r.sku, ...r.partNumbers].filter(Boolean).join(" · ")}</span>
+                            </span>
+                            <span className="flex shrink-0 items-center gap-3">
+                              <span>sin existencias</span>
+                              <Link href={`/${org}/bodega/${r.id}`} target="_blank" className="text-foreground underline underline-offset-4">
+                                Registrar entrada
+                              </Link>
+                            </span>
+                          </li>
+                        ))}
                       </ul>
                     )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {pending > 0 && invoices && invoices.length > 0 && (
-            <>
-              <h3 className="flex h-10 items-center border-y px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
-                En facturas del contrato, por asignar
-              </h3>
-              <ul className="divide-y">
-                {invoices.map((o) => {
-                  const value = qty[`inv:${o.id}`] ?? String(Math.min(o.available, pending));
-                  return (
-                    <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3">
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate">{o.itemName}</span>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          Factura {o.invoice} · {o.supplier || "Sin proveedor"} · {formatCents(o.unitCostCents)} · sin asignar{" "}
-                          <span className="num">{o.available}</span>
-                        </span>
-                      </div>
-                      <NumericInput
-                        kind="decimal"
-                        aria-label={`Cantidad a asignar de la factura ${o.invoice}`}
-                        className="h-8 w-20 font-mono"
-                        value={value}
-                        onChange={(e) => setQty((m) => ({ ...m, [`inv:${o.id}`]: e.target.value }))}
-                      />
-                      <Button
-                        size="sm"
-                        className="h-8"
-                        disabled={busy !== null}
-                        onClick={() => run(`inv:${o.id}`, () => assignPurchase(org, contractId, o.id, line.id, value))}
-                      >
-                        {busy === `inv:${o.id}` ? "Asignando…" : "Asignar"}
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
+                  </>
+                ))}
+
+              {tab === "facturas" &&
+                (invoices === null ? (
+                  <p className="p-6 text-sm text-muted-foreground">Buscando…</p>
+                ) : invoices.length === 0 ? (
+                  <div className="flex flex-col items-start gap-3 p-6 text-sm text-muted-foreground">
+                    <p>Ninguna factura de este contrato tiene este producto sin asignar.</p>
+                    <Link href={`/${org}/contratos/${contractId}/compras/nueva`} target="_blank" className="text-foreground underline underline-offset-4">
+                      Registrar una factura de compra
+                    </Link>
+                  </div>
+                ) : (
+                  <ul className="divide-y">
+                    {invoices.map((o) => {
+                      const value = qty[`inv:${o.id}`] ?? String(Math.min(o.available, pending));
+                      return (
+                        <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3">
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <span className="truncate">{o.itemName}</span>
+                            <span className="font-mono text-xs text-muted-foreground">
+                              Factura {o.invoice} · {o.supplier || "Sin proveedor"} · {formatCents(o.unitCostCents)} · sin asignar{" "}
+                              <span className="num">{o.available}</span>
+                            </span>
+                          </div>
+                          <NumericInput
+                            kind="decimal"
+                            aria-label={`Cantidad a asignar de la factura ${o.invoice}`}
+                            className="h-8 w-20 font-mono"
+                            value={value}
+                            onChange={(e) => setQty((m) => ({ ...m, [`inv:${o.id}`]: e.target.value }))}
+                          />
+                          <Button
+                            size="sm"
+                            className="h-8"
+                            disabled={busy !== null}
+                            onClick={() => run(`inv:${o.id}`, () => assignPurchase(org, contractId, o.id, line.id, value))}
+                          >
+                            {busy === `inv:${o.id}` ? "Asignando…" : "Asignar"}
+                          </Button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ))}
             </>
           )}
         </section>
