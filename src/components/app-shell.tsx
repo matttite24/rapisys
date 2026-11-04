@@ -199,7 +199,7 @@ function Panel({
 
   return (
     <div className="flex w-60 shrink-0 flex-col border-r bg-layer-2">
-      <div className={cn(ROW, "crosshair")}>{panelTop ?? orgSwitcher}</div>
+      <div className={ROW}>{panelTop ?? orgSwitcher}</div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-3">
         {groups.map((g, i) => (
@@ -384,7 +384,7 @@ function SectionHeader({
   const section = slug ? CONTRACT_SECTIONS.find((s) => s.slug === (slug[1] ?? "")) : undefined;
   return (
     <CellHeader
-      className="relative z-10 shadow-bar print:hidden"
+      className="crosshair-start relative z-10 shadow-bar print:hidden"
       title={section ? section.title : (title ?? active.title)}
       subtitle={section ? title : undefined}
       leading={leading}

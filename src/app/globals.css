@@ -245,13 +245,13 @@
 }
 
 /* Marca de cruce (+) en la intersección de dos líneas de la cuadrícula. */
-.crosshair {
+.crosshair-start {
   position: relative;
 }
-.crosshair::after {
+.crosshair-start::after {
   content: "";
   position: absolute;
-  right: -5px;
+  left: -5px;
   bottom: -5px;
   z-index: 10;
   width: 9px;
