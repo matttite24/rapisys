@@ -13,7 +13,7 @@ export const HeaderSlotContext = createContext<HTMLElement | null>(null);
 // Botones que ocupan la celda del encabezado: al presionar no se desplazan ni se encogen (se saldrían de la
 // celda); se oscurecen un poco, y la transición ya los suaviza.
 export const HEADER_CELL_PRESS =
-  "active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100 active:brightness-90";
+  "header-cell-press active:brightness-90";
 
 type Props = {
   icon: IconSvgElement;
