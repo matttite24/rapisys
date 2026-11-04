@@ -251,13 +251,13 @@
 .crosshair-start::after {
   content: "";
   position: absolute;
-  left: -5px;
-  bottom: -5px;
-  z-index: 10;
-  width: 9px;
-  height: 9px;
+  left: -6px;
+  bottom: -6px;
+  z-index: 20;
+  width: 11px;
+  height: 11px;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.9;
   background:
     linear-gradient(var(--foreground), var(--foreground)) center / 1px 100% no-repeat,
     linear-gradient(var(--foreground), var(--foreground)) center / 100% 1px no-repeat;
