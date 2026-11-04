@@ -4,8 +4,7 @@ import { useState } from "react";
 import { Edit02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ContractForm } from "@/components/contract-form";
-import { HEADER_CELL_PRESS, HeaderSlot } from "@/components/header-action";
-import { cn } from "@/lib/utils";
+import { HeaderSlot } from "@/components/header-action";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -32,7 +31,7 @@ export function EditContract({ org, contractId }: { org: string; contractId: str
     <>
       <HeaderSlot>
         <span className="flex self-stretch">
-          <Button variant="ghost" className={cn("h-auto! gap-2 px-4", HEADER_CELL_PRESS)} onClick={openEditor}>
+          <Button variant="ghost" className="h-auto! gap-2 px-4" onClick={openEditor}>
             <HugeiconsIcon icon={Edit02Icon} className="size-4" />
             Editar
           </Button>

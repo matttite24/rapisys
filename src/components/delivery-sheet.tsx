@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { DeliveryTruck01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { DatePicker, toIsoDate } from "@/components/date-picker";
-import { HEADER_CELL_PRESS, HeaderSlot } from "@/components/header-action";
+import { HeaderSlot } from "@/components/header-action";
 import { FormField } from "@/components/form-field";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
@@ -48,7 +48,7 @@ export function DeliveryActions({
       </Link>
       {canAct && (
         <span className="self-stretch" title={ready === 0 ? "Aún ninguna línea tiene su stock completo" : undefined}>
-          <Button className={cn("-mr-4 h-full! border-0! bg-clip-border! gap-2 px-5", HEADER_CELL_PRESS)} disabled={ready === 0} onClick={() => setOpen(true)}>
+          <Button className="-mr-4 h-full! border-0! bg-clip-border! gap-2 px-5" disabled={ready === 0} onClick={() => setOpen(true)}>
             <HugeiconsIcon icon={DeliveryTruck01Icon} className="size-4" />
             Generar entrega{ready > 0 && <span className="num opacity-70">{ready}</span>}
           </Button>

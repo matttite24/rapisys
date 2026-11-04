@@ -304,11 +304,3 @@
     transition-duration: 0.01ms !important;
   }
 }
-
-/* Botones que llenan la celda del encabezado: nunca se desplazan ni se escalan al presionar. */
-.header-cell-press:active {
-  translate: none !important;
-  scale: none !important;
-  rotate: none !important;
-  transform: none !important;
-}
