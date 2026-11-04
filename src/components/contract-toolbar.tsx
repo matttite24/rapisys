@@ -25,7 +25,7 @@ export function ContractToolbar({ q, view }: { q: string; view: ContractView }) 
   };
 
   return (
-    <div className="flex h-12 items-stretch border-b bg-surface-strong">
+    <div className="flex h-12 items-stretch border-b bg-popover">
       <div className="relative min-w-0 flex-1">
         <HugeiconsIcon
           icon={Search01Icon}
@@ -69,7 +69,7 @@ export function ContractToolbar({ q, view }: { q: string; view: ContractView }) 
             aria-current={view === key ? "true" : undefined}
             className={cn(
               "grid w-12 place-items-center transition-colors hover:bg-accent",
-              view === key ? "bg-background text-foreground shadow-[inset_0_-2px_0_var(--brand)]" : "text-muted-foreground",
+              view === key ? "bg-foreground/[0.06] text-foreground shadow-[inset_0_-2px_0_var(--brand)]" : "text-muted-foreground",
             )}
           >
             <HugeiconsIcon icon={icon} className="size-5" />
