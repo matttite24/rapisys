@@ -14,12 +14,13 @@ type IdParams = Promise<{ org: string; id: string }>;
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-const STATES: SupplyState[] = ["pending", "partial", "in_stock"];
+const STATES: SupplyState[] = ["pending", "partial", "in_stock", "delivered"];
 
 type View = {
   status: string;
   active_id: string | null;
   total: number;
+  deliveries: number;
   counts: Partial<Record<SupplyState, number>>;
   lists: {
     id: string;
@@ -45,6 +46,7 @@ type View = {
     unit: string;
     cpc: string | null;
     reserved: number;
+    delivered: number;
     cost_cents: number | null;
     state: SupplyState;
   }[];
@@ -117,6 +119,7 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     unit: l.unit,
     cpc: l.cpc ?? "",
     reserved: Number(l.reserved),
+    delivered: Number(l.delivered),
     costCents: l.cost_cents === null ? null : Number(l.cost_cents),
     state: l.state,
   }));
@@ -127,7 +130,12 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
       contractId={id}
       lists={lists}
       lines={lines}
-      counts={{ pending: view.counts.pending ?? 0, partial: view.counts.partial ?? 0, in_stock: view.counts.in_stock ?? 0 }}
+      counts={{
+        pending: view.counts.pending ?? 0,
+        partial: view.counts.partial ?? 0,
+        in_stock: view.counts.in_stock ?? 0,
+        delivered: view.counts.delivered ?? 0,
+      }}
       activeId={view.active_id}
       page={page}
       total={total}
@@ -135,6 +143,7 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
       estado={estado}
       basePath={`/${org}/contratos/${id}/abastecimiento`}
       canAct={view.status === "in_progress"}
+      deliveries={Number(view.deliveries)}
     />
   );
 }

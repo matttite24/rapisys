@@ -15,6 +15,7 @@ const refresh = (org: string, contractId: string) =>
 
 function friendly(error: DbError) {
   if (error.code === "42501") return "No tienes permiso para hacer esto.";
+  if (error.message === "has_deliveries") return "Ya tiene entregas registradas: no se puede eliminar.";
   logDbError("contrato", error);
   if (isSchemaError(error)) return SCHEMA_MESSAGE;
   return "No se pudo completar la acción. Inténtalo de nuevo.";

@@ -84,7 +84,8 @@ function PanelBody({
 
   const reserved = sources ? sources.reduce((s, x) => s + x.quantity, 0) : line.reserved;
   const pending = Math.max(0, line.quantity - reserved);
-  const state = reserved === 0 ? "pending" : reserved < line.quantity ? "partial" : "in_stock";
+  const state =
+    line.delivered >= line.quantity ? "delivered" : reserved === 0 ? "pending" : reserved < line.quantity ? "partial" : "in_stock";
 
   function run(key: string, fn: () => Promise<{ error?: string; ok?: boolean } | undefined>) {
     if (busy) return;
@@ -114,7 +115,7 @@ function PanelBody({
           Piden <span className="num text-foreground">{line.quantity}</span> {unitLabel(line.unit).toLowerCase()}
           {line.quantity === 1 ? "" : "s"}
         </p>
-        <Progress done={reserved} total={line.quantity} />
+        <Progress done={reserved} total={line.quantity} delivered={line.delivered} />
         <span className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.06em]">
           <span aria-hidden className={cn("size-2", STATE[state].dot)} />
           {STATE[state].label}

@@ -7,6 +7,7 @@ import { ListInfo, ListTabs, type ListView } from "@/components/contract-lists";
 import { LineSearch } from "@/components/contract-lines";
 import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
 import { Pager } from "@/components/pager";
+import { DeliveryActions } from "@/components/delivery-sheet";
 import { SupplyPanel } from "@/components/supply-panel";
 import { Progress, STATE, type SupplyState } from "@/components/supply-progress";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ export type SupplyLine = {
   unit: string;
   cpc: string;
   reserved: number;
+  delivered: number;
   costCents: number | null;
   state: SupplyState;
 };
@@ -34,7 +36,7 @@ export type SupplyLine = {
 const TH = cn(TABLE_TH, "font-bold text-foreground");
 const TD = cn(TABLE_TD, "py-2 align-middle");
 
-const STATE_ORDER: SupplyState[] = ["pending", "partial", "in_stock"];
+const STATE_ORDER: SupplyState[] = ["pending", "partial", "in_stock", "delivered"];
 
 export type { SupplyState };
 
@@ -51,6 +53,7 @@ export function SupplyBoard({
   estado,
   basePath,
   canAct,
+  deliveries,
 }: {
   org: string;
   contractId: string;
@@ -64,6 +67,8 @@ export function SupplyBoard({
   estado: SupplyState | "";
   basePath: string;
   canAct: boolean;
+  // Entregas ya registradas en el contrato.
+  deliveries: number;
 }) {
   const router = useRouter();
   const [navigating, startNav] = useTransition();
@@ -102,7 +107,7 @@ export function SupplyBoard({
 
   const listCounts: Record<string, number> = {};
   for (const l of lists) listCounts[l.id] = l.count;
-  const totalLines = counts.pending + counts.partial + counts.in_stock;
+  const totalLines = counts.pending + counts.partial + counts.in_stock + counts.delivered;
 
   return (
     <>
@@ -128,7 +133,7 @@ export function SupplyBoard({
       )}
 
       {/* Resumen por estado: cada celda filtra la tabla. */}
-      <div className="grid grid-cols-3 gap-px border-b bg-border [&>*]:bg-background">
+      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-4 [&>*]:bg-background">
         {STATE_ORDER.map((s) => (
           <button
             key={s}
@@ -152,6 +157,16 @@ export function SupplyBoard({
       <section className="border-b">
         <div className="flex h-12 items-stretch border-b">
           <LineSearch key={`${loaded?.id}:${q}`} q={q} onSearch={(next) => go({ q: next })} />
+          {loaded && (
+            <DeliveryActions
+              org={org}
+              contractId={contractId}
+              listId={loaded.id}
+              listName={loaded.name}
+              canAct={canAct}
+              deliveries={deliveries}
+            />
+          )}
         </div>
 
         {navigating || switching ? (
@@ -186,7 +201,7 @@ export function SupplyBoard({
                         <td className={`${TD} num whitespace-nowrap text-right`}>
                           {l.quantity} <span className="font-sans text-xs text-muted-foreground">{unitLabel(l.unit)}</span>
                         </td>
-                        <td className={TD}><Progress done={l.reserved} total={l.quantity} /></td>
+                        <td className={TD}><Progress done={l.reserved} total={l.quantity} delivered={l.delivered} /></td>
                         <td className={`${TD} whitespace-nowrap`}>
                           <span className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.06em]">
                             <span aria-hidden className={cn("size-2", STATE[l.state].dot)} />
@@ -277,7 +292,7 @@ export function SupplySkeleton() {
           <Skeleton key={i} className="h-4" style={{ width: `${w * 4}px` }} />
         ))}
       </div>
-      <div className="grid grid-cols-3 gap-px border-b bg-border [&>*]:bg-background">
+      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-4 [&>*]:bg-background">
         {STATE_ORDER.map((s) => (
           <div key={s} className="flex flex-col gap-2 px-6 py-3">
             <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">

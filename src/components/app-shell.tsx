@@ -374,7 +374,7 @@ function SectionHeader({
   const { active } = useActiveModule();
   return (
     <CellHeader
-      className="relative z-10 shadow-bar"
+      className="relative z-10 shadow-bar print:hidden"
       title={title ?? active.title}
       leading={leading}
       action={<div ref={setSlot} className="flex items-center gap-1 self-stretch" />}
@@ -404,9 +404,9 @@ export function AppShell({
       <HeaderSlotContext.Provider value={slot}>
       <HeaderTitleContext.Provider value={setTitle}>
       <PanelTopContext.Provider value={setPanelTop}>
-      <div className="flex h-svh">
+      <div className="flex h-svh print:block print:h-auto">
         {/* Escritorio */}
-        <aside className="hidden shrink-0 md:flex">
+        <aside className="hidden shrink-0 md:flex print:hidden">
           <Rail
             account={account}
             panelOpen={panelOpen}
@@ -461,7 +461,7 @@ export function AppShell({
             </Sheet>
             }
           />
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className="flex-1 overflow-y-auto print:overflow-visible">{children}</main>
         </div>
       </div>
       </PanelTopContext.Provider>

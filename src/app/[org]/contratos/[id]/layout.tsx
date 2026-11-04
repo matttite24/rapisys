@@ -46,7 +46,7 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
       <PanelTop>
         <ContractStatusCell status={c.status} delivery={summary.delivery} />
       </PanelTop>
-      <div className="border-b p-4 md:hidden">
+      <div className="border-b p-4 md:hidden print:hidden">
         <StatusControl org={org} contractId={id} status={c.status} summary={summary} />
       </div>
     </>

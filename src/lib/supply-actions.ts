@@ -15,6 +15,7 @@ function friendly(error: DbError) {
   if (error.message === "insufficient") return "Ese lote no tiene tantas unidades. Actualiza la búsqueda.";
   if (error.message === "over_covered") return "Eso supera lo que pide la línea.";
   if (error.message === "bad_quantity") return "Escribe una cantidad mayor a 0.";
+  if (error.message === "already_delivered") return "Esas unidades ya se entregaron: no se pueden liberar.";
   logDbError("abastecimiento", error);
   if (isSchemaError(error)) return SCHEMA_MESSAGE;
   return "No se pudo completar la acción. Inténtalo de nuevo.";
