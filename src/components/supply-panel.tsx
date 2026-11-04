@@ -121,8 +121,7 @@ function PanelBody({
       if (res?.error) setError(res.error);
       else {
         // Lo reservado y las existencias cambiaron: se vuelven a pedir.
-        await reloadSources();
-        const [stock, inv] = await Promise.all([searchStock(org, q), getPurchaseOptions(contractId, q)]);
+        const [, stock, inv] = await Promise.all([reloadSources(), searchStock(org, q), getPurchaseOptions(contractId, q)]);
         setResults(stock);
         setInvoices(inv);
       }

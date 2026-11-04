@@ -11,6 +11,7 @@ import {
   Cancel01Icon,
   Menu01Icon,
 } from "@hugeicons/core-free-icons";
+import { Pending } from "@/components/nav-pending";
 import { CELL_ROW as ROW, CellHeader } from "@/components/cell-header";
 import { HeaderSlotContext, HeaderTitleContext } from "@/components/header-action";
 import { CONTRACT_SECTIONS, modules, type NavGroup, type NavModule } from "@/components/nav-config";
@@ -102,7 +103,9 @@ function RailLink({ module: m }: { module: NavModule }) {
           />
         }
       >
-        <HugeiconsIcon icon={m.icon} className="size-5" />
+        <Pending className="grid place-items-center">
+          <HugeiconsIcon icon={m.icon} className="size-5" />
+        </Pending>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>
     </Tooltip>
@@ -218,14 +221,16 @@ function Panel({
                 )}
                 aria-current={current === item.href ? "page" : undefined}
               >
-                {item.icon && (
-                  <HugeiconsIcon
-                    icon={item.icon}
-                    strokeWidth={current === item.href ? 2.25 : 1.5}
-                    className={cn("size-4.5", current === item.href && "text-brand")}
-                  />
-                )}
-                {item.title}
+                <Pending className="flex items-center gap-2.5">
+                  {item.icon && (
+                    <HugeiconsIcon
+                      icon={item.icon}
+                      strokeWidth={current === item.href ? 2.25 : 1.5}
+                      className={cn("size-4.5 transition-[stroke-width,color]", current === item.href && "text-brand")}
+                    />
+                  )}
+                  {item.title}
+                </Pending>
               </Link>
             ))}
           </div>

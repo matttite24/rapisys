@@ -293,3 +293,14 @@
 [data-slot="button"].bg-primary:hover:not(:disabled) {
   background-color: color-mix(in oklch, var(--primary) 86%, black);
 }
+
+/* Quien pidió menos movimiento no recibe transiciones ni animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

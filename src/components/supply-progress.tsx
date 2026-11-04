@@ -30,9 +30,9 @@ export function Progress({
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <div className="flex h-2 w-28 overflow-hidden bg-foreground/10" aria-hidden>
-        <div className="bg-sky-600" style={{ width: `${pct(delivered)}%` }} />
-        <div className="bg-emerald-600" style={{ width: `${pct(Math.max(0, stock - delivered))}%` }} />
-        <div className="bg-violet-600" style={{ width: `${pct(purchased)}%` }} />
+        <div className="bg-sky-600 transition-[width] duration-500 ease-out" style={{ width: `${pct(delivered)}%` }} />
+        <div className="bg-emerald-600 transition-[width] duration-500 ease-out" style={{ width: `${pct(Math.max(0, stock - delivered))}%` }} />
+        <div className="bg-violet-600 transition-[width] duration-500 ease-out" style={{ width: `${pct(purchased)}%` }} />
       </div>
       <span className="num whitespace-nowrap text-xs text-muted-foreground">
         {covered} de {total}
