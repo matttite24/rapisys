@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { StatusControl } from "@/components/status-control";
 import { ContractStatusCell } from "@/components/contract-status-cell";
 import { HeaderSlot, HeaderTitle } from "@/components/header-action";
+import { EditContract } from "@/components/edit-contract";
 import { OnlyAtDetail } from "@/components/only-at-detail";
 import { PanelTop } from "@/components/panel-slots";
 import { getContract } from "@/lib/contract-data";
@@ -43,6 +44,11 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
       </HeaderTitle>
       <HeaderSlot>
         <OnlyAtDetail>
+          {c.status !== "new" && (
+            <div className="hidden self-stretch md:flex">
+              <EditContract org={org} contractId={id} />
+            </div>
+          )}
           <div className="hidden self-stretch md:flex">
             <StatusControl org={org} contractId={id} status={c.status} summary={summary} blocker={blocker} inHeader />
           </div>

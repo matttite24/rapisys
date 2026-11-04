@@ -143,8 +143,8 @@ export async function createContract(_: ContractState, formData: FormData): Prom
   redirect(`/${org}/contratos`);
 }
 
-// Corregir los datos de un contrato. Solo mientras está en estado Nuevo: desde
-// "En ejecución" ya se trabaja con items y los datos base quedan fijos.
+// Corregir los datos de un contrato, en cualquier estado: cambiar el nombre, el monto o el plazo
+// no toca items, stock ni entregas, así que no es destructivo.
 export async function updateContract(
   org: string,
   contractId: string,
@@ -160,17 +160,6 @@ export async function updateContract(
   if (!organizationId) return { error: "No encontramos la organización." };
 
   const supabase = await createClient();
-  const { data: current } = await supabase
-    .from("contracts")
-    .select("status")
-    .eq("id", contractId)
-    .eq("organization_id", organizationId)
-    .maybeSingle();
-  if (!current) return { error: "No encontramos el contrato." };
-  if (current.status !== "new") {
-    return { error: "Los datos solo se corrigen mientras el contrato está en Nuevo." };
-  }
-
   const parties = await resolveParties(organizationId, formData, v);
   if ("error" in parties) return { error: parties.error };
 
@@ -187,12 +176,45 @@ export async function updateContract(
     })
     .eq("id", contractId)
     .eq("organization_id", organizationId)
-    .eq("status", "new")
     .select("id");
   if (error) return saveError("updateContract", error);
-  if (!data?.length) return { error: "No tienes permiso para editar este contrato." };
+  if (!data?.length) return { error: "No encontramos el contrato o no tienes permiso para editarlo." };
 
   revalidatePath(`/${org}/contratos/${contractId}`);
   revalidatePath(`/${org}/contratos`);
   return { saved: true };
+}
+
+// Datos para el formulario de edición del contrato (se piden al abrirlo, no en cada pantalla).
+export async function loadContractEdit(org: string, contractId: string) {
+  await requireUser();
+  const organizationId = await getOrgId(org);
+  if (!organizationId) return null;
+  const supabase = await createClient();
+  const [contract, clients, managers] = await Promise.all([
+    supabase
+      .from("contracts")
+      .select("id, name, code, client_id, manager_id, total_cents, start_date, term_days")
+      .eq("id", contractId)
+      .eq("organization_id", organizationId)
+      .maybeSingle(),
+    supabase.from("clients").select("id, name").eq("organization_id", organizationId).order("name"),
+    supabase.from("contract_managers").select("id, name").eq("organization_id", organizationId).order("name"),
+  ]);
+  if (!contract.data) return null;
+  const c = contract.data;
+  return {
+    clients: clients.data ?? [],
+    managers: managers.data ?? [],
+    contract: {
+      id: c.id as string,
+      name: c.name as string,
+      code: c.code as string,
+      clientId: c.client_id as string,
+      managerId: c.manager_id as string,
+      totalCents: Number(c.total_cents),
+      startDate: c.start_date as string,
+      termDays: Number(c.term_days),
+    },
+  };
 }

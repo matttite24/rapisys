@@ -92,11 +92,14 @@ export function ContractForm({
   clients,
   managers,
   contract,
+  onDone,
 }: {
   org: string;
   clients: Option[];
   managers: Option[];
   contract?: ContractData;
+  // Dentro de un panel: se llama al guardar o al cancelar, y reemplaza el regreso a la lista.
+  onDone?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(
     contract ? updateContract.bind(null, org, contract.id) : createContract,
@@ -113,6 +116,10 @@ export function ContractForm({
   const termDays = Number(days);
   // El plazo debe ser un entero mayor a 0; vacío o inválido no genera fecha.
   const end = days.trim() && Number.isInteger(termDays) && termDays > 0 ? addDaysIso(start, termDays) : null;
+
+  useEffect(() => {
+    if (state?.saved) onDone?.();
+  }, [state, onDone]);
 
   // Lleva el foco al primer campo con error para que no pase desapercibido.
   useEffect(() => {
@@ -208,12 +215,18 @@ export function ContractForm({
               ? contract ? "Guardando…" : "Creando…"
               : contract ? "Guardar cambios" : "Crear contrato"}
           </Button>
-          <Link
-            href={`/${org}/contratos`}
-            className={buttonVariants({ variant: "outline" }) + " min-h-11 sm:min-h-10"}
-          >
-            {contract ? "Volver a la lista" : "Cancelar"}
-          </Link>
+          {onDone ? (
+            <Button type="button" variant="outline" className="min-h-11 sm:min-h-10" onClick={onDone}>
+              Cancelar
+            </Button>
+          ) : (
+            <Link
+              href={`/${org}/contratos`}
+              className={buttonVariants({ variant: "outline" }) + " min-h-11 sm:min-h-10"}
+            >
+              {contract ? "Volver a la lista" : "Cancelar"}
+            </Link>
+          )}
         </div>
       </div>
     </form>

@@ -107,7 +107,7 @@ export function StatusControl({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Pasar el contrato a En ejecución?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se habilita la carga de items. Los datos del contrato quedan fijos y ya no se podrán corregir.
+              Se habilita la carga de items. Los datos del contrato se pueden seguir corrigiendo desde "Editar".
             </AlertDialogDescription>
           </AlertDialogHeader>
 
