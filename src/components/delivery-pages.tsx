@@ -257,12 +257,7 @@ async function Report({ params }: { params: DeliveryParams }) {
                 <td className="num px-2 py-2 text-right">{i.n}</td>
                 <td className="px-2 py-2 font-mono text-xs">{i.part_number ?? "—"}</td>
                 <td className="px-2 py-2">{i.description}</td>
-                <td className="num px-2 py-2 text-right">
-                  {qtyByItem.get(i.id)}
-                  {Number(i.quantity) !== qtyByItem.get(i.id) && (
-                    <span className="text-muted-foreground"> de {Number(i.quantity)}</span>
-                  )}
-                </td>
+                <td className="num px-2 py-2 text-right">{qtyByItem.get(i.id)}</td>
                 <td className="px-2 py-2">{unitLabel(i.unit)}</td>
                 <td className="px-2 py-2 font-mono text-xs">{i.cpc ?? "—"}</td>
               </tr>

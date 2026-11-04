@@ -1,5 +1,8 @@
 # Abastecimiento: plan
 
+> **Regla de entregas:** una entrega es siempre de líneas **completas**, con la cantidad del requerimiento: no
+> hay entregas parciales de un item (sí de la lista, entregando solo las líneas que ya tienen todo su stock).
+>
 > **Avance:** hechas la etapa 1 (existencias por lote), la 2 (reservar desde la bodega), el **reporte de
 > entrega** (entregas parciales de lo que ya tiene stock) y la 3 (compras: facturas por contrato,
 > asignadas a líneas de la lista). La factura queda sin adjunto: los archivos se hacen con el módulo

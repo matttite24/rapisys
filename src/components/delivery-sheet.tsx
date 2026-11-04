@@ -7,12 +7,11 @@ import { DeliveryTruck01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { DatePicker, toIsoDate } from "@/components/date-picker";
 import { FormField } from "@/components/form-field";
-import { NumericInput } from "@/components/numeric-input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { parseDecimal } from "@/lib/money";
+import { unitLabel } from "@/lib/units";
 import { createDelivery, getDeliverable, type Deliverable } from "@/lib/delivery-actions";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +51,7 @@ export function DeliveryActions({
           <SheetHeader>
             <SheetTitle>Nueva entrega · {listName}</SheetTitle>
             <SheetDescription className="sr-only">
-              Elige las líneas con stock que se entregan ahora y genera el reporte de entrega.
+              Elige las líneas completas, con todo su stock, que se entregan ahora y genera el reporte de entrega.
             </SheetDescription>
           </SheetHeader>
           {open && <DeliveryBody key={listId} org={org} contractId={contractId} listId={listId} onClose={() => setOpen(false)} />}
@@ -79,8 +78,8 @@ function DeliveryBody({
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<Deliverable[] | null>(null);
-  // Qué líneas van y cuánto de cada una.
-  const [picked, setPicked] = useState<Record<string, string>>({});
+  // Qué líneas van (siempre completas).
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const [date, setDate] = useState(today);
   const [receivedBy, setReceivedBy] = useState("");
   const [notes, setNotes] = useState("");
@@ -92,23 +91,22 @@ function DeliveryBody({
     void getDeliverable(contractId, listId).then((r) => {
       if (!alive) return;
       setRows(r);
-      // Por defecto, todo lo que se puede entregar.
-      setPicked(Object.fromEntries(r.map((x) => [x.id, String(x.available)])));
+      // Por defecto, todo lo que está listo.
+      setPicked(new Set(r.map((x) => x.id)));
     });
     return () => {
       alive = false;
     };
   }, [contractId, listId]);
 
-  const selected = useMemo(() => (rows ?? []).filter((r) => r.id in picked), [rows, picked]);
-  const units = selected.reduce((s, r) => s + (parseDecimal(picked[r.id]) ?? 0), 0);
+  const selected = useMemo(() => (rows ?? []).filter((r) => picked.has(r.id)), [rows, picked]);
+  const units = selected.reduce((s, r) => s + r.quantity, 0);
   const allPicked = rows !== null && rows.length > 0 && selected.length === rows.length;
 
   function toggle(r: Deliverable) {
     setPicked((p) => {
-      const next = { ...p };
-      if (r.id in next) delete next[r.id];
-      else next[r.id] = String(r.available);
+      const next = new Set(p);
+      if (!next.delete(r.id)) next.add(r.id);
       return next;
     });
   }
@@ -116,20 +114,13 @@ function DeliveryBody({
   function submit() {
     if (saving) return;
     setError(undefined);
-    for (const r of selected) {
-      const q = parseDecimal(picked[r.id]);
-      if (q === null || q <= 0 || q > r.available) {
-        setError(`Línea ${r.n}: escribe una cantidad entre 0,01 y ${r.available}.`);
-        return;
-      }
-    }
     setSaving(true);
     startTransition(async () => {
       const res = await createDelivery(org, contractId, listId, {
         date,
         receivedBy: receivedBy.trim(),
         notes: notes.trim(),
-        lines: selected.map((r) => ({ lineId: r.id, quantity: picked[r.id] })),
+        lineIds: selected.map((r) => r.id),
       });
       if (res?.id) {
         onClose();
@@ -162,8 +153,8 @@ function DeliveryBody({
           <p className="p-6 text-muted-foreground">Cargando…</p>
         ) : rows.length === 0 ? (
           <p className="max-w-xl p-6 text-muted-foreground">
-            Ninguna línea de esta lista tiene unidades listas para entregar. Reserva existencias de la bodega en
-            Abastecimiento y vuelve aquí.
+            Ninguna línea de esta lista está lista para entregar. Una línea se entrega completa, cuando todas sus
+            unidades están en stock: reserva existencias de la bodega en Abastecimiento y vuelve aquí.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -176,21 +167,18 @@ function DeliveryBody({
                       aria-label="Elegir todas las líneas"
                       className="size-4 accent-brand"
                       checked={allPicked}
-                      onChange={() =>
-                        setPicked(allPicked ? {} : Object.fromEntries(rows.map((r) => [r.id, String(r.available)])))
-                      }
+                      onChange={() => setPicked(allPicked ? new Set() : new Set(rows.map((r) => r.id)))}
                     />
                   </th>
                   <th className="w-px px-2 py-3 text-right">N.º</th>
                   <th className="px-2 py-3">Part. num.</th>
                   <th className="px-2 py-3">Descripción</th>
-                  <th className="px-2 py-3 text-right">Disponible</th>
-                  <th className="w-36 px-2 py-3">A entregar</th>
+                  <th className="px-2 py-3 text-right">Cantidad</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => {
-                  const on = r.id in picked;
+                  const on = picked.has(r.id);
                   return (
                     <tr key={r.id} className={cn("border-b last:border-b-0", !on && "text-muted-foreground")}>
                       <td className="px-4 py-2">
@@ -205,18 +193,8 @@ function DeliveryBody({
                       <td className="num px-2 py-2 text-right">{r.n}</td>
                       <td className="px-2 py-2 font-mono text-xs">{r.partNumber || "—"}</td>
                       <td className="px-2 py-2">{r.description}</td>
-                      <td className="num px-2 py-2 text-right">
-                        {r.available} <span className="text-xs">de {r.quantity}</span>
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <NumericInput
-                          kind="decimal"
-                          aria-label={`Cantidad a entregar de la línea ${r.n}`}
-                          disabled={!on}
-                          className="h-8 font-mono"
-                          value={picked[r.id] ?? ""}
-                          onChange={(e) => setPicked((p) => ({ ...p, [r.id]: e.target.value }))}
-                        />
+                      <td className="num whitespace-nowrap px-2 py-2 text-right">
+                        {r.quantity} <span className="font-sans text-xs">{unitLabel(r.unit)}</span>
                       </td>
                     </tr>
                   );

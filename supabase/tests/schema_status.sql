@@ -26,4 +26,6 @@ select
   to_regclass('public.stock_lots') is not null                             as "14_stock",
   to_regclass('public.supply_sources') is not null                         as "15_supply_sources",
   to_regclass('public.deliveries') is not null                             as "16_deliveries",
-  to_regclass('public.purchases') is not null                              as "17_purchases";
+  to_regclass('public.purchases') is not null                              as "17_purchases",
+  pg_get_functiondef('public.delivery_create(uuid, uuid, date, text, text, jsonb)'::regprocedure)
+    like '%not_deliverable%'                                               as "18_deliveries_whole_lines";
