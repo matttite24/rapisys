@@ -9,15 +9,18 @@ export function Pager({
   total,
   params = {},
   size,
+  always,
 }: {
   basePath: string;
   page: number;
   total: number;
   params?: Record<string, string>;
   size?: number;
+  // Se muestra aunque haya una sola página.
+  always?: boolean;
 }) {
   const pages = pageCount(total, size);
-  if (pages <= 1) return null;
+  if (pages <= 1 && !always) return null;
 
   const href = (p: number) => {
     const q = new URLSearchParams({ ...params, page: String(p) });

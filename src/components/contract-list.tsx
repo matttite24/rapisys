@@ -9,7 +9,9 @@ import { Pager } from "@/components/pager";
 import { buttonVariants } from "@/components/ui/button";
 import { STATUS_DOT, STATUS_LABEL } from "@/lib/contracts";
 import { formatCents } from "@/lib/money";
-import { pageRange, readPage } from "@/lib/pagination";
+import { PAGE_SIZE, pageRange, readPage } from "@/lib/pagination";
+
+const GRID_PAGE_SIZE = 12;
 import { createClient } from "@/lib/supabase/server";
 
 type Params = Promise<{ org: string }>;
@@ -46,6 +48,8 @@ async function List({
   const page = readPage(sp);
   const q = (Array.isArray(sp.q) ? sp.q[0] : sp.q)?.trim() ?? "";
   const view: ContractView = sp.vista === "grid" ? "grid" : "lista";
+  // La cuadrícula pagina de a 12 (divisible por 1, 2 y 3 columnas): filas completas en cualquier ancho.
+  const size = view === "grid" ? GRID_PAGE_SIZE : PAGE_SIZE;
   const supabase = await createClient();
 
   // organizations!inner filtra por la organización de la URL.
@@ -57,7 +61,7 @@ async function List({
     )
     .eq("organizations.slug", org)
     .order("created_at", { ascending: false })
-    .range(...pageRange(page));
+    .range(...pageRange(page, size));
   if (statuses) query = query.in("status", statuses);
   // Sin comas ni paréntesis: no deben romper la expresión del filtro.
   const term = q.replace(/[,()*%\\]/g, " ").trim();
@@ -117,6 +121,10 @@ async function List({
               </Link>
             </li>
           ))}
+          {/* Celdas vacías hasta completar la página: la cuadrícula conserva su forma. */}
+          {Array.from({ length: Math.max(0, GRID_PAGE_SIZE - rows.length) }, (_, i) => (
+            <li key={`vacio-${i}`} aria-hidden className="min-h-48" />
+          ))}
         </ul>
       ) : (
         <div className="overflow-x-auto">
@@ -163,7 +171,7 @@ async function List({
           </table>
         </div>
       )}
-      <Pager basePath={`/${org}${basePath}`} page={page} total={total} params={{ ...(q ? { q } : {}), vista: view }} />
+      <Pager basePath={`/${org}${basePath}`} page={page} total={total} size={size} always={view === "grid"} params={{ ...(q ? { q } : {}), vista: view }} />
     </PageSection>
   );
 }
