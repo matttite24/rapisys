@@ -36,7 +36,13 @@ export function SupplyPanel({
     <Sheet open={line !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-3xl">
         <SheetHeader>
-          <SheetTitle>{line ? `Línea ${line.n}` : "Línea"}</SheetTitle>
+          <SheetTitle className="truncate">{line ? line.description : "Línea"}</SheetTitle>
+          {line && (
+            <p className="truncate font-mono text-xs text-muted-foreground">
+              Línea {line.n} · {line.partNumber || "Sin número de parte"}
+              {line.cpc && ` · CPC ${line.cpc}`}
+            </p>
+          )}
           <SheetDescription className="sr-only">Reservar existencias de la bodega para esta línea.</SheetDescription>
         </SheetHeader>
         {line && <PanelBody key={line.id} org={org} contractId={contractId} line={line} canAct={canAct} />}
@@ -133,10 +139,6 @@ function PanelBody({
     <div className="min-h-0 flex-1 overflow-y-auto">
       {/* Qué línea es y cuánto falta: lo primero que se necesita saber. */}
       <div className="flex flex-col gap-4 border-b p-6">
-        <div className="flex flex-col gap-1">
-          <span className="font-mono text-xs text-muted-foreground">{line.partNumber || "Sin número de parte"}</span>
-          <span className="text-lg font-medium">{line.description}</span>
-        </div>
         <dl className="grid grid-cols-3 gap-px border bg-border [&>div]:bg-background [&>div]:px-3 [&>div]:py-2">
           <div>
             <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Piden</dt>
