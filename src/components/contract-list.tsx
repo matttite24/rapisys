@@ -26,6 +26,7 @@ type Row = {
   start_date: string;
   status: string;
   clients: { name: string } | null;
+  contract_managers: { name: string } | null;
 };
 
 
@@ -56,7 +57,7 @@ async function List({
   let query = supabase
     .from("contracts")
     .select(
-      "id, code, name, total_cents, term_days, start_date, status, clients(name), organizations!inner(slug)",
+      "id, code, name, total_cents, term_days, start_date, status, clients(name), contract_managers(name), organizations!inner(slug)",
       { count: "exact" },
     )
     .eq("organizations.slug", org)
@@ -103,6 +104,9 @@ async function List({
                 <div className="flex min-w-0 flex-col gap-1">
                   <span className="text-base font-medium">{r.name}</span>
                   <span className="text-sm text-muted-foreground">{r.clients?.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    <span className="font-mono uppercase tracking-[0.1em]">Responsable</span> {r.contract_managers?.name}
+                  </span>
                 </div>
                 <dl className="mt-auto grid grid-cols-3 gap-px border bg-border [&>div]:bg-background [&>div]:px-3 [&>div]:py-2">
                   <div className="col-span-3 sm:col-span-1">
@@ -134,6 +138,7 @@ async function List({
                 <th scope="col" className={TH}>Código</th>
                 <th scope="col" className={TH}>Contrato</th>
                 <th scope="col" className={TH}>Cliente</th>
+                <th scope="col" className={TH}>Responsable</th>
                 <th scope="col" className={`${TH} text-right`}>Total (IVA incl.)</th>
                 <th scope="col" className={`${TH} text-right`}>Plazo</th>
                 <th scope="col" className={TH}>Inicio</th>
@@ -153,6 +158,7 @@ async function List({
                     </Link>
                   </td>
                   <td className={TD}>{r.clients?.name}</td>
+                  <td className={TD}>{r.contract_managers?.name}</td>
                   <td className={`${TD} num text-right`}>{formatCents(Number(r.total_cents))}</td>
                   <td className={`${TD} num text-right`}>{r.term_days} d</td>
                   <td className={`${TD} num`}>{r.start_date}</td>
