@@ -39,7 +39,7 @@ type Row = {
 };
 
 // Columnas de cada línea de la factura; el encabezado y las filas comparten la misma rejilla.
-const ROW_GRID = "grid items-center gap-2 md:grid-cols-[2rem_minmax(0,1fr)_6.5rem_9rem_5rem_15rem_2.5rem]";
+const ROW_GRID = "grid items-center gap-2 md:grid-cols-[2rem_minmax(0,1fr)_4.5rem_8rem_4.5rem_12rem_2rem]";
 
 // Clave única por fila (no un contador del módulo: con la recarga en caliente el contador vuelve a 0 y repite claves).
 const blank = (): Row => ({ key: crypto.randomUUID(), item: null, quantity: "1", cost: "", vat: "15", target: null, assign: "" });
@@ -166,7 +166,7 @@ export function PurchaseForm({
           <span className="text-right">Cantidad</span>
           <span className="text-right">Costo unit. s/IVA</span>
           <span className="text-right">IVA %</span>
-          <span>Línea del contrato</span>
+          <span>Asignar a</span>
           <span />
         </div>
         <ul className="divide-y">
@@ -432,7 +432,7 @@ function TargetAction({
         </div>
       ) : (
         <Button type="button" variant="outline" size="sm" className="h-[2rem] justify-self-start" onClick={() => setOpen(true)}>
-          Asignar a una línea
+          Asignar
         </Button>
       )}
       <TargetDialog
