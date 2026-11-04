@@ -159,9 +159,7 @@ async function NewForm({ params }: { params: IdParams }) {
 export function PurchaseNewPage({ params }: { params: IdParams }) {
   return (
     <>
-      <PageSection>
-        <h1 className="text-2xl font-semibold tracking-tight">Nueva factura de compra</h1>
-      </PageSection>
+      <h1 className="sr-only">Nueva factura de compra</h1>
       <Suspense fallback={<PageSection label="Cargando…" />}>
         <NewForm params={params} />
       </Suspense>

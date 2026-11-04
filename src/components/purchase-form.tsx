@@ -7,6 +7,7 @@ import { Add01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { DatePicker, toIsoDate } from "@/components/date-picker";
 import { FormField } from "@/components/form-field";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/money-input";
 import { NumericInput } from "@/components/numeric-input";
 import { PageSection } from "@/components/page-section";
@@ -34,6 +35,9 @@ type Row = {
   target: CoverableLine | null; // línea del contrato a la que se asigna
   assign: string;
 };
+
+// Columnas de cada línea de la factura; el encabezado y las filas comparten la misma rejilla.
+const ROW_GRID = "grid items-center gap-3 md:grid-cols-[2rem_minmax(0,1fr)_6.5rem_9rem_5rem_15rem_2.5rem]";
 
 let seq = 0;
 const blank = (): Row => ({ key: ++seq, item: null, quantity: "1", cost: "", vat: "15", target: null, assign: "" });
@@ -140,6 +144,15 @@ export function PurchaseForm({
       </PageSection>
 
       <PageSection label={`${rows.length} ${rows.length === 1 ? "línea" : "líneas"} de la factura`} className="p-0">
+        <div aria-hidden className={`${ROW_GRID} border-b bg-surface-strong/60 px-6 py-2 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground max-md:hidden`}>
+          <span>N.º</span>
+          <span>Producto (busca en la bodega)</span>
+          <span className="text-right">Cantidad</span>
+          <span className="text-right">Costo unit. s/IVA</span>
+          <span className="text-right">IVA %</span>
+          <span>Línea del contrato</span>
+          <span />
+        </div>
         <ul className="divide-y">
           {rows.map((r, i) => (
             <PurchaseRow
@@ -205,32 +218,43 @@ function PurchaseRow({
   onPick: (item: ItemOption) => void;
   onRemove: () => void;
 }) {
+  const hint = "font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground md:hidden";
   return (
-    <li className="flex flex-col gap-4 p-6">
-      <div className="grid items-start gap-4 md:grid-cols-[2rem_1fr_7rem_11rem_6rem_2.5rem]">
-        <span className="num pt-8 text-muted-foreground max-md:hidden">{n}</span>
+    <li className="px-6 py-3">
+      <div className={ROW_GRID}>
+        <span className="num text-muted-foreground max-md:hidden">{n}</span>
         <ItemPicker org={org} item={row.item} onPick={onPick} onClear={() => onPatch({ item: null })} />
-        <FormField name={`qty-${row.key}`} label="Cantidad">
-          {(a11y) => (
-            <NumericInput
-              {...a11y}
-              kind="decimal"
-              className="font-mono"
-              value={row.quantity}
-              onChange={(e) => onPatch({ quantity: e.target.value })}
-            />
-          )}
-        </FormField>
-        <FormField name={`cost-${row.key}`} label="Costo unit. s/IVA">
-          {(a11y) => <MoneyInput {...a11y} name={`cost-${row.key}`} value={row.cost} onChange={(cost) => onPatch({ cost })} />}
-        </FormField>
-        <FormField name={`vat-${row.key}`} label="IVA %">
-          {(a11y) => (
-            <NumericInput {...a11y} kind="decimal" className="font-mono" value={row.vat} onChange={(e) => onPatch({ vat: e.target.value })} />
-          )}
-        </FormField>
-        <div className="flex flex-col gap-2">
-          <span aria-hidden className="font-mono text-[0.6875rem] leading-4 max-md:hidden">&nbsp;</span>
+        <label className="flex flex-col gap-1">
+          <span className={hint}>Cantidad</span>
+          <NumericInput
+            kind="decimal"
+            aria-label={`Cantidad de la línea ${n}`}
+            className="font-mono"
+            value={row.quantity}
+            onChange={(e) => onPatch({ quantity: e.target.value })}
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className={hint}>Costo unit. s/IVA</span>
+          <MoneyInput
+            aria-label={`Costo unitario sin IVA de la línea ${n}`}
+            name={`cost-${row.key}`}
+            value={row.cost}
+            onChange={(cost) => onPatch({ cost })}
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className={hint}>IVA %</span>
+          <NumericInput
+            kind="decimal"
+            aria-label={`IVA de la línea ${n}`}
+            className="font-mono"
+            value={row.vat}
+            onChange={(e) => onPatch({ vat: e.target.value })}
+          />
+        </label>
+        <TargetAction contractId={contractId} n={n} row={row} onPatch={onPatch} />
+        <div className="flex justify-end">
           {canRemove && (
             <Button
               variant="ghost"
@@ -244,12 +268,12 @@ function PurchaseRow({
           )}
         </div>
       </div>
-      <TargetPicker contractId={contractId} row={row} onPatch={onPatch} />
     </li>
   );
 }
 
-// Busca un producto de la bodega para la línea de la factura.
+// Busca un producto de la bodega para la línea de la factura. Los resultados flotan bajo el campo
+// para que la fila no crezca.
 function ItemPicker({
   org,
   item,
@@ -267,44 +291,38 @@ function ItemPicker({
 
   if (item) {
     return (
-      <div className="flex flex-col gap-2">
-        <span className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground">Producto</span>
-        <div className="flex min-h-10 items-center justify-between gap-2 border px-3 py-2 text-sm">
-          <span className="min-w-0 truncate">
-            {item.name}
-            <span className="ml-2 font-mono text-xs text-muted-foreground">
-              {[item.sku, ...item.partNumbers].filter(Boolean).join(" · ")}
-            </span>
+      <div className="flex min-h-10 items-center justify-between gap-2 border px-3 py-1.5 text-sm">
+        <span className="min-w-0 truncate">
+          {item.name}
+          <span className="ml-2 font-mono text-xs text-muted-foreground">
+            {[item.sku, ...item.partNumbers].filter(Boolean).join(" · ")}
           </span>
-          <Button type="button" variant="outline" size="sm" onClick={onClear}>
-            Cambiar
-          </Button>
-        </div>
+        </span>
+        <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+          Cambiar
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <FormField name={`item-${q.length}`} label="Producto (busca en la bodega)">
-        {(a11y) => (
-          <Input
-            {...a11y}
-            type="search"
-            autoComplete="off"
-            placeholder="Número de parte, SKU o nombre"
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              clearTimeout(timer.current);
-              timer.current = setTimeout(async () => setResults(await searchItems(org, e.target.value)), 250);
-            }}
-            onFocus={() => results === null && void searchItems(org, q).then(setResults)}
-          />
-        )}
-      </FormField>
+    <div className="relative">
+      <Input
+        type="search"
+        aria-label="Producto: busca en la bodega"
+        autoComplete="off"
+        placeholder="Número de parte, SKU o nombre"
+        value={q}
+        onChange={(e) => {
+          setQ(e.target.value);
+          clearTimeout(timer.current);
+          timer.current = setTimeout(async () => setResults(await searchItems(org, e.target.value)), 250);
+        }}
+        onFocus={() => results === null && void searchItems(org, q).then(setResults)}
+        onKeyDown={(e) => e.key === "Escape" && setResults(null)}
+      />
       {results !== null && (
-        <ul aria-label="Productos" className="max-h-56 divide-y overflow-y-auto border bg-popover">
+        <ul aria-label="Productos" className="absolute top-full right-0 left-0 z-20 mt-1 max-h-64 divide-y overflow-y-auto border bg-popover shadow-overlay">
           {results.length === 0 ? (
             <li className="flex flex-col gap-1 px-3 py-2 text-sm text-muted-foreground">
               Ningún producto coincide.
@@ -342,117 +360,144 @@ function ItemPicker({
   );
 }
 
-// Asigna (opcional) la línea de la factura a una línea de la lista de referencia del contrato.
-function TargetPicker({
+// Acción al final de la fila: asignar la línea de la factura a una línea de la lista de referencia
+// del contrato (opcional). Ya asignada, muestra a cuál y cuántas unidades.
+function TargetAction({
   contractId,
+  n,
   row,
   onPatch,
 }: {
   contractId: string;
+  n: number;
   row: Row;
   onPatch: (change: Partial<Row>) => void;
 }) {
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [open, setOpen] = useState(false);
-  // Lo que se escribió en la búsqueda: solo se lee al abrir, no hace falta que redibuje.
+
+  return (
+    <>
+      {row.target ? (
+        <div className="flex items-center gap-2" title={`«${row.target.listName}»: ${row.target.description}. Faltan ${row.target.open}.`}>
+          <span className="min-w-0 flex-1 truncate text-sm">
+            <span className="font-mono text-xs text-muted-foreground">Línea </span>
+            <span className="num">{row.target.n}</span>
+            <span className="ml-1 text-xs text-muted-foreground">de {row.target.listName}</span>
+          </span>
+          <NumericInput
+            kind="decimal"
+            aria-label={`Unidades de la línea ${n} que se asignan a esa línea del contrato`}
+            className="h-9 w-16 shrink-0 font-mono"
+            value={row.assign || row.quantity}
+            onChange={(e) => onPatch({ assign: e.target.value })}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 text-muted-foreground"
+            aria-label="Quitar la asignación"
+            onClick={() => onPatch({ target: null, assign: "" })}
+          >
+            <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+          </Button>
+        </div>
+      ) : (
+        <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => setOpen(true)}>
+          Asignar a una línea
+        </Button>
+      )}
+      <TargetDialog
+        open={open}
+        onOpenChange={setOpen}
+        contractId={contractId}
+        row={row}
+        onPick={(l) => {
+          const qty = parseDecimal(row.quantity) ?? 0;
+          onPatch({ target: l, assign: String(Math.min(qty, l.open)) });
+          setOpen(false);
+        }}
+      />
+    </>
+  );
+}
+
+// Selector de la línea del contrato: abre con el número de parte del producto ya buscado.
+function TargetDialog({
+  open,
+  onOpenChange,
+  contractId,
+  row,
+  onPick,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  contractId: string;
+  row: Row;
+  onPick: (line: CoverableLine) => void;
+}) {
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const qRef = useRef("");
   const [results, setResults] = useState<CoverableLine[] | null>(null);
 
-  // Al abrir, se propone buscar por el número de parte del producto elegido.
   useEffect(() => {
     if (!open) return;
     let alive = true;
-    const start = qRef.current || row.item?.partNumbers[0] || "";
-    void searchCoverable(contractId, start).then((r) => alive && setResults(r));
+    qRef.current = row.item?.partNumbers[0] ?? "";
+    void searchCoverable(contractId, qRef.current).then((r) => alive && setResults(r));
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  if (row.target) {
-    const t = row.target;
-    return (
-      <div className="flex flex-wrap items-center gap-3 border bg-muted/40 px-3 py-2 text-sm">
-        <span className="min-w-0 flex-1">
-          Para la línea <span className="num">{t.n}</span> de «{t.listName}»:{" "}
-          <span className="font-mono text-xs text-muted-foreground">{t.partNumber || "sin parte"}</span> {t.description}
-        </span>
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          Unidades
-          <NumericInput
-            kind="decimal"
-            aria-label="Unidades que se asignan a esa línea"
-            className="h-8 w-20 font-mono"
-            value={row.assign || row.quantity}
-            onChange={(e) => onPatch({ assign: e.target.value })}
-          />
-        </label>
-        <span className="text-xs text-muted-foreground">Faltan {t.open}. El resto de la factura queda como sobrante.</span>
-        <Button type="button" variant="ghost" size="sm" onClick={() => onPatch({ target: null, assign: "" })}>
-          Quitar
-        </Button>
-      </div>
-    );
-  }
-
-  if (!open) {
-    return (
-      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-        <span>Sin asignar: todo queda como existencia libre al recibirse.</span>
-        <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
-          Asignar a una línea del contrato
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-2 border p-3">
-      <Input
-        type="search"
-        autoFocus
-        autoComplete="off"
-        aria-label="Buscar línea del contrato"
-        placeholder="Número de parte o descripción de la línea del contrato"
-        defaultValue={row.item?.partNumbers[0] ?? ""}
-        onChange={(e) => {
-          qRef.current = e.target.value;
-          clearTimeout(timer.current);
-          timer.current = setTimeout(async () => setResults(await searchCoverable(contractId, e.target.value)), 250);
-        }}
-      />
-      <ul className="max-h-56 divide-y overflow-y-auto border bg-popover">
-        {results === null && <li className="px-3 py-2 text-sm text-muted-foreground">Buscando…</li>}
-        {results?.length === 0 && (
-          <li className="px-3 py-2 text-sm text-muted-foreground">Ninguna línea pendiente coincide.</li>
-        )}
-        {results?.map((l) => (
-          <li key={l.id}>
-            <button
-              type="button"
-              className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
-              onClick={() => {
-                const qty = parseDecimal(row.quantity) ?? 0;
-                onPatch({ target: l, assign: String(Math.min(qty, l.open)) });
-                setOpen(false);
-              }}
-            >
-              <span className="num text-muted-foreground">{l.n}</span>
-              <span className="font-mono text-xs text-muted-foreground">{l.partNumber || "—"}</span>
-              <span className="min-w-0 flex-1 truncate">{l.description}</span>
-              <span className="text-xs text-muted-foreground">
-                «{l.listName}» · faltan <span className="num">{l.open}</span>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-          Cancelar
-        </Button>
-      </div>
-    </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="gap-0 p-0 sm:max-w-2xl">
+        <DialogHeader className="border-b p-6 pb-4">
+          <DialogTitle>Asignar a una línea del contrato</DialogTitle>
+          <DialogDescription>
+            {row.item ? `Para ${row.item.name}. ` : ""}Lo que no se asigne queda como existencia libre al recibirse.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="border-b p-4">
+          <Input
+            type="search"
+            autoFocus
+            autoComplete="off"
+            aria-label="Buscar línea del contrato"
+            placeholder="Número de parte o descripción de la línea"
+            defaultValue={row.item?.partNumbers[0] ?? ""}
+            onChange={(e) => {
+              qRef.current = e.target.value;
+              clearTimeout(timer.current);
+              timer.current = setTimeout(async () => setResults(await searchCoverable(contractId, e.target.value)), 250);
+            }}
+          />
+        </div>
+        <ul className="max-h-80 divide-y overflow-y-auto">
+          {results === null && <li className="px-6 py-4 text-sm text-muted-foreground">Buscando…</li>}
+          {results?.length === 0 && (
+            <li className="px-6 py-4 text-sm text-muted-foreground">Ninguna línea pendiente coincide.</li>
+          )}
+          {results?.map((l) => (
+            <li key={l.id}>
+              <button
+                type="button"
+                className="flex min-h-12 w-full items-center gap-3 px-6 py-2 text-left text-sm hover:bg-accent"
+                onClick={() => onPick(l)}
+              >
+                <span className="num text-muted-foreground">{l.n}</span>
+                <span className="font-mono text-xs text-muted-foreground">{l.partNumber || "—"}</span>
+                <span className="min-w-0 flex-1 truncate">{l.description}</span>
+                <span className="text-xs text-muted-foreground">
+                  «{l.listName}» · faltan <span className="num">{l.open}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </DialogContent>
+    </Dialog>
   );
 }
