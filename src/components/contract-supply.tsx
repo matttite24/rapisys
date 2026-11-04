@@ -146,7 +146,6 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
       estado={estado}
       basePath={`/${org}/contratos/${id}/abastecimiento`}
       canAct={view.status === "in_progress"}
-      deliveries={Number(view.deliveries)}
     />
   );
 }

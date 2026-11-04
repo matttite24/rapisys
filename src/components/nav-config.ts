@@ -110,6 +110,7 @@ export const CONTRACT_SECTIONS = [
   { slug: "", title: "Detalle", icon: File01Icon },
   { slug: "items", title: "Items", icon: Package01Icon },
   { slug: "abastecimiento", title: "Abastecimiento", icon: PackageProcessIcon },
+  { slug: "entregas", title: "Entregas", icon: DeliveryTruck01Icon },
   { slug: "compras", title: "Compras", icon: ShoppingCart01Icon },
   { slug: "gastos", title: "Gastos", icon: Wallet01Icon },
   { slug: "archivos", title: "Archivos", icon: Folder01Icon },
