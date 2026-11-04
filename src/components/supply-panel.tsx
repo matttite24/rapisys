@@ -7,7 +7,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import type { SupplyLine } from "@/components/supply-board";
 import { Progress, STATE } from "@/components/supply-progress";
 import { NumericInput } from "@/components/numeric-input";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatCents } from "@/lib/money";
@@ -132,10 +132,16 @@ function PanelBody({
   }
 
   const inStock = results?.filter((r) => r.onHand > 0) ?? [];
-  const noStock = results?.filter((r) => r.onHand === 0) ?? [];
   const TITLE = "flex h-10 items-center border-b px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]";
 
+  // Producto de la bodega al que se le registra la entrada: el que tiene el mismo número de parte.
+  const entryTarget = results?.find((r) => line.partNumber && r.partNumbers.some((p) => norm(p) === norm(line.partNumber))) ?? results?.[0];
+  const entryHref = entryTarget
+    ? `/${org}/bodega/${entryTarget.id}`
+    : `/${org}/bodega/nuevo?parte=${encodeURIComponent(line.partNumber)}&nombre=${encodeURIComponent(line.description)}`;
+
   return (
+    <>
     <div className="min-h-0 flex-1 overflow-y-auto">
       {/* Qué línea es y cuánto falta: lo primero que se necesita saber. */}
       <div className="flex flex-col gap-4 border-b p-6">
@@ -329,23 +335,6 @@ function PanelBody({
                         );
                       })}
                     </ul>
-                    {noStock.length > 0 && (
-                      <ul className="divide-y border-t bg-surface-strong/30">
-                        {noStock.map((r) => (
-                          <li key={r.id} className="flex items-center justify-between gap-3 px-6 py-3 text-sm text-muted-foreground">
-                            <span className="min-w-0 truncate">
-                              {r.name} <span className="font-mono text-xs">{[r.sku, ...r.partNumbers].filter(Boolean).join(" · ")}</span>
-                            </span>
-                            <span className="flex shrink-0 items-center gap-3">
-                              <span>sin existencias</span>
-                              <Link href={`/${org}/bodega/${r.id}`} target="_blank" className="text-foreground underline underline-offset-4">
-                                Registrar entrada
-                              </Link>
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
                   </>
                 ))}
 
@@ -397,5 +386,14 @@ function PanelBody({
         </section>
       )}
     </div>
+    {canAct && pending > 0 && tab === "bodega" && (
+      <footer className="flex shrink-0 items-center justify-between gap-3 border-t bg-surface-strong/50 px-6 py-3 text-sm">
+        <span className="text-muted-foreground">¿Llegó mercadería que no está en la bodega?</span>
+        <Link href={entryHref} target="_blank" className={buttonVariants({ variant: "outline", size: "sm" })}>
+          Registrar entrada
+        </Link>
+      </footer>
+    )}
+    </>
   );
 }
