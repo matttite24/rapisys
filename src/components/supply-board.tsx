@@ -134,7 +134,7 @@ export function SupplyBoard({
       )}
 
       {/* Resumen por estado: cada celda filtra la tabla. */}
-      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-5 [&>*]:bg-background">
+      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-5 [&>*]:bg-surface-strong/50">
         {STATE_ORDER.map((s) => (
           <button
             key={s}
@@ -142,8 +142,8 @@ export function SupplyBoard({
             aria-pressed={estado === s}
             onClick={() => go({ estado: estado === s ? "" : s })}
             className={cn(
-              "flex flex-col items-start gap-1 px-6 py-3 text-left transition-colors hover:bg-accent",
-              estado === s && "bg-foreground/[0.06] shadow-[inset_0_-2px_0_var(--brand)]",
+              "flex flex-col items-start gap-1 px-6 py-3 text-left transition-colors hover:bg-background/70",
+              estado === s && "bg-background! shadow-[inset_0_-2px_0_var(--brand)]",
             )}
           >
             <span className="flex items-center gap-2 font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
@@ -182,36 +182,41 @@ export function SupplyBoard({
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b bg-muted/50">
+                    <tr className="border-b">
                       <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
                       <th scope="col" className={TH}>Part. num.</th>
                       <th scope="col" className={TH}>Descripción</th>
                       <th scope="col" className={`${TH} text-right`}>Cantidad</th>
-                      <th scope="col" className={TH}>Avance</th>
-                      <th scope="col" className={TH}>Estado</th>
+                      <th scope="col" className={TH}>Estado y avance</th>
                       <th scope="col" className={`${TH} text-right`}>Costo unit.</th>
                       <th scope="col" className={`${TH} w-px`}><span className="sr-only">Acciones</span></th>
                     </tr>
                   </thead>
                   <tbody>
                     {lines.map((l) => (
-                      <tr key={l.id} className={cn("border-b last:border-b-0", selectedId === l.id && "bg-muted")}>
+                      <tr
+                        key={l.id}
+                        onClick={() => setSelectedId(l.id)}
+                        className={cn("cursor-pointer border-b transition-colors last:border-b-0 hover:bg-accent", selectedId === l.id && "bg-surface-strong/60")}
+                      >
                         <td className={`${TD} num text-right text-muted-foreground`}>{l.n}</td>
                         <td className={`${TD} whitespace-nowrap font-mono text-xs`}>{l.partNumber || "—"}</td>
                         <td className={`${TD} break-words`}>{l.description}</td>
                         <td className={`${TD} num whitespace-nowrap text-right`}>
                           {l.quantity} <span className="font-sans text-xs text-muted-foreground">{unitLabel(l.unit)}</span>
                         </td>
-                        <td className={TD}><Progress stock={l.reserved} purchased={l.purchased} delivered={l.delivered} total={l.quantity} /></td>
-                        <td className={`${TD} whitespace-nowrap`}>
-                          <span className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.06em]">
-                            <span aria-hidden className={cn("size-2", STATE[l.state].dot)} />
-                            {STATE[l.state].label}
-                          </span>
+                        <td className={TD}>
+                          <div className="flex flex-col items-start gap-1.5">
+                            <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 font-mono text-xs uppercase tracking-[0.06em]", STATE[l.state].chip)}>
+                              <span aria-hidden className={cn("size-2", STATE[l.state].dot)} />
+                              {STATE[l.state].label}
+                            </span>
+                            <Progress stock={l.reserved} purchased={l.purchased} delivered={l.delivered} total={l.quantity} />
+                          </div>
                         </td>
                         <td className={`${TD} num text-right`}>{l.costCents === null ? "—" : formatCents(l.costCents)}</td>
                         <td className={cn(TD, "p-1")}>
-                          <Button variant="outline" size="sm" className="h-8" onClick={() => setSelectedId(l.id)}>
+                          <Button variant="ghost" size="sm" className="h-8 font-medium text-foreground" onClick={() => setSelectedId(l.id)}>
                             {canAct ? "Abastecer" : "Ver"}
                           </Button>
                         </td>
@@ -253,13 +258,12 @@ function SupplyTableSkeleton({ rows = 6 }: { rows?: number }) {
     <div role="status" aria-label="Cargando líneas" className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b bg-muted/50">
+          <tr className="border-b">
             <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
             <th scope="col" className={TH}>Part. num.</th>
             <th scope="col" className={TH}>Descripción</th>
             <th scope="col" className={`${TH} text-right`}>Cantidad</th>
-            <th scope="col" className={TH}>Avance</th>
-            <th scope="col" className={TH}>Estado</th>
+            <th scope="col" className={TH}>Estado y avance</th>
             <th scope="col" className={`${TH} text-right`}>Costo unit.</th>
             <th scope="col" className={`${TH} w-px`}><span className="sr-only">Acciones</span></th>
           </tr>
@@ -271,8 +275,7 @@ function SupplyTableSkeleton({ rows = 6 }: { rows?: number }) {
               <td className={TD}><Skeleton className={cn("h-4", WIDTHS[i % 6])} /></td>
               <td className={cn(TD, "w-1/3")}><Skeleton className={cn("h-4", WIDTHS[(i + 2) % 6])} /></td>
               <td className={TD}><Skeleton className="ml-auto h-4 w-10" /></td>
-              <td className={TD}><Skeleton className="h-2 w-24" /></td>
-              <td className={TD}><Skeleton className="h-4 w-28" /></td>
+              <td className={TD}><Skeleton className="h-5 w-28" /></td>
               <td className={TD}><Skeleton className="ml-auto h-4 w-14" /></td>
               <td className={cn(TD, "p-1")}><Skeleton className="h-8 w-20" /></td>
             </tr>
@@ -293,7 +296,7 @@ export function SupplySkeleton() {
           <Skeleton key={i} className="h-4" style={{ width: `${w * 4}px` }} />
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-5 [&>*]:bg-background">
+      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-5 [&>*]:bg-surface-strong/50">
         {STATE_ORDER.map((s) => (
           <div key={s} className="flex flex-col gap-2 px-6 py-3">
             <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">

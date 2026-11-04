@@ -41,7 +41,7 @@ export function DeliveryActions({
         Entregas <span className="num text-muted-foreground">{deliveries}</span>
       </Link>
       {canAct && (
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2.5" onClick={() => setOpen(true)}>
+        <Button size="sm" className="h-8 gap-1.5 px-3" onClick={() => setOpen(true)}>
           <HugeiconsIcon icon={DeliveryTruck01Icon} className="size-4" />
           Generar entrega
         </Button>
