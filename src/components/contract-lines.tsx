@@ -6,6 +6,7 @@ import { startTransition, useEffect, useOptimistic, useRef, useState, useTransit
 import { cn } from "@/lib/utils";
 import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { LineSearch } from "@/components/line-search";
 import { Pager } from "@/components/pager";
 import { Skeleton } from "@/components/ui/skeleton";
 import { pageCount } from "@/lib/pagination";
@@ -13,22 +14,12 @@ import { BulkImport } from "@/components/bulk-import";
 import { ListDetailsForm, ListInfo, ListTabs, NewListDialog, type ListView } from "@/components/contract-lists";
 import { FormField } from "@/components/form-field";
 import { NumericInput } from "@/components/numeric-input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { addLine, removeLine, setContractStatus, updateLine, type LineState } from "@/lib/contract-actions";
-import { LINES_PAGE_SIZE, MAX_LINES_PER_LIST, STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
+import { addLine, removeLine, updateLine, type LineState } from "@/lib/contract-actions";
+import { LINES_PAGE_SIZE, MAX_LINES_PER_LIST } from "@/lib/contracts";
 import { parseDecimal } from "@/lib/money";
 import { UNITS, isUnit, unitLabel } from "@/lib/units";
 
@@ -53,158 +44,10 @@ export type LineView = {
   cpc: string;
 };
 
-const SUMMARY_LABEL =
-  "mb-1 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground";
-
-// Estado del contrato: un paso adelante o atrás por vez.
-export function StatusControl({
-  org,
-  contractId,
-  status,
-  summary,
-  inHeader,
-}: {
-  org: string;
-  contractId: string;
-  status: string;
-  // En el encabezado va en una sola línea y el error cuelga debajo de él.
-  inHeader?: boolean;
-  // Datos del contrato, para confirmar el paso a En ejecución.
-  summary?: { code: string; total: string; delivery: string };
-}) {
-  const [error, setError] = useState<string>();
-  const [pending, setPending] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const idx = STATUS_ORDER.indexOf(status as (typeof STATUS_ORDER)[number]);
-  const prev = STATUS_ORDER[idx - 1];
-  const next = STATUS_ORDER[idx + 1];
-
-  async function go(target: string) {
-    setPending(true);
-    setError(undefined);
-    try {
-      const res = await setContractStatus(org, contractId, target);
-      setError(res?.error);
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return (
-    <div className={inHeader ? "relative" : "flex flex-col gap-2"}>
-      <div className={inHeader ? "flex items-center gap-2" : "flex flex-wrap items-center gap-2"}>
-        {/* En el encabezado el estado ya está en la columna de opciones y no se retrocede: solo el paso siguiente. */}
-        {!inHeader && (
-        <span className="inline-flex items-center gap-2 bg-muted px-2.5 py-1.5 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-foreground select-none">
-          <span aria-hidden className={`size-2 ${STATUS_DOT[status] ?? "bg-muted-foreground"}`} />
-          {STATUS_LABEL[status] ?? status}
-        </span>
-        )}
-        {prev && !inHeader && (
-          <Button variant="outline" disabled={pending} onClick={() => go(prev)}>
-            ← {STATUS_LABEL[prev]}
-          </Button>
-        )}
-        {next && (
-          // Pasar a En ejecución fija los datos del contrato: pide confirmación.
-          <Button disabled={pending} onClick={() => (next === "in_progress" ? setConfirmOpen(true) : go(next))}>
-            {STATUS_LABEL[next]} →
-          </Button>
-        )}
-      </div>
-      {error && (
-        <p
-          role="alert"
-          className={
-            inHeader
-              ? "absolute top-full right-0 z-20 mt-2 w-max max-w-80 border bg-background p-3 text-sm text-destructive"
-              : "text-sm text-destructive"
-          }
-        >
-          {error}
-        </p>
-      )}
-
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent className="data-[size=default]:sm:max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Pasar el contrato a En ejecución?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se habilita la carga de items. Los datos del contrato quedan fijos y ya no se podrán corregir.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {summary && (
-            <dl className="grid grid-cols-2 gap-px border bg-border [&>div]:bg-popover [&>div]:p-3">
-              <div className="col-span-2">
-                <dt className={SUMMARY_LABEL}>Contrato</dt>
-                <dd className="num break-all">{summary.code}</dd>
-              </div>
-              <div>
-                <dt className={SUMMARY_LABEL}>Monto (IVA incl.)</dt>
-                <dd className="num whitespace-nowrap">{summary.total}</dd>
-              </div>
-              <div>
-                <dt className={SUMMARY_LABEL}>Fecha de entrega</dt>
-                <dd className="num whitespace-nowrap">{summary.delivery}</dd>
-              </div>
-            </dl>
-          )}
-
-          <p className="text-xs text-muted-foreground">
-            Se usan los datos guardados. Si cambiaste algo en el formulario, guárdalo antes de continuar.
-          </p>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setConfirmOpen(false);
-                void go("in_progress");
-              }}
-            >
-              Sí, pasar a En ejecución
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
 type OptimisticAction =
   | { type: "add"; line: LineView }
   | { type: "update"; line: LineView }
   | { type: "remove"; id: string };
-
-// Búsqueda dentro de la lista abierta: ocupa la fila desde el inicio. Va al servidor (con una
-// pausa corta al escribir) y vuelve a la página 1.
-export function LineSearch({ q, onSearch }: { q: string; onSearch: (q: string) => void }) {
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [value, setValue] = useState(q);
-  return (
-    <div className="relative min-w-0 flex-1">
-      <HugeiconsIcon
-        icon={Search01Icon}
-        aria-hidden
-        className="pointer-events-none absolute top-1/2 left-6 size-5 -translate-y-1/2 text-muted-foreground"
-      />
-      <input
-        type="search"
-        aria-label="Buscar en la lista"
-        placeholder="Buscar por número de parte o descripción"
-        autoComplete="off"
-        value={value}
-        onChange={(e) => {
-          setValue(e.target.value);
-          clearTimeout(timer.current);
-          timer.current = setTimeout(() => onSearch(e.target.value.trim()), 350);
-        }}
-        className="h-full w-full bg-transparent pr-4 pl-14 text-sm outline-none placeholder:text-muted-foreground focus-visible:bg-background"
-      />
-    </div>
-  );
-}
 
 // Las listas del contrato (una por activo). Solo llega la página abierta de la lista abierta:
 // el resto se pide al servidor al cambiar de lista, de página o al buscar. La lista y su

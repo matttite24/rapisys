@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
-import { StatusControl } from "@/components/contract-lines";
+import { StatusControl } from "@/components/status-control";
 import { ContractStatusCell } from "@/components/contract-status-cell";
 import { HeaderSlot, HeaderTitle } from "@/components/header-action";
 import { PanelTop } from "@/components/panel-slots";

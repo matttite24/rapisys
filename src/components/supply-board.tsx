@@ -4,7 +4,7 @@ import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ListInfo, ListTabs, type ListView } from "@/components/contract-lists";
-import { LineSearch } from "@/components/contract-lines";
+import { LineSearch } from "@/components/line-search";
 import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
 import { Pager } from "@/components/pager";
 import { DeliveryActions } from "@/components/delivery-sheet";

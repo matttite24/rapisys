@@ -11,7 +11,7 @@ vi.mock("@/lib/contract-actions", () => ({
   setContractStatus: (...args: unknown[]) => setContractStatus(...(args as [])),
 }));
 
-import { StatusControl } from "./contract-lines";
+import { StatusControl } from "./status-control";
 
 afterEach(() => {
   cleanup();
