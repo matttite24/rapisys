@@ -34,7 +34,7 @@ export function SupplyPanel({
 }) {
   return (
     <Sheet open={line !== null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="gap-0 sm:max-w-xl">
+      <SheetContent className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-3xl">
         <SheetHeader>
           <SheetTitle>{line ? `Línea ${line.n}` : "Línea"}</SheetTitle>
           <SheetDescription className="sr-only">Reservar existencias de la bodega para esta línea.</SheetDescription>
