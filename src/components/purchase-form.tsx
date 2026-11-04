@@ -195,7 +195,7 @@ export function PurchaseForm({
       </PageSection>
 
       <div className="flex flex-col gap-4 p-6">
-        <dl className="grid max-w-md grid-cols-[1fr_auto] gap-x-8 gap-y-1 font-mono text-sm">
+        <dl className="ml-auto grid w-full max-w-xs grid-cols-[1fr_auto] gap-x-8 gap-y-1 font-mono text-sm">
           <dt className="text-muted-foreground">Subtotal</dt>
           <dd className="num text-right">{formatCents(totals.subtotal)}</dd>
           <dt className="text-muted-foreground">IVA</dt>
