@@ -126,40 +126,61 @@ export function SupplyBoard({
       {loaded && <AssetLine list={loaded} />}
 
       <section className="border-b">
-        {/* Una sola barra: resumen por estado (filtra), búsqueda y acciones de entrega. */}
-        <div className="flex flex-col border-b xl:h-12 xl:flex-row xl:items-stretch">
-          <div className="flex shrink-0 divide-x overflow-x-auto border-b bg-surface-strong/50 xl:border-b-0 xl:border-r">
-            {STATE_ORDER.map((s) => (
-              <button
-                key={s}
-                type="button"
-                aria-pressed={estado === s}
-                onClick={() => go({ estado: estado === s ? "" : s })}
-                className={cn(
-                  "flex h-12 shrink-0 items-center gap-2 px-4 text-left transition-colors hover:bg-background/70 xl:h-auto",
-                  estado === s && "bg-background! shadow-[inset_0_-2px_0_var(--brand)]",
-                )}
-              >
+        {/* Fila 1: resumen por estado; cada celda filtra la tabla. */}
+        <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-5 [&>*]:bg-surface-strong/50">
+          {STATE_ORDER.map((s) => (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={estado === s}
+              onClick={() => go({ estado: estado === s ? "" : s })}
+              className={cn(
+                "flex flex-col items-start gap-1 px-6 py-3 text-left transition-colors hover:bg-background/70",
+                estado === s && "bg-background! shadow-[inset_0_-2px_0_var(--brand)]",
+              )}
+            >
+              <span className="flex items-center gap-2 font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
                 <span aria-hidden className={cn("size-2", STATE[s].dot)} />
-                <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">{STATE[s].label}</span>
-                <span className="num text-base font-medium">{counts[s]}</span>
-              </button>
-            ))}
-          </div>
-          <div className="flex h-12 min-w-0 flex-1 items-stretch xl:h-auto">
-            <LineSearch key={`${loaded?.id}:${q}`} q={q} onSearch={(next) => go({ q: next })} />
-            {loaded && (
-              <DeliveryActions
-                org={org}
-                contractId={contractId}
-                listId={loaded.id}
-                listName={loaded.name}
-                canAct={canAct}
-                deliveries={deliveries}
-                ready={counts.in_stock}
-              />
-            )}
-          </div>
+                {STATE[s].label}
+              </span>
+              <span className="num text-2xl">{counts[s]}</span>
+            </button>
+          ))}
+        </div>
+
+        {loaded && (
+          <DeliveryActions
+            org={org}
+            contractId={contractId}
+            listId={loaded.id}
+            listName={loaded.name}
+            canAct={canAct}
+            deliveries={deliveries}
+            ready={counts.in_stock}
+          />
+        )}
+
+        {/* Fila 2: búsqueda y filtros activos. */}
+        <div className="flex h-12 items-stretch border-b">
+          <LineSearch key={`${loaded?.id}:${q}`} q={q} onSearch={(next) => go({ q: next })} />
+          {(q || estado) && (
+            <div className="flex shrink-0 items-center gap-2 border-l px-3">
+              {estado && (
+                <button
+                  type="button"
+                  onClick={() => go({ estado: "" })}
+                  aria-label={`Quitar el filtro ${STATE[estado].label}`}
+                  className={cn("inline-flex items-center gap-1.5 px-2 py-1 font-mono text-xs uppercase tracking-[0.06em]", STATE[estado].chip)}
+                >
+                  {STATE[estado].label}
+                  <span aria-hidden>×</span>
+                </button>
+              )}
+              <Button variant="ghost" size="sm" className="h-8" onClick={() => go({ q: "", estado: "" })}>
+                Limpiar
+              </Button>
+            </div>
+          )}
         </div>
 
         {navigating || switching ? (
@@ -323,12 +344,11 @@ export function SupplySkeleton() {
           <Skeleton key={i} className="h-4" style={{ width: `${w * 4}px` }} />
         ))}
       </div>
-      <div className="flex h-12 divide-x overflow-hidden border-b bg-surface-strong/50">
+      <div className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-5 [&>*]:bg-surface-strong/50">
         {STATE_ORDER.map((s) => (
-          <div key={s} className="flex shrink-0 items-center gap-2 px-4">
-            <span aria-hidden className={cn("size-2", STATE[s].dot)} />
+          <div key={s} className="flex flex-col gap-2 px-6 py-3">
             <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">{STATE[s].label}</span>
-            <Skeleton className="h-4 w-5" />
+            <Skeleton className="h-7 w-10" />
           </div>
         ))}
       </div>
