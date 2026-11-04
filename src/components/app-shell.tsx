@@ -214,13 +214,14 @@ function Panel({
                 className={cn(
                   "flex min-h-10 items-center gap-2.5 rounded-none px-5 py-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground",
                   current === item.href &&
-                    "font-medium text-foreground shadow-[inset_3px_0_0_var(--brand)] hover:bg-transparent",
+                    "font-bold text-foreground hover:bg-transparent",
                 )}
                 aria-current={current === item.href ? "page" : undefined}
               >
                 {item.icon && (
                   <HugeiconsIcon
                     icon={item.icon}
+                    strokeWidth={current === item.href ? 2.25 : 1.5}
                     className={cn("size-4.5", current === item.href && "text-brand")}
                   />
                 )}
