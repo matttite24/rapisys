@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { DeliveryTruck01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { DatePicker, toIsoDate } from "@/components/date-picker";
+import { HeaderSlot } from "@/components/header-action";
 import { FormField } from "@/components/form-field";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
@@ -36,21 +37,25 @@ export function DeliveryActions({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="flex shrink-0 items-center gap-1 border-l px-3">
+    <>
+    <HeaderSlot>
+    <div className="flex h-full items-stretch gap-1">
       <Link
         href={`/${org}/contratos/${contractId}/entregas`}
-        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-7 gap-1.5 px-2.5")}
+        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 gap-1.5 self-center px-2.5")}
       >
         Entregas <span className="num text-muted-foreground">{deliveries}</span>
       </Link>
       {canAct && (
-        <span title={ready === 0 ? "Aún ninguna línea tiene su stock completo" : undefined}>
-          <Button size="sm" className="h-8 gap-1.5 px-3" disabled={ready === 0} onClick={() => setOpen(true)}>
+        <span className="self-stretch" title={ready === 0 ? "Aún ninguna línea tiene su stock completo" : undefined}>
+          <Button className="-mr-4 h-full! border-0! bg-clip-border! gap-2 px-5" disabled={ready === 0} onClick={() => setOpen(true)}>
             <HugeiconsIcon icon={DeliveryTruck01Icon} className="size-4" />
             Generar entrega{ready > 0 && <span className="num opacity-70">{ready}</span>}
           </Button>
         </span>
       )}
+    </div>
+    </HeaderSlot>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="bottom" className="h-[92svh] gap-0">
           <SheetHeader>
@@ -62,7 +67,7 @@ export function DeliveryActions({
           {open && <DeliveryBody key={listId} org={org} contractId={contractId} listId={listId} onClose={() => setOpen(false)} />}
         </SheetContent>
       </Sheet>
-    </div>
+    </>
   );
 }
 
