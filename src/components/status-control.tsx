@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ArrowRight01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { HEADER_CELL_PRESS } from "@/components/header-action";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { setContractStatus } from "@/lib/contract-actions";
@@ -79,7 +80,7 @@ export function StatusControl({
           <span className={cn(inHeader && "flex")} title={blocker ?? undefined}>
             <Button
               disabled={pending || Boolean(blocker)}
-              className={cn(inHeader && "-mr-4 h-auto! gap-2 border-0! bg-clip-border! px-5")}
+              className={cn(inHeader && cn("-mr-4 h-auto! gap-2 border-0! bg-clip-border! px-5", HEADER_CELL_PRESS))}
               onClick={() => (next === "in_progress" ? setConfirmOpen(true) : go(next))}
             >
               {STATUS_LABEL[next]}

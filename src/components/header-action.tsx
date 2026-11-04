@@ -10,6 +10,11 @@ import { cn } from "@/lib/utils";
 // Elemento del encabezado donde las páginas colocan su acción principal.
 export const HeaderSlotContext = createContext<HTMLElement | null>(null);
 
+// Botones que ocupan la celda del encabezado: al presionar no se desplazan ni se encogen (se saldrían de la
+// celda); se oscurecen un poco, y la transición ya los suaviza.
+export const HEADER_CELL_PRESS =
+  "active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-100 active:brightness-90";
+
 type Props = {
   icon: IconSvgElement;
   label: string;
@@ -31,6 +36,7 @@ export function HeaderAction({ icon, label, href, onClick, disabled, title }: Pr
   const className = cn(
     buttonVariants({ variant: "default" }),
     "-mr-4 h-full! border-0! bg-clip-border! px-5 max-sm:w-14 max-sm:px-0 sm:gap-2",
+    HEADER_CELL_PRESS,
   );
   const content = (
     <>
