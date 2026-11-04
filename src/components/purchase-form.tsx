@@ -316,7 +316,13 @@ function ItemPicker({
   }
 
   return (
-    <div className="relative">
+    // Al salir de este campo (a otra fila, a otro control) la lista de resultados se cierra.
+    <div
+      className="relative"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) clear();
+      }}
+    >
       <Input
         type="search"
         aria-label="Producto: busca en la bodega"
@@ -335,6 +341,8 @@ function ItemPicker({
         <ul
           aria-label="Productos"
           aria-busy={loading}
+          // Pulsar la barra de desplazamiento o un espacio de la lista no debe quitarle el foco al campo.
+          onMouseDown={(e) => e.preventDefault()}
           className={cn(
             "absolute top-full right-0 left-0 z-20 mt-1 max-h-64 divide-y overflow-y-auto border bg-popover shadow-overlay transition-opacity",
             loading && results !== null && "opacity-60",
