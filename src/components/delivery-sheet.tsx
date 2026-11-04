@@ -1,13 +1,14 @@
 "use client";
 
 import { startTransition, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DeliveryTruck01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { DatePicker, toIsoDate } from "@/components/date-picker";
 import { HeaderSlot } from "@/components/header-action";
 import { FormField } from "@/components/form-field";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -22,6 +23,7 @@ export function DeliveryActions({
   listId,
   listName,
   canAct,
+  deliveries,
   ready,
 }: {
   org: string;
@@ -29,6 +31,7 @@ export function DeliveryActions({
   listId: string;
   listName: string;
   canAct: boolean;
+  deliveries: number;
   // Líneas con su stock completo, listas para entregar.
   ready: number;
 }) {
@@ -37,6 +40,12 @@ export function DeliveryActions({
     <>
     <HeaderSlot>
     <div className="flex h-full items-stretch gap-1">
+      <Link
+        href={`/${org}/contratos/${contractId}/entregas`}
+        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 gap-1.5 self-center px-2.5")}
+      >
+        <span className="num">{deliveries}</span> {deliveries === 1 ? "entrega" : "entregas"}
+      </Link>
       {canAct && (
         <span className="self-stretch" title={ready === 0 ? "Aún ninguna línea tiene su stock completo" : undefined}>
           <Button className="-mr-4 h-full! border-0! bg-clip-border! gap-2 px-5" disabled={ready === 0} onClick={() => setOpen(true)}>

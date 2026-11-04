@@ -55,6 +55,7 @@ export function SupplyBoard({
   estado,
   basePath,
   canAct,
+  deliveries,
 }: {
   org: string;
   contractId: string;
@@ -68,6 +69,8 @@ export function SupplyBoard({
   estado: SupplyState | "";
   basePath: string;
   canAct: boolean;
+  // Entregas ya registradas en el contrato.
+  deliveries: number;
 }) {
   const router = useRouter();
   const [navigating, startNav] = useTransition();
@@ -152,6 +155,7 @@ export function SupplyBoard({
                 listId={loaded.id}
                 listName={loaded.name}
                 canAct={canAct}
+                deliveries={deliveries}
                 ready={counts.in_stock}
               />
             )}
