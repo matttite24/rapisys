@@ -21,7 +21,7 @@ import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/com
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-// Diseño de celdas: una fila superior común (h-14) y dos columnas de alto
+// Diseño de celdas: una fila superior común (h-16) y dos columnas de alto
 // completo (módulos y opciones), separadas por líneas que se cruzan.
 
 // Las rutas viven bajo /[org]; la config de navegación usa rutas sin prefijo.
@@ -261,7 +261,7 @@ function MobileNav({
   const current = activeHref(path, options.map((o) => o.href));
   const on = "bg-foreground/[0.06] font-medium text-foreground";
   // Cada botón de la fila inferior ocupa su celda completa.
-  const cell = "[&_button]:h-14! [&_button]:w-full! [&_button]:rounded-none!";
+  const cell = "[&_button]:h-16! [&_button]:w-full! [&_button]:rounded-none!";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -294,7 +294,7 @@ function MobileNav({
             aria-label={m.label ?? m.title}
             aria-current={active === m ? "page" : undefined}
             className={cn(
-              "grid h-14 place-items-center text-muted-foreground transition-colors hover:bg-accent",
+              "grid h-16 place-items-center text-muted-foreground transition-colors hover:bg-accent",
               active === m && "bg-foreground/[0.06] text-brand",
             )}
           >
@@ -346,7 +346,7 @@ function MobileNav({
             aria-label={m.label ?? m.title}
             aria-current={active === m ? "page" : undefined}
             className={cn(
-              "grid h-14 place-items-center text-muted-foreground transition-colors hover:bg-accent",
+              "grid h-16 place-items-center text-muted-foreground transition-colors hover:bg-accent",
               active === m && "bg-foreground/[0.06] text-brand",
             )}
           >
@@ -371,11 +371,15 @@ function SectionHeader({
   setSlot: (el: HTMLElement | null) => void;
   title: React.ReactNode;
 }) {
-  const { active } = useActiveModule();
+  const { active, path } = useActiveModule();
+  // Dentro de un contrato: arriba la sección y debajo "cliente / contrato" (lo que pone el layout).
+  const slug = path.match(/^\/contratos\/[0-9a-f-]{36}(?:\/([^/]+))?/i);
+  const section = slug ? CONTRACT_SECTIONS.find((s) => s.slug === (slug[1] ?? "")) : undefined;
   return (
     <CellHeader
       className="relative z-10 shadow-bar print:hidden"
-      title={title ?? active.title}
+      title={section ? section.title : (title ?? active.title)}
+      subtitle={section ? title : undefined}
       leading={leading}
       action={<div ref={setSlot} className="flex items-center gap-1 self-stretch" />}
     />

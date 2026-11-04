@@ -84,7 +84,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex h-14 shrink-0 flex-col justify-center border-b px-6 pr-16", className)}
+      className={cn("flex h-16 shrink-0 flex-col justify-center border-b px-6 pr-16", className)}
       {...props}
     />
   )
