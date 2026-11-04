@@ -8,6 +8,7 @@ import { ContractToolbar, type ContractView } from "@/components/contract-toolba
 import { Pager } from "@/components/pager";
 import { buttonVariants } from "@/components/ui/button";
 import { STATUS_DOT, STATUS_LABEL } from "@/lib/contracts";
+import { formatIso } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { PAGE_SIZE, pageRange, readPage } from "@/lib/pagination";
 
@@ -108,18 +109,17 @@ async function List({
                     <span className="font-mono uppercase tracking-[0.1em]">Responsable</span> {r.contract_managers?.name}
                   </span>
                 </div>
-                <dl className="mt-auto grid grid-cols-3 gap-px border bg-border [&>div]:bg-background [&>div]:px-3 [&>div]:py-2">
-                  <div className="col-span-3 sm:col-span-1">
+                <dl className="mt-auto grid grid-cols-2 gap-px border bg-border [&>div]:bg-background [&>div]:px-3 [&>div]:py-2">
+                  <div>
                     <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Total</dt>
                     <dd className="num">{formatCents(Number(r.total_cents))}</dd>
                   </div>
                   <div>
                     <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Plazo</dt>
-                    <dd className="num">{r.term_days} d</dd>
-                  </div>
-                  <div>
-                    <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Inicio</dt>
-                    <dd className="num">{r.start_date}</dd>
+                    <dd>
+                      <span className="num">{r.term_days} d</span>
+                      <span className="text-xs text-muted-foreground"> · desde {formatIso(r.start_date)}</span>
+                    </dd>
                   </div>
                 </dl>
               </Link>
@@ -140,8 +140,7 @@ async function List({
                 <th scope="col" className={TH}>Cliente</th>
                 <th scope="col" className={TH}>Responsable</th>
                 <th scope="col" className={`${TH} text-right`}>Total (IVA incl.)</th>
-                <th scope="col" className={`${TH} text-right`}>Plazo</th>
-                <th scope="col" className={TH}>Inicio</th>
+                <th scope="col" className={TH}>Plazo</th>
                 <th scope="col" className={TH}>Estado</th>
               </tr>
             </thead>
@@ -160,8 +159,10 @@ async function List({
                   <td className={TD}>{r.clients?.name}</td>
                   <td className={TD}>{r.contract_managers?.name}</td>
                   <td className={`${TD} num text-right`}>{formatCents(Number(r.total_cents))}</td>
-                  <td className={`${TD} num text-right`}>{r.term_days} d</td>
-                  <td className={`${TD} num`}>{r.start_date}</td>
+                  <td className={`${TD} whitespace-nowrap`}>
+                    <span className="num">{r.term_days} d</span>
+                    <span className="block text-xs text-muted-foreground">desde {formatIso(r.start_date)}</span>
+                  </td>
                   <td className={TD}>
                     <span className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.06em]">
                       <span
