@@ -332,9 +332,10 @@ function ItemPicker({
         value={q}
         onChange={(e) => {
           setQ(e.target.value);
-          run(e.target.value);
+          // Solo busca cuando hay texto: al enfocar el campo vacío no se muestra nada.
+          if (e.target.value.trim()) run(e.target.value);
+          else clear();
         }}
-        onFocus={() => results === null && run(q, 0)}
         onKeyDown={(e) => e.key === "Escape" && clear()}
       />
       {(results !== null || loading) && (
