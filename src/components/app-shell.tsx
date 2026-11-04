@@ -96,7 +96,7 @@ function RailLink({ module: m }: { module: NavModule }) {
             aria-label={label}
             className={cn(
               "grid h-10 w-full place-items-center rounded-none text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground",
-              active === m && "bg-foreground/[0.06] text-brand shadow-[inset_3px_0_0_var(--brand)] hover:bg-foreground/[0.06] hover:text-brand",
+              active === m && "text-brand shadow-[inset_3px_0_0_var(--brand)] hover:bg-transparent hover:text-brand",
             )}
             aria-current={active === m ? "page" : undefined}
           />
@@ -214,7 +214,7 @@ function Panel({
                 className={cn(
                   "flex min-h-10 items-center gap-2.5 rounded-none px-5 py-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground",
                   current === item.href &&
-                    "bg-foreground/[0.06] font-medium text-foreground shadow-[inset_3px_0_0_var(--brand)] hover:bg-foreground/[0.06]",
+                    "font-medium text-foreground shadow-[inset_3px_0_0_var(--brand)] hover:bg-transparent",
                 )}
                 aria-current={current === item.href ? "page" : undefined}
               >
