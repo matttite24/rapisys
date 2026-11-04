@@ -82,7 +82,7 @@ async function List({
           )}
         </div>
       ) : view === "grid" ? (
-        <ul className="grid gap-px border-b bg-border sm:grid-cols-2 xl:grid-cols-3 [&>li]:bg-background">
+        <ul className="grid sm:grid-cols-2 xl:grid-cols-3 [&>li]:border-r [&>li]:border-b">
           {rows.map((r) => (
             <li key={r.id}>
               <Link
