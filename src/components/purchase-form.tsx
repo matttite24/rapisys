@@ -158,7 +158,7 @@ export function PurchaseForm({
         </div>
       </PageSection>
 
-      <PageSection label={`${rows.length} ${rows.length === 1 ? "línea" : "líneas"} de la factura`} className="p-0">
+      <PageSection className="p-0">
         <div aria-hidden className={`${ROW_GRID} border-b bg-surface-strong/60 px-6 py-2 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground max-md:hidden`}>
           <span>N.º</span>
           <span>Producto (busca en la bodega)</span>
