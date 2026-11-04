@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { PageSection, TABLE_TD as TD, TABLE_TH as TH } from "@/components/page-section";
 import { DeletePurchase } from "@/components/purchase-actions-ui";
 import { PurchaseForm } from "@/components/purchase-form";
+import { ReceiveAll, ReceiveLine } from "@/components/receive-controls";
 import { buttonVariants } from "@/components/ui/button";
 import { getContract } from "@/lib/contract-data";
 import { formatIso } from "@/lib/dates";
@@ -39,7 +40,7 @@ async function List({ params }: { params: IdParams }) {
       .limit(200),
     supabase
       .from("purchase_totals")
-      .select("purchase_id, lines, units, subtotal_cents, vat_cents, unassigned")
+      .select("purchase_id, lines, units, subtotal_cents, vat_cents, unassigned, received")
       .eq("contract_id", id)
       .limit(200),
     supabase.from("suppliers").select("id, name"),
@@ -53,6 +54,7 @@ async function List({ params }: { params: IdParams }) {
       subtotal_cents: number;
       vat_cents: number;
       unassigned: number;
+      received: number;
     }[]).map((t) => [t.purchase_id, t]),
   );
   const supplier = new Map(((supRes.data ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]));
@@ -82,6 +84,7 @@ async function List({ params }: { params: IdParams }) {
                 <th scope="col" className={TH}>Proveedor</th>
                 <th scope="col" className={`${TH} text-right`}>Líneas</th>
                 <th scope="col" className={`${TH} text-right`}>Unidades</th>
+                <th scope="col" className={`${TH} text-right`}>Recibidas</th>
                 <th scope="col" className={`${TH} text-right`}>Sin asignar</th>
                 <th scope="col" className={`${TH} text-right`}>Total c/IVA</th>
               </tr>
@@ -103,6 +106,9 @@ async function List({ params }: { params: IdParams }) {
                     <td className={TD}>{supplier.get(p.supplier_id) ?? "—"}</td>
                     <td className={`${TD} num text-right`}>{t ? Number(t.lines) : 0}</td>
                     <td className={`${TD} num text-right`}>{t ? Number(t.units) : 0}</td>
+                    <td className={cn(TD, "num text-right", t && Number(t.received) >= Number(t.units) && Number(t.units) > 0 && "font-medium")}>
+                      {t ? Number(t.received) : 0}
+                    </td>
                     <td className={cn(TD, "num text-right", t && Number(t.unassigned) > 0 && "font-medium")}>
                       {t ? Number(t.unassigned) : 0}
                     </td>
@@ -228,6 +234,7 @@ async function Detail({ params }: { params: PurchaseParams }) {
   const subtotal = rows.reduce((s, r) => s + r.a.subtotal, 0);
   const vat = rows.reduce((s, r) => s + r.a.vat, 0);
   const received = lines.some((l) => Number(l.received_qty) > 0);
+  const pendingUnits = lines.reduce((s, l) => s + Number(l.quantity) - Number(l.received_qty), 0);
   const canAct = found.c.status === "in_progress";
 
   return (
@@ -257,6 +264,7 @@ async function Detail({ params }: { params: PurchaseParams }) {
                 <th scope="col" className={`${TH} text-right`}>IVA</th>
                 <th scope="col" className={`${TH} text-right`}>Subtotal</th>
                 <th scope="col" className={TH}>Asignado a</th>
+                <th scope="col" className={`${TH} text-right`}>Recepción</th>
               </tr>
             </thead>
             <tbody>
@@ -286,6 +294,22 @@ async function Detail({ params }: { params: PurchaseParams }) {
                         </span>
                       )}
                     </td>
+                    <td className={`${TD} text-right`}>
+                      <span className="num block">
+                        {Number(l.received_qty)} de {Number(l.quantity)}
+                      </span>
+                      {canAct && Number(l.quantity) - Number(l.received_qty) > 0 && (
+                        <div className="pt-2">
+                          <ReceiveLine
+                            key={`${l.id}:${l.received_qty}`}
+                            org={org}
+                            contractId={id}
+                            purchaseLineId={l.id}
+                            pending={Number(l.quantity) - Number(l.received_qty)}
+                          />
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -300,9 +324,10 @@ async function Detail({ params }: { params: PurchaseParams }) {
           <dt className="font-medium">Total</dt>
           <dd className="num text-right font-medium">{formatCents(subtotal + vat)}</dd>
         </dl>
-        {canAct && !received && (
-          <div className="flex flex-wrap items-center gap-3 border-t p-4">
-            <DeletePurchase org={org} contractId={id} purchaseId={purchaseId} invoice={p.number} />
+        {canAct && (pendingUnits > 0 || !received) && (
+          <div className="flex flex-wrap items-start gap-3 border-t p-4">
+            {pendingUnits > 0 && <ReceiveAll org={org} contractId={id} purchaseId={purchaseId} />}
+            {!received && <DeletePurchase org={org} contractId={id} purchaseId={purchaseId} invoice={p.number} />}
           </div>
         )}
       </PageSection>

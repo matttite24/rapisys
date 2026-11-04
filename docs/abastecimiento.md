@@ -7,7 +7,8 @@
 > entrega** (entregas parciales de lo que ya tiene stock) y la 3 (compras: facturas por contrato,
 > asignadas a líneas de la lista). La factura queda sin adjunto: los archivos se hacen con el módulo
 > Archivos (Storage).
-> Falta: recepción (etapa 4), proforma, listo para entrega, resumen en Detalle y rentabilidad.
+> Etapa 4 (recepción) hecha: lo recibido entra a la bodega como lote y se reserva a lo asignado.
+> Falta: proforma, listo para entrega, resumen en Detalle, adjuntos de factura y rentabilidad.
 
 Pantalla del contrato donde se va **línea por línea** de la lista de referencia y se resuelve cada
 producto, desde la **bodega** o desde **facturas de compra**, hasta dejarlo listo para entrega.

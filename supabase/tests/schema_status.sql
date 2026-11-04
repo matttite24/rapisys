@@ -28,4 +28,5 @@ select
   to_regclass('public.deliveries') is not null                             as "16_deliveries",
   to_regclass('public.purchases') is not null                              as "17_purchases",
   pg_get_functiondef('public.delivery_create(uuid, uuid, date, text, text, jsonb)'::regprocedure)
-    like '%not_deliverable%'                                               as "18_deliveries_whole_lines";
+    like '%not_deliverable%'                                               as "18_deliveries_whole_lines",
+  to_regproc('public.purchase_receive') is not null                        as "19_purchase_receipts";

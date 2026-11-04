@@ -20,6 +20,7 @@ function friendly(error: DbError) {
   if (m === "over_assigned") return "No se puede asignar más de lo que trae la línea de la factura.";
   if (m === "over_covered") return "Eso supera lo que pide la línea del contrato.";
   if (m === "line_not_found") return "No encontramos la línea del contrato.";
+  if (m === "over_received") return "No puedes recibir más de lo que falta de esa línea.";
   if (m === "has_received") return "La factura ya tiene unidades recibidas: no se puede eliminar.";
   logDbError("compras", error);
   if (isSchemaError(error)) return SCHEMA_MESSAGE;
@@ -235,13 +236,24 @@ export async function getPurchaseOptions(contractId: string, q: string): Promise
 
   const { data: pls } = await supabase
     .from("purchase_lines")
-    .select("id, purchase_id, item_id, quantity, unit_cost_cents")
+    .select("id, purchase_id, item_id, quantity, unit_cost_cents, received_qty")
     .in("purchase_id", ps.map((p) => p.id));
-  const lines = (pls ?? []) as { id: string; purchase_id: string; item_id: string; quantity: number; unit_cost_cents: number }[];
+  const lines = (pls ?? []) as {
+    id: string;
+    purchase_id: string;
+    item_id: string;
+    quantity: number;
+    unit_cost_cents: number;
+    received_qty: number;
+  }[];
   if (!lines.length) return [];
 
   const [{ data: assigned }, { data: items }, { data: sups }] = await Promise.all([
-    supabase.from("supply_sources").select("purchase_line_id, quantity").in("purchase_line_id", lines.map((l) => l.id)),
+    supabase
+      .from("supply_sources")
+      .select("purchase_line_id, quantity")
+      .eq("kind", "compra")
+      .in("purchase_line_id", lines.map((l) => l.id)),
     supabase.from("items").select("id, name, sku, part_numbers").in("id", [...new Set(lines.map((l) => l.item_id))]),
     supabase.from("suppliers").select("id, name").in("id", [...new Set(ps.map((p) => p.supplier_id))]),
   ]);
@@ -266,7 +278,8 @@ export async function getPurchaseOptions(contractId: string, q: string): Promise
         itemName: item?.name ?? "Producto eliminado",
         haystack: [item?.name, item?.sku, ...(item?.part_numbers ?? [])].join(" ").toLowerCase(),
         unitCostCents: Number(l.unit_cost_cents),
-        available: Number(l.quantity) - (used.get(l.id) ?? 0),
+        // Por recibir y sin destino: lo recibido ya es existencia y se reserva desde la bodega.
+        available: Number(l.quantity) - Number(l.received_qty) - (used.get(l.id) ?? 0),
       };
     })
     .filter((o) => o.available > 0 && (!term || o.haystack.includes(term)))
@@ -288,6 +301,31 @@ export async function assignPurchase(
   if (qty === null || qty <= 0) return { error: "Escribe una cantidad mayor a 0, con máximo 2 decimales." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("purchase_assign", { p_purchase_line_id: purchaseLineId, p_line_id: lineId, p_qty: qty });
+  if (error) return { error: friendly(error) };
+  refresh(org, contractId);
+  return {};
+}
+
+// Recibir unidades de una línea de factura: entran a la bodega y se reservan para lo asignado.
+export async function receivePurchaseLine(
+  org: string,
+  contractId: string,
+  purchaseLineId: string,
+  rawQty: string,
+): Promise<PurchaseResult> {
+  const qty = parseDecimal(rawQty);
+  if (qty === null || qty <= 0) return { error: "Escribe una cantidad mayor a 0, con máximo 2 decimales." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("purchase_receive", { p_purchase_line_id: purchaseLineId, p_qty: qty });
+  if (error) return { error: friendly(error) };
+  refresh(org, contractId);
+  return {};
+}
+
+// Recibir todo lo que falta de una factura.
+export async function receiveAllPurchase(org: string, contractId: string, purchaseId: string): Promise<PurchaseResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("purchase_receive_all", { p_purchase_id: purchaseId });
   if (error) return { error: friendly(error) };
   refresh(org, contractId);
   return {};
