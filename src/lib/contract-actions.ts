@@ -1,5 +1,6 @@
 "use server";
 
+import { finishBlocker } from "@/lib/contract-completion";
 import { revalidatePath } from "next/cache";
 import { MAX_LINES_PER_LIST, STATUS_ORDER } from "@/lib/contracts";
 import { parseDecimal } from "@/lib/money";
@@ -233,6 +234,12 @@ export async function setContractStatus(
   const delta = STATUS_ORDER.indexOf(status as (typeof STATUS_ORDER)[number]) -
     STATUS_ORDER.indexOf(current.status as (typeof STATUS_ORDER)[number]);
   if (Math.abs(delta) !== 1) return { error: "El estado solo cambia un paso a la vez." };
+
+  // Finalizar solo con todo entregado: se valida aquí, no solo en el botón.
+  if (status === "finished") {
+    const blocker = await finishBlocker(supabase, contractId);
+    if (blocker) return { error: blocker };
+  }
 
   const { data, error } = await supabase
     .from("contracts")

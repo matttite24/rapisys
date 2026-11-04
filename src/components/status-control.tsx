@@ -11,7 +11,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ArrowRight01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { setContractStatus } from "@/lib/contract-actions";
 import { STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
 
@@ -24,6 +27,7 @@ export function StatusControl({
   contractId,
   status,
   summary,
+  blocker,
   inHeader,
 }: {
   org: string;
@@ -33,6 +37,8 @@ export function StatusControl({
   inHeader?: boolean;
   // Datos del contrato, para confirmar el paso a En ejecución.
   summary?: { code: string; total: string; delivery: string };
+  // Motivo por el que el paso siguiente aún no se puede dar; con motivo, el botón queda inactivo.
+  blocker?: string | null;
 }) {
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
@@ -53,8 +59,8 @@ export function StatusControl({
   }
 
   return (
-    <div className={inHeader ? "relative" : "flex flex-col gap-2"}>
-      <div className={inHeader ? "flex items-center gap-2" : "flex flex-wrap items-center gap-2"}>
+    <div className={inHeader ? "relative h-full" : "flex flex-col gap-2"}>
+      <div className={inHeader ? "flex h-full items-stretch gap-2" : "flex flex-wrap items-center gap-2"}>
         {/* En el encabezado el estado ya está en la columna de opciones y no se retrocede: solo el paso siguiente. */}
         {!inHeader && (
         <span className="inline-flex items-center gap-2 bg-muted px-2.5 py-1.5 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-foreground select-none">
@@ -69,11 +75,20 @@ export function StatusControl({
         )}
         {next && (
           // Pasar a En ejecución fija los datos del contrato: pide confirmación.
-          <Button disabled={pending} onClick={() => (next === "in_progress" ? setConfirmOpen(true) : go(next))}>
-            {STATUS_LABEL[next]} →
-          </Button>
+          // Con motivo pendiente queda inactivo y el motivo se ve al pasar el cursor (el botón inactivo no recibe eventos).
+          <span className={cn(inHeader && "self-stretch")} title={blocker ?? undefined}>
+            <Button
+              disabled={pending || Boolean(blocker)}
+              className={cn(inHeader && "-mr-4 h-full! gap-2 border-0! bg-clip-border! px-5")}
+              onClick={() => (next === "in_progress" ? setConfirmOpen(true) : go(next))}
+            >
+              {STATUS_LABEL[next]}
+              <HugeiconsIcon icon={next === "finished" ? CheckmarkCircle02Icon : ArrowRight01Icon} className="size-4" />
+            </Button>
+          </span>
         )}
       </div>
+      {!inHeader && blocker && <p className="text-xs text-muted-foreground">{blocker}</p>}
       {error && (
         <p
           role="alert"

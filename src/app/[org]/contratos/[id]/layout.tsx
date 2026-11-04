@@ -7,6 +7,7 @@ import { HeaderSlot, HeaderTitle } from "@/components/header-action";
 import { OnlyAtDetail } from "@/components/only-at-detail";
 import { PanelTop } from "@/components/panel-slots";
 import { getContract } from "@/lib/contract-data";
+import { finishBlocker } from "@/lib/contract-completion";
 import { addDaysIso, formatIso } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
@@ -24,6 +25,8 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
   const { data: client } = await supabase.from("clients").select("name").eq("id", c.client_id).maybeSingle();
 
   const deliveryIso = addDaysIso(c.start_date, Number(c.term_days));
+  // Solo en ejecución se evalúa si ya se puede finalizar.
+  const blocker = c.status === "in_progress" ? await finishBlocker(supabase, id) : null;
   const summary = {
     code: c.code as string,
     total: formatCents(Number(c.total_cents)),
@@ -41,7 +44,7 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
       <HeaderSlot>
         <OnlyAtDetail>
           <div className="hidden md:block">
-            <StatusControl org={org} contractId={id} status={c.status} summary={summary} inHeader />
+            <StatusControl org={org} contractId={id} status={c.status} summary={summary} blocker={blocker} inHeader />
           </div>
         </OnlyAtDetail>
       </HeaderSlot>
@@ -51,7 +54,7 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
       </PanelTop>
       <OnlyAtDetail>
         <div className="border-b p-4 md:hidden print:hidden">
-          <StatusControl org={org} contractId={id} status={c.status} summary={summary} />
+          <StatusControl org={org} contractId={id} status={c.status} summary={summary} blocker={blocker} />
         </div>
       </OnlyAtDetail>
     </>
