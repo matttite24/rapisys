@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { HeaderAction } from "@/components/header-action";
 import { PageSection, TABLE_TH as TH, TABLE_TD as TD } from "@/components/page-section";
+import { ContractToolbar, type ContractView } from "@/components/contract-toolbar";
 import { Pager } from "@/components/pager";
 import { buttonVariants } from "@/components/ui/button";
 import { STATUS_DOT, STATUS_LABEL } from "@/lib/contracts";
@@ -41,7 +42,10 @@ async function List({
 }) {
   await connection();
   const { org } = await params;
-  const page = readPage(await searchParams);
+  const sp = await searchParams;
+  const page = readPage(sp);
+  const q = (Array.isArray(sp.q) ? sp.q[0] : sp.q)?.trim() ?? "";
+  const view: ContractView = sp.vista === "grid" ? "grid" : "lista";
   const supabase = await createClient();
 
   // organizations!inner filtra por la organización de la URL.
@@ -55,6 +59,9 @@ async function List({
     .order("created_at", { ascending: false })
     .range(...pageRange(page));
   if (statuses) query = query.in("status", statuses);
+  // Sin comas ni paréntesis: no deben romper la expresión del filtro.
+  const term = q.replace(/[,()*%\\]/g, " ").trim();
+  if (term) query = query.or(`code.ilike.%${term}%,name.ilike.%${term}%`);
 
   const { data, count } = await query;
   const total = count ?? 0;
@@ -62,18 +69,55 @@ async function List({
   const newHref = `/${org}/contratos/nuevo`;
 
   return (
-    <PageSection
-      label={`${total} ${total === 1 ? "contrato" : "contratos"}`}
-      className="p-0"
-    >
+    <PageSection className="p-0">
       <HeaderAction icon={Add01Icon} label="Nuevo contrato" href={newHref} />
+      <ContractToolbar q={q} view={view} />
       {rows.length === 0 ? (
         <div className="flex flex-col items-start gap-4 p-6">
-          <p className="text-muted-foreground">{empty}</p>
-          <Link href={newHref} className={buttonVariants()}>
-            Crear contrato
-          </Link>
+          <p className="text-muted-foreground">{q ? "Ningún contrato coincide con la búsqueda." : empty}</p>
+          {!q && (
+            <Link href={newHref} className={buttonVariants()}>
+              Crear contrato
+            </Link>
+          )}
         </div>
+      ) : view === "grid" ? (
+        <ul className="grid gap-px border-b bg-border sm:grid-cols-2 xl:grid-cols-3 [&>li]:bg-background">
+          {rows.map((r) => (
+            <li key={r.id}>
+              <Link
+                href={`/${org}/contratos/${r.id}`}
+                className="flex h-full flex-col gap-4 p-5 transition-colors hover:bg-accent/60"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="num text-xs text-muted-foreground">{r.code}</span>
+                  <span className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.06em]">
+                    <span aria-hidden className={`size-2 shrink-0 ${STATUS_DOT[r.status] ?? "bg-muted-foreground"}`} />
+                    {STATUS_LABEL[r.status] ?? r.status}
+                  </span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-base font-medium">{r.name}</span>
+                  <span className="text-sm text-muted-foreground">{r.clients?.name}</span>
+                </div>
+                <dl className="mt-auto grid grid-cols-3 gap-px border bg-border [&>div]:bg-background [&>div]:px-3 [&>div]:py-2">
+                  <div className="col-span-3 sm:col-span-1">
+                    <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Total</dt>
+                    <dd className="num">{formatCents(Number(r.total_cents))}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Plazo</dt>
+                    <dd className="num">{r.term_days} d</dd>
+                  </div>
+                  <div>
+                    <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Inicio</dt>
+                    <dd className="num">{r.start_date}</dd>
+                  </div>
+                </dl>
+              </Link>
+            </li>
+          ))}
+        </ul>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -119,7 +163,7 @@ async function List({
           </table>
         </div>
       )}
-      <Pager basePath={`/${org}${basePath}`} page={page} total={total} />
+      <Pager basePath={`/${org}${basePath}`} page={page} total={total} params={{ ...(q ? { q } : {}), vista: view }} />
     </PageSection>
   );
 }

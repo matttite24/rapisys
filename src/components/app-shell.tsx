@@ -6,6 +6,7 @@ import { createContext, useContext, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowLeftDoubleIcon,
+  Home01Icon,
   ArrowRightDoubleIcon,
   Cancel01Icon,
   Menu01Icon,
@@ -61,7 +62,7 @@ function useContractNav(): { groups: NavGroup[]; back: { title: string; href: st
         })),
       },
     ],
-    back: { title: "Vista general", href: "/contratos" },
+    back: { title: "Volver", href: "/contratos" },
   };
 }
 
@@ -76,7 +77,7 @@ function BackLink({ title, href, onNavigate, className }: { title: string; href:
         className,
       )}
     >
-      <HugeiconsIcon icon={ArrowLeftDoubleIcon} className="size-4.5" />
+      <HugeiconsIcon icon={Home01Icon} className="size-4.5" />
       {title}
     </Link>
   );
