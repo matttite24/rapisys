@@ -136,9 +136,9 @@ async function Profit({ params }: { params: IdParams }) {
                       const done = p.kind === "ok" || p.kind === "partial";
                       const fix = `${base}/abastecimiento?${new URLSearchParams({ lista: r.list_id, q: r.part_number || r.description })}`;
                       return (
-                        <tr key={r.id} className="border-b last:border-b-0 hover:bg-accent/40">
+                        <tr key={r.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
                           <td className={cn(TD, "min-w-56")}>
-                            <Link href={fix} className="underline-offset-4 hover:underline" title="Ajustar en Abastecimiento">{r.description}</Link>
+                            <Link href={fix} className="underline-offset-4 after:absolute after:inset-0 hover:underline" title="Ajustar en Abastecimiento">{r.description}</Link>
                             {r.part_number && <p className="font-mono text-xs text-muted-foreground">{r.part_number}</p>}
                           </td>
                           <td className={`${TD} num whitespace-nowrap text-right`}>{Number(r.quantity)} {r.unit}</td>
@@ -182,9 +182,9 @@ async function Profit({ params }: { params: IdParams }) {
                   const t = totals.get(p.id);
                   const href = `${base}/compras/${p.id}${p.status === "draft" ? "/editar" : ""}`;
                   return (
-                    <tr key={p.id} className="border-b last:border-b-0 hover:bg-accent/40">
+                    <tr key={p.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
                       <td className={TD}>
-                        <Link href={href} className="font-mono underline-offset-4 hover:underline" title="Ajustar en Compras">{p.number ?? "Sin número"}</Link>
+                        <Link href={href} className="font-mono underline-offset-4 after:absolute after:inset-0 hover:underline" title="Ajustar en Compras">{p.number ?? "Sin número"}</Link>
                         {p.status === "draft" && <span className="ml-2 text-xs text-muted-foreground">Borrador</span>}
                       </td>
                       <td className={TD}>{p.supplier_id ? (supplier.get(p.supplier_id) ?? "—") : "—"}</td>
@@ -217,9 +217,9 @@ async function Profit({ params }: { params: IdParams }) {
               </thead>
               <tbody>
                 {expenses.map((e) => (
-                  <tr key={e.id} className="border-b last:border-b-0 hover:bg-accent/40">
+                  <tr key={e.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
                     <td className={TD}>
-                      <Link href={`${base}/gastos?${new URLSearchParams({ q: e.concept })}`} className="underline-offset-4 hover:underline" title="Ajustar en Gastos">{e.concept}</Link>
+                      <Link href={`${base}/gastos?${new URLSearchParams({ q: e.concept })}`} className="underline-offset-4 after:absolute after:inset-0 hover:underline" title="Ajustar en Gastos">{e.concept}</Link>
                     </td>
                     <td className={TD}>{e.payee || "—"}</td>
                     <td className={`${TD} whitespace-nowrap`}>{formatIso(e.spent_on)}</td>
