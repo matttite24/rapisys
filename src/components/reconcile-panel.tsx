@@ -284,7 +284,37 @@ function SearchRow({
 
 // ---------------------------------------------------------------------------------------------- facturas
 
+// Enter asigna el producto elegido a la línea abierta. Se escucha en toda la ventana mientras el panel está abierto, no solo
+// con el foco dentro de la lista: al tocar un producto la fila se vuelve a dibujar y el foco puede quedar fuera.
+// No actúa si se escribe en el buscador u otro campo (menos la cantidad), ni dentro de un diálogo, ni sobre otros botones.
+function useEnterToAssign(rc: Reconcile, target: Target) {
+  const latest = useRef({ rc, target });
+  useEffect(() => {
+    latest.current = { rc, target };
+  });
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Enter" || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      const { rc, target } = latest.current;
+      if (!rc.current || rc.busy || rc.review) return;
+      const t = e.target;
+      if (t instanceof HTMLElement) {
+        if (t.closest('[role="dialog"]') || t.isContentEditable) return;
+        if (t.tagName === "TEXTAREA" || t.tagName === "SELECT") return;
+        if (t.tagName === "INPUT" && t.getAttribute("aria-label") !== "Cantidad a asignar") return;
+        // Un botón con su propia acción (cerrar, pestañas, Asignar…) maneja su Enter; solo la fila elegida es "neutra".
+        if (t.tagName === "BUTTON" && !t.hasAttribute("aria-pressed")) return;
+      }
+      e.preventDefault();
+      void rc.assign(target);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+}
+
 function InvoiceMode({ rc, target, partNumber }: { rc: Reconcile; target: Target; partNumber: string }) {
+  useEnterToAssign(rc, target);
   const [filter, setFilter] = useState("");
   const [showCovered, setShowCovered] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -317,15 +347,11 @@ function InvoiceMode({ rc, target, partNumber }: { rc: Reconcile; target: Target
       }
       return;
     }
-    const inSearch = e.target instanceof HTMLInputElement && e.target.getAttribute("role") === "searchbox";
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       const at = visible.findIndex((l) => l.id === rc.picked?.id);
       const next = e.key === "ArrowDown" ? visible[at + 1] ?? (at < 0 ? visible[0] : undefined) : visible[at - 1];
       if (next) rc.pick(next);
-    } else if (e.key === "Enter" && rc.current && !inSearch) {
-      e.preventDefault();
-      void rc.assign(target);
     } else if (e.key === "Escape" && rc.picked) {
       e.preventDefault();
       e.stopPropagation();
@@ -599,6 +625,7 @@ function LineRow({ rc, line: l, target }: { rc: Reconcile; line: InvoiceLine; ta
 // ------------------------------------------------------------------------------------------------ bodega
 
 function StockMode({ rc, target, partNumber }: { rc: Reconcile; target: Target; partNumber: string }) {
+  useEnterToAssign(rc, target);
   const rows = rc.stockRows;
   // Igual que en la lista de la factura: arriba lo que coincide con el número de parte de la línea abierta, y luego el resto.
   const sameCode = (r: StockResult) => !!partNumber && [r.sku, ...r.partNumbers].some((c) => c && normCode(c) === normCode(partNumber));
@@ -609,15 +636,11 @@ function StockMode({ rc, target, partNumber }: { rc: Reconcile; target: Target; 
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
-    const inSearch = e.target instanceof HTMLInputElement && e.target.getAttribute("role") === "searchbox";
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       const at = withStock.findIndex((r) => r.id === rc.stockPicked?.id);
       const next = e.key === "ArrowDown" ? withStock[at + 1] ?? (at < 0 ? withStock[0] : undefined) : withStock[at - 1];
       if (next) rc.pickStock(next);
-    } else if (e.key === "Enter" && rc.current && !inSearch) {
-      e.preventDefault();
-      void rc.assign(target);
     } else if (e.key === "Escape" && rc.stockPicked) {
       e.preventDefault();
       e.stopPropagation();
