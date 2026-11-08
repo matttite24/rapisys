@@ -77,7 +77,7 @@ async function Profit({ params }: { params: IdParams }) {
   const sum = contractProfit(rows, Number(view.expenses_cents));
 
   const figures: { label: string; value: string; note?: string; strong?: boolean; negative?: boolean }[] = [
-    { label: "Precio ref. (comprado)", value: formatCents(sum.reference), note: `Contrato: ${formatCents(Number(view.contract_cents))}` },
+    { label: "Precio ref.", value: formatCents(sum.reference), note: `Contrato: ${formatCents(Number(view.contract_cents))}` },
     { label: "Costo de compra", value: formatCents(sum.cost) },
     { label: "Utilidad de items", value: formatCents(sum.itemsProfit), negative: sum.itemsProfit < 0 },
     { label: "Gastos", value: formatCents(sum.expenses) },
