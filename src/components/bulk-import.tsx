@@ -133,12 +133,15 @@ export function BulkImport({
   const nextId = useRef(1);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  // La URL de la captura se libera al cambiarla, al reiniciar y al cerrar.
+  useEffect(() => {
+    if (!imageUrl) return;
+    return () => URL.revokeObjectURL(imageUrl);
+  }, [imageUrl]);
+
   function reset() {
     setStep("start");
-    setImageUrl((url) => {
-      if (url) URL.revokeObjectURL(url);
-      return undefined;
-    });
+    setImageUrl(undefined);
     setProgress(0);
     setRows([]);
     setSkipped(0);
@@ -152,10 +155,7 @@ export function BulkImport({
 
   async function start(file: Blob) {
     setError(undefined);
-    setImageUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(file);
-    });
+    setImageUrl(URL.createObjectURL(file));
     setProgress(0);
     setStep("reading");
     try {

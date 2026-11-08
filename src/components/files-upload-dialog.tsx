@@ -151,7 +151,7 @@ export function FilesUploadDialog({
           {picked.length > 0 && (
             <ul aria-label="Archivos elegidos" className="divide-y border">
               {picked.map((f, i) => (
-                <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <li key={`${f.name}-${f.size}-${f.lastModified}`} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                   <span className="truncate" title={f.name}>
                     {f.name}
                   </span>
