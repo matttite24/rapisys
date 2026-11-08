@@ -173,15 +173,12 @@ export function ContractForm({
   managerName,
   contract,
   onDone,
-  defaultVatRate,
 }: {
   org: string;
   // Nombre del cliente y del responsable guardados (solo al editar), para mostrarlos sin cargar toda la lista.
   clientName?: string;
   managerName?: string;
   contract?: ContractData;
-  // IVA por defecto de la organización, para contratos nuevos.
-  defaultVatRate?: number;
   // Dentro de un panel: se llama al guardar o al cancelar, y reemplaza el regreso a la lista.
   onDone?: () => void;
 }) {
@@ -196,7 +193,7 @@ export function ContractForm({
 
   const errors: Errors = state?.fields ?? {};
   const parsed = parseCents(total);
-  const vat = contract?.vatRate ?? defaultVatRate ?? VAT_RATE;
+  const vat = contract?.vatRate ?? VAT_RATE;
   const breakdown = parsed.ok ? splitVat(parsed.cents, vat) : null;
   const termDays = Number(days);
   // El plazo debe ser un entero mayor a 0; vacío o inválido no genera fecha.
