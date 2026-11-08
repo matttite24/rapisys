@@ -4,6 +4,7 @@ import { PanelLoading } from "@/components/panel-loading";
 import { LineQuotations } from "@/components/line-quotations";
 import { ConfirmTap } from "@/components/confirm-tap";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { PageShortcuts } from "@/components/page-shortcuts";
 import { AiMagicIcon, Archive02Icon, ArrowRight01Icon, Cancel01Icon, ClipboardCheckIcon, ClipboardPenLineIcon, Exchange01Icon, Invoice01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { NumericInput } from "@/components/numeric-input";
@@ -56,6 +57,23 @@ export function ReconcilePanel({
   const focusId = focus?.id;
   const activeSupply = supply?.lineId === focusId && supply?.version === rc.version ? supply : null;
   const sources = activeSupply?.rows ?? null;
+
+  // Esc cierra el panel. Si hay un producto elegido o una revisión abierta, ese Esc lo atiende la lista y no llega aquí:
+  // primero se quita lo elegido y el siguiente Esc cierra. No actúa dentro de un diálogo ni si otro control ya lo usó.
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape" || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.target instanceof HTMLElement && e.target.closest('[role="dialog"], [role="menu"], [role="listbox"]')) return;
+      e.preventDefault();
+      closeRef.current();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const coveredQty = focus ? (sources?.reduce((sum, x) => sum + x.quantity, 0) ?? focus.reserved + focus.purchased) : 0;
   useEffect(() => {
     if (!focusId) return;
@@ -126,6 +144,7 @@ export function ReconcilePanel({
        style={{ paddingBottom: focus ? `calc(${footerHeight === null ? "var(--footer-height)" : `${footerHeight}px`} + 2rem)` : undefined }}
        className="relative flex h-full min-h-0 w-full flex-col border-l bg-background lg:ml-auto lg:w-[32rem] lg:shrink-0"
      >
+      <PageShortcuts shortcuts={[{ keys: ["Esc"], label: "Cerrar panel" }]} />
       {/* Mismo alto que el encabezado de la página, para que lo de abajo siga alineado con la tabla. */}
       <div style={{ height: top || 48 }} className="flex shrink-0 items-center justify-between gap-3 border-b bg-primary px-4 text-primary-foreground">
         <span className="caps-md font-bold">Abastecimiento</span>
