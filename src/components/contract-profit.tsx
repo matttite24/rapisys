@@ -101,18 +101,8 @@ async function Profit({ params }: { params: IdParams }) {
         </dl>
       </PageSection>
         )}
-        summary={(
-          <PageSection className="p-0">
-        <p className="px-4 py-3 text-xs text-muted-foreground">
-          Utilidad de un item = precio ref. − costo de compra. Utilidad del contrato = suma de las utilidades − gastos.
-          {sum.pending > 0 && ` ${sum.pending} sin compra todavía no cuentan.`}
-          {sum.noPrice > 0 && ` ${sum.noPrice} sin precio ref. no se pueden calcular.`}
-          {sum.partial > 0 && ` ${sum.partial} tienen costo incompleto.`}
-        </p>
-          </PageSection>
-        )}
         tabs={[
-          { key: "facturas", label: "Facturas", count: purchases.length, figures: [{ label: "Facturas", value: String(purchases.length) }, { label: "Total s/IVA", value: formatCents(invoiced) }], panel: (
+          { key: "facturas", label: "Facturas", count: purchases.length, note: "Facturas de compra del contrato, sin IVA. El costo de cada item sale de lo asignado en Abastecimiento.", figures: [{ label: "Facturas", value: String(purchases.length) }, { label: "Total s/IVA", value: formatCents(invoiced) }], panel: (
       <PageSection className="p-0">
         {purchases.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">Aún no hay facturas de compra.</p>
@@ -151,7 +141,7 @@ async function Profit({ params }: { params: IdParams }) {
         )}
       </PageSection>
           ) },
-          { key: "gastos", label: "Gastos", count: expenses.length, figures: [{ label: "Gastos", value: String(expenses.length) }, { label: "Total", value: formatCents(sum.expenses) }], panel: (
+          { key: "gastos", label: "Gastos", count: expenses.length, note: "Utilidad del contrato = suma de las utilidades de los items − gastos.", figures: [{ label: "Gastos", value: String(expenses.length) }, { label: "Total", value: formatCents(sum.expenses) }], panel: (
       <PageSection className="p-0">
         {expenses.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">Aún no hay gastos registrados.</p>
@@ -188,6 +178,14 @@ async function Profit({ params }: { params: IdParams }) {
           return {
             key: listId,
             list: true,
+            note: (
+              <>
+                Utilidad de un item = precio ref. − costo de compra.
+                {gs.pending > 0 && ` ${gs.pending} sin compra todavía no cuentan.`}
+                {gs.noPrice > 0 && ` ${gs.noPrice} sin precio ref. no se pueden calcular.`}
+                {gs.partial > 0 && ` ${gs.partial} tienen costo incompleto.`}
+              </>
+            ),
             label: g.name,
             count: g.rows.length,
             figures: [

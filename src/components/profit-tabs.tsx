@@ -11,11 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-type Tab = { key: string; label: string; count: number; figures: PageFigure[]; panel: React.ReactNode; list?: boolean };
+type Tab = { key: string; label: string; count: number; figures: PageFigure[]; note: React.ReactNode; panel: React.ReactNode; list?: boolean };
 
 // Pestañas de la revisión, con forma de carpeta: facturas y gastos primero, luego una por lista.
 // El botón de la izquierda abre el cajón con todas las listas (son muchas para caber en la fila).
-export function ProfitTabs({ tabs, top, summary }: { tabs: Tab[]; top?: React.ReactNode; summary?: React.ReactNode }) {
+export function ProfitTabs({ tabs, top }: { tabs: Tab[]; top?: React.ReactNode }) {
   const [active, setActive] = useState(tabs[0]?.key);
   const [open, setOpen] = useState(false);
   const current = tabs.find((t) => t.key === active) ?? tabs[0];
@@ -66,7 +66,7 @@ export function ProfitTabs({ tabs, top, summary }: { tabs: Tab[]; top?: React.Re
         })}
       </div>
       <PageFigures figures={current?.figures ?? []} />
-      {summary}
+      <p className="border-b px-4 py-3 text-xs text-muted-foreground">{current?.note}</p>
       {current?.panel}
 
       <Sheet
