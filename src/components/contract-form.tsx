@@ -219,19 +219,19 @@ export function ContractForm({
           </p>
         )}
         <div className="flex gap-2">
-          <Button type="submit" disabled={pending} className="min-h-11 sm:min-h-10">
+          <Button type="submit" disabled={pending}>
             {pending
               ? contract ? "Guardando…" : "Creando…"
               : contract ? "Guardar cambios" : "Crear contrato"}
           </Button>
           {onDone ? (
-            <Button type="button" variant="outline" className="min-h-11 sm:min-h-10" onClick={onDone}>
+            <Button type="button" variant="outline" onClick={onDone}>
               Cancelar
             </Button>
           ) : (
             <Link
               href={`/${org}/contratos`}
-              className={buttonVariants({ variant: "outline" }) + " min-h-11 sm:min-h-10"}
+              className={buttonVariants({ variant: "outline" })}
             >
               {contract ? "Volver a la lista" : "Cancelar"}
             </Link>

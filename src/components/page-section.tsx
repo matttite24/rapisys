@@ -11,7 +11,7 @@ export function SectionBar({
   index?: string;
 }) {
   return (
-    <div className="flex h-11 items-center justify-between gap-4 border-b px-6 caps-md font-bold">
+    <div className="flex h-12 items-center justify-between gap-4 border-b px-6 caps-md font-bold">
       <span className="flex min-w-0 items-center gap-3 truncate text-foreground">
         {index && (
           <span className="bg-primary px-1.5 py-0.5 text-primary-foreground">{index}</span>

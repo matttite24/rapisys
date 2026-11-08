@@ -105,12 +105,12 @@ export function AssetForm({
       <div className="flex flex-col gap-4 p-6">
         {state?.error && <FieldError>{state.error}</FieldError>}
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" disabled={pending} className="min-h-11 sm:min-h-10">
+          <Button type="submit" disabled={pending}>
             {pending ? "Guardando…" : asset ? "Guardar cambios" : "Crear activo"}
           </Button>
           <Link
             href={`/${org}/bodega/activos`}
-            className={buttonVariants({ variant: "outline" }) + " min-h-11 sm:min-h-10"}
+            className={buttonVariants({ variant: "outline" })}
           >
             Cancelar
           </Link>

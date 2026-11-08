@@ -29,7 +29,7 @@ export function Pager({
     const q = new URLSearchParams({ ...params, page: String(p) });
     return `${basePath}?${q}`;
   };
-  const btn = buttonVariants({ variant: "outline" }) + " min-h-11 sm:min-h-10";
+  const btn = buttonVariants({ variant: "outline" });
 
   return (
     <nav aria-label="Páginas" className={cn("flex items-center justify-between gap-4 border-t px-6 py-3", className)}>

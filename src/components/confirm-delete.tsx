@@ -22,7 +22,6 @@ export function ConfirmDelete({
     <span className="flex flex-wrap items-center gap-2 sm:ml-auto">
       <ConfirmTap
         variant="destructive"
-        className="min-h-11 sm:min-h-10"
         hint={message}
         hintSide="top"
         disabled={pending}

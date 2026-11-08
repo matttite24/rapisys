@@ -91,17 +91,17 @@ export function PartyForm({
       {state?.error && <FieldError>{state.error}</FieldError>}
       <div className="flex flex-wrap items-center gap-2">
         {/* Acción principal de la pantalla: amarillo. */}
-        <Button type="submit" variant="brand" disabled={pending} className="min-h-11 sm:min-h-10">
+        <Button type="submit" variant="brand" disabled={pending}>
           {pending ? "Guardando…" : party ? "Guardar cambios" : `Crear ${cfg.singular}`}
         </Button>
         {onCancel ? (
-          <Button type="button" variant="outline" className="min-h-11 sm:min-h-10" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
         ) : (
           <Link
             href={partyListHref(org, kind, party?.client_type ?? defaultClientType)}
-            className={buttonVariants({ variant: "outline" }) + " min-h-11 sm:min-h-10"}
+            className={buttonVariants({ variant: "outline" })}
           >
             Cancelar
           </Link>
