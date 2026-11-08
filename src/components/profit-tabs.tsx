@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { Cancel01Icon, LeftToRightListBulletIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { CELL_ROW } from "@/components/cell-header";
+import { TabCount } from "@/components/count-tabs";
+import { SearchInput } from "@/components/search-input";
 import { PageFigures, type PageFigure } from "@/components/page-shortcuts";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -16,71 +19,96 @@ export function ProfitTabs({ tabs }: { tabs: Tab[] }) {
   const [active, setActive] = useState(tabs[0]?.key);
   const [open, setOpen] = useState(false);
   const current = tabs.find((t) => t.key === active) ?? tabs[0];
+  const [q, setQ] = useState("");
   const lists = tabs.filter((t) => t.list);
+  const term = q.trim().toLowerCase();
+  const shown = term ? lists.filter((t) => t.label.toLowerCase().includes(term)) : lists;
 
   return (
     <>
-      <div className="flex items-end gap-1 border-b bg-surface-strong px-4 pt-3">
+      {/* Mismas pestañas tipo carpeta que las listas del contrato. */}
+      <div
+        role="tablist"
+        aria-label="Revisión por facturas, gastos y listas"
+        className="sticky top-0 z-20 flex h-12 items-end gap-1 overflow-x-auto overflow-y-hidden bg-layer-2 px-4 pt-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-border" />
         {lists.length > 0 && (
           <button
             type="button"
             aria-label={`Ver todas las listas (${lists.length})`}
             title="Todas las listas"
             onClick={() => setOpen(true)}
-            className="mb-1.5 flex size-8 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+            className="mr-2 mb-px flex h-full shrink-0 items-center px-2 text-muted-foreground transition-colors hover:text-foreground"
           >
             <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-5" />
           </button>
         )}
-        <nav aria-label="Revisión por facturas, gastos y listas" className="flex min-w-0 items-end gap-1 overflow-x-auto">
-          {tabs.map((t) => {
-            const on = current?.key === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setActive(t.key)}
-                className={cn(
-                  "-mb-px flex max-w-56 shrink-0 items-center gap-2 rounded-t-lg border border-b-0 px-4 py-2 text-sm transition-colors",
-                  on ? "border-border bg-background font-semibold text-foreground" : "border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground",
-                )}
-              >
-                <span className="truncate">{t.label}</span>
-                <span className={cn("num rounded-sm px-1.5 py-0.5 text-xs font-medium", on ? "bg-brand text-brand-foreground" : "bg-muted text-foreground/80")}>{t.count}</span>
-              </button>
-            );
-          })}
-        </nav>
+        {tabs.map((t) => {
+          const on = current?.key === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => setActive(t.key)}
+              className={cn(
+                "relative flex h-full max-w-64 shrink-0 items-center gap-2 rounded-t-lg px-4 text-sm transition-colors",
+                on ? "z-10 bg-background font-semibold text-foreground" : "mb-px font-medium text-muted-foreground hover:bg-foreground/[0.09] hover:text-foreground",
+              )}
+            >
+              <span className="truncate">{t.label}</span>
+              <TabCount n={t.count} active={on} />
+            </button>
+          );
+        })}
       </div>
       <PageFigures figures={current?.figures ?? []} />
       {current?.panel}
 
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setQ("");
+        }}
+      >
         <SheetContent side="left" showCloseButton={false} className="gap-0 bg-background data-[side=left]:w-full data-[side=left]:sm:max-w-md">
-          <SheetHeader className="h-14 flex-row items-center justify-between gap-3 border-b px-4 py-0">
+          <SheetHeader className={cn(CELL_ROW, "flex-row justify-between gap-3 px-4 pr-4 shadow-bar")}>
             <SheetTitle className="caps-md min-w-0 truncate font-medium">Listas del contrato</SheetTitle>
             <SheetDescription className="sr-only">Elige una lista para ver su rentabilidad.</SheetDescription>
             <SheetClose render={<Button variant="ghost" size="icon" aria-label="Cerrar listas" />}>
               <HugeiconsIcon icon={Cancel01Icon} className="size-5" />
             </SheetClose>
           </SheetHeader>
+          <div className="flex h-12 border-b">
+            <SearchInput label="Buscar lista" placeholder="Buscar por nombre" value={q} onChange={setQ} autoFocus />
+          </div>
           <ul aria-label="Listas" className="min-h-0 flex-1 divide-y overflow-y-auto">
-            {lists.map((t) => (
-              <li key={t.key}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActive(t.key);
-                    setOpen(false);
-                  }}
-                  className={cn("flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-accent/60", current?.key === t.key && "bg-accent/40 font-semibold")}
-                >
-                  <span className="min-w-0 truncate">{t.label}</span>
-                  <span className="num shrink-0 text-xs text-muted-foreground">{t.count} {t.count === 1 ? "línea" : "líneas"}</span>
-                </button>
-              </li>
-            ))}
+            {shown.length === 0 && <li className="p-4 text-sm text-muted-foreground">Ninguna lista coincide.</li>}
+            {shown.map((t) => {
+              const on = current?.key === t.key;
+              return (
+                <li key={t.key}>
+                  <button
+                    type="button"
+                    aria-current={on ? "true" : undefined}
+                    onClick={() => {
+                      setActive(t.key);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex min-h-14 w-full items-start gap-3 border-l-2 px-4 py-3 text-left transition-colors hover:bg-accent",
+                      on ? "border-l-brand bg-foreground/[0.06]" : "border-l-transparent",
+                    )}
+                  >
+                    <span className={cn("min-w-0 flex-1 break-words", on && "font-bold")}>{t.label}</span>
+                    <TabCount n={t.count} active={on} />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </SheetContent>
       </Sheet>
