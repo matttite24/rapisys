@@ -462,8 +462,8 @@ function Footer({
           <HugeiconsIcon icon={panelOpen ? SidebarLeftIcon : SidebarRightIcon} className="size-[1.125rem] shrink-0" aria-hidden />
           <span className="truncate">{panelOpen ? "Ocultar opciones" : "Mostrar opciones"}</span>
           <span className="ml-auto flex shrink-0 gap-0.5 pr-4" aria-hidden>
-            <Kbd className="h-5 min-w-5 border-0 bg-foreground/[0.07] px-1 text-[0.6875rem] font-normal">{mod}</Kbd>
-            <Kbd className="h-5 min-w-5 border-0 bg-foreground/[0.07] px-1 text-[0.6875rem] font-normal">B</Kbd>
+            <Kbd soft>{mod}</Kbd>
+            <Kbd soft>B</Kbd>
           </span>
         </button>
       </div>
@@ -482,8 +482,8 @@ function Footer({
             <HugeiconsIcon icon={SidebarRightIcon} className="size-[1.125rem]" aria-hidden />
             Mostrar opciones
             <span className="flex gap-0.5" aria-hidden>
-              <Kbd className="h-5 min-w-5 border-0 bg-foreground/[0.07] px-1 text-[0.6875rem] font-normal">{mod}</Kbd>
-              <Kbd className="h-5 min-w-5 border-0 bg-foreground/[0.07] px-1 text-[0.6875rem] font-normal">B</Kbd>
+              <Kbd soft>{mod}</Kbd>
+              <Kbd soft>B</Kbd>
             </span>
           </button>
         )} />

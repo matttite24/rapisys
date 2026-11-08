@@ -192,7 +192,7 @@ export function ReconcilePanel({
               {rc.source === key && <HugeiconsIcon icon={icon} className="size-4 shrink-0" aria-hidden="true" />}
               {label}
               {count !== null && count > 0 && (
-                <span className="num bg-muted px-1.5 py-0.5 text-[0.6875rem] leading-none text-muted-foreground">{count}</span>
+                <span className="num bg-muted px-1.5 py-0.5 text-2xs leading-none text-muted-foreground">{count}</span>
               )}
             </button>
           ))}

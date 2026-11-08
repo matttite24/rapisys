@@ -775,7 +775,7 @@ function PurchaseRow({
         </DialogContent>
       </Dialog>
       {row.xml && row.item && (
-        <p className="truncate pb-1 pl-8 font-mono text-[0.6875rem] text-muted-foreground max-lg:pl-0" title={row.xml.description}>
+        <p className="truncate pb-1 pl-8 font-mono text-2xs text-muted-foreground max-lg:pl-0" title={row.xml.description}>
           XML: {[row.xml.code, row.xml.description].filter(Boolean).join(" · ")}
           {row.xml.how === "description" && " — producto hallado por un número de parte en la descripción"}
         </p>

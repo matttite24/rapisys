@@ -32,7 +32,7 @@ function Shortcut({ s }: { s: PageShortcut }) {
     <span className="flex shrink-0 items-center gap-1.5 text-xs">
       <span className="flex gap-0.5">
         {s.keys.map((k) => (
-          <Kbd key={k} className="h-5 min-w-5 border-0 bg-foreground/[0.07] px-1 text-[0.6875rem] font-normal">
+          <Kbd key={k} soft>
             {k}
           </Kbd>
         ))}

@@ -514,7 +514,7 @@ function LineRow({
       <TableCell className={`${TD} whitespace-nowrap font-mono text-xs`}>
         {l.partNumber || "—"}
         {duplicateOf && (
-          <span className="block font-sans text-[0.6875rem] font-medium text-destructive">Repetido: igual a la línea {duplicateOf}</span>
+          <span className="block font-sans text-2xs font-medium text-destructive">Repetido: igual a la línea {duplicateOf}</span>
         )}
       </TableCell>
       <TableCell className={`${TD} break-words`}>{l.description}</TableCell>

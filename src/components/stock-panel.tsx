@@ -182,7 +182,7 @@ function EntryForm({
         {(a11y) => <Input {...a11y} autoComplete="off" maxLength={300} placeholder="Inventario inicial, reposición…" />}
       </FormField>
       <div className="flex flex-col gap-2">
-        <span aria-hidden className="max-md:hidden font-mono text-[0.6875rem] leading-4">&nbsp;</span>
+        <span aria-hidden className="max-md:hidden font-mono text-2xs leading-4">&nbsp;</span>
         <Button type="submit" disabled={saving} className="h-10 gap-2">
           <HugeiconsIcon icon={Add01Icon} className="size-5" />
           {saving ? "Guardando…" : "Registrar entrada"}

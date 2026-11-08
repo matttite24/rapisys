@@ -79,7 +79,7 @@ const ReviewRow = memo(function ReviewRow({
               : `Ya está en la lista (línea ${dupRef})`}
           </p>
         )}
-        {r.review && r.raw && <p className="pt-1 font-mono text-[0.6875rem] text-muted-foreground">Leído: {r.raw}</p>}
+        {r.review && r.raw && <p className="pt-1 font-mono text-2xs text-muted-foreground">Leído: {r.raw}</p>}
         {(err("description") || err("part_number")) && <p className="pt-1 text-xs text-destructive">{err("description") ?? err("part_number")}</p>}
       </td>
       <td className="px-2 py-1.5">
