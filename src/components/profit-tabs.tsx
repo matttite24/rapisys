@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { PageFigures, type PageFigure } from "@/components/page-shortcuts";
 import { TAB, TABS_ROW, TabCount } from "@/components/count-tabs";
 
 // Pestañas de la revisión: una por lista, más facturas y gastos. Cada panel llega ya armado desde el servidor.
-export function ProfitTabs({ tabs }: { tabs: { key: string; label: string; count: number; panel: React.ReactNode }[] }) {
+export function ProfitTabs({ tabs }: { tabs: { key: string; label: string; count: number; figures: PageFigure[]; panel: React.ReactNode }[] }) {
   const [active, setActive] = useState(tabs[0]?.key);
   const current = tabs.find((t) => t.key === active) ?? tabs[0];
   return (
@@ -16,6 +17,7 @@ export function ProfitTabs({ tabs }: { tabs: { key: string; label: string; count
           </button>
         ))}
       </nav>
+      <PageFigures figures={current?.figures ?? []} />
       {current?.panel}
     </>
   );

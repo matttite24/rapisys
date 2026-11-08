@@ -112,12 +112,12 @@ async function Profit({ params }: { params: IdParams }) {
             key: listId,
             label: g.name,
             count: g.rows.length,
+            figures: [
+              { label: g.rows.length === 1 ? "Línea" : "Líneas", value: String(g.rows.length) },
+              { label: "Utilidad de la lista", value: formatCents(gs.itemsProfit), ...(gs.itemsProfit < 0 ? { tone: "warn" as const } : {}) },
+            ],
             panel: (
-            <PageSection
-              label={`Lista · ${g.name}`}
-              meta={`${g.rows.length} ${g.rows.length === 1 ? "línea" : "líneas"} · Utilidad ${formatCents(gs.itemsProfit)}`}
-              className="p-0"
-            >
+            <PageSection className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-surface-strong">
@@ -161,8 +161,8 @@ async function Profit({ params }: { params: IdParams }) {
             ),
           };
         }),
-          { key: "facturas", label: "Facturas", count: purchases.length, panel: (
-      <PageSection label="Facturas" meta={`${purchases.length} · Total s/IVA ${formatCents(invoiced)}`} className="p-0">
+          { key: "facturas", label: "Facturas", count: purchases.length, figures: [{ label: "Facturas", value: String(purchases.length) }, { label: "Total s/IVA", value: formatCents(invoiced) }], panel: (
+      <PageSection className="p-0">
         {purchases.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">Aún no hay facturas de compra.</p>
         ) : (
@@ -200,8 +200,8 @@ async function Profit({ params }: { params: IdParams }) {
         )}
       </PageSection>
           ) },
-          { key: "gastos", label: "Gastos", count: expenses.length, panel: (
-      <PageSection label="Gastos" meta={`${expenses.length} · Total ${formatCents(sum.expenses)}`} className="p-0">
+          { key: "gastos", label: "Gastos", count: expenses.length, figures: [{ label: "Gastos", value: String(expenses.length) }, { label: "Total", value: formatCents(sum.expenses) }], panel: (
+      <PageSection className="p-0">
         {expenses.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">Aún no hay gastos registrados.</p>
         ) : (
