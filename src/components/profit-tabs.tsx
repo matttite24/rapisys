@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Cancel01Icon, LeftToRightListBulletIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CELL_ROW } from "@/components/cell-header";
@@ -17,7 +18,15 @@ type Tab = { key: string; label: string; count: number; figures: PageFigure[]; n
 // Pestañas de la revisión, con forma de carpeta: facturas y gastos primero, luego una por lista.
 // El botón de la izquierda abre el cajón con todas las listas (son muchas para caber en la fila).
 export function ProfitTabs({ tabs, top }: { tabs: Tab[]; top?: React.ReactNode }) {
-  const [active, setActive] = useState(tabs[0]?.key);
+  // La pestaña queda en la dirección (?pestana=), así recargar o compartir el enlace vuelve a la misma.
+  const initial = useSearchParams().get("pestana");
+  const [active, setActive] = useState(tabs.some((t) => t.key === initial) ? initial : tabs[0]?.key);
+  function select(key: string) {
+    setActive(key);
+    const url = new URL(window.location.href);
+    url.searchParams.set("pestana", key);
+    window.history.replaceState(null, "", url);
+  }
   const [open, setOpen] = useState(false);
   const current = tabs.find((t) => t.key === active) ?? tabs[0];
   const [q, setQ] = useState("");
@@ -32,7 +41,7 @@ export function ProfitTabs({ tabs, top }: { tabs: Tab[]; top?: React.ReactNode }
         label="Revisión por facturas, gastos y listas"
         tabs={tabs.map((t) => ({ key: t.key, label: t.label, count: t.count }))}
         activeKey={current?.key}
-        onSelect={setActive}
+        onSelect={select}
         leading={
           lists.length > 0 ? (
             <button
@@ -79,7 +88,7 @@ export function ProfitTabs({ tabs, top }: { tabs: Tab[]; top?: React.ReactNode }
                     type="button"
                     aria-current={on ? "true" : undefined}
                     onClick={() => {
-                      setActive(t.key);
+                      select(t.key);
                       setOpen(false);
                     }}
                     className={cn(
