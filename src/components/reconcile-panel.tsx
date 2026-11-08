@@ -531,7 +531,7 @@ function GroupBar({ label, count, accent }: { label: string; count: number; acce
   return (
     <h3
       className={cn(
-        "sticky top-0 z-10 flex h-8 items-center gap-2 border-y bg-muted/60 px-4 text-xs font-medium",
+        "sticky top-0 z-10 flex h-8 items-center gap-2 border-y bg-surface-strong px-4 text-xs font-medium",
         accent ? "text-foreground" : "text-muted-foreground",
       )}
     >

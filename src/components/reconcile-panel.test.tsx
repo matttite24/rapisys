@@ -38,10 +38,11 @@ it("ancla el pie del sidebar al borde real de la barra inferior y recalcula al c
   const footer = screen.getByText("BELT TENSIONER").parentElement!;
   expect(footer.style.height).toBe("64px");
   expect(footer.className).toContain("absolute inset-x-0 bottom-0");
-  expect(footer.parentElement!.style.paddingBottom).toBe("64px");
+  // El relleno inferior suma la fila de presupuesto (2 rem) que va sobre el pie.
+  expect(footer.parentElement!.style.paddingBottom).toBe("calc(64px + 2rem)");
   act(() => { barTop = 820; callbacks.forEach((callback) => callback()); });
   expect(footer.style.height).toBe("80px");
-  expect(footer.parentElement!.style.paddingBottom).toBe("80px");
+  expect(footer.parentElement!.style.paddingBottom).toBe("calc(80px + 2rem)");
 });
 
 function setupPanel() {
