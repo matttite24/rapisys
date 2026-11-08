@@ -108,7 +108,8 @@ export function FilesBoard({
 
       {shown.length === 0 ? (
         <EmptyState
-          image={files.length === 0 ? "File Cabinet " : NO_RESULTS_IMAGE}
+          fill
+          image={files.length === 0 ? "file" : NO_RESULTS_IMAGE}
           action={files.length === 0 && <Button variant="brand" onClick={() => setUploadOpen(true)}>Cargar archivos</Button>}
         >
           {files.length === 0 ? "Aún no hay archivos. Carga facturas, notas de entrega, fotos o comprobantes." : "No hay archivos de este origen."}
