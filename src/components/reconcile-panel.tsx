@@ -181,7 +181,7 @@ export function ReconcilePanel({
 
       {/* Presupuesto de la línea: el precio referencial contra el costo de lo asignado, para no pasarse de lo que paga el contrato. */}
       {focus && (
-        <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 border-b bg-surface-strong px-4 py-2 text-xs" aria-live="polite">
+        <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-0.5 border-b px-4 py-1.5 text-xs" aria-live="polite">
           {focus.referenceCents === null ? (
             <span className="text-muted-foreground">Sin precio referencial: agrégalo en Listas para controlar el costo.</span>
           ) : (
@@ -360,8 +360,8 @@ function InvoiceMode({ rc, target, partNumber }: { rc: Reconcile; target: Target
 
   return (
     <div ref={root} onKeyDown={onKeyDown} className="flex min-h-0 flex-1 flex-col">
-      {/* Mismo alto que la fila de datos del activo de la izquierda (5 rem con su línea). */}
-      <div className="flex h-20 shrink-0 items-center gap-3 border-b px-4">
+      {/* Mismo alto que la fila de datos del activo de la izquierda (3,5 rem). */}
+      <div className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
         <HugeiconsIcon icon={Invoice01Icon} aria-hidden className="size-6 shrink-0 text-muted-foreground" />
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-medium">{invoice?.supplier || "Sin proveedor"}</span>
@@ -530,12 +530,14 @@ function GroupBar({ label, count, accent }: { label: string; count: number; acce
   return (
     <h3
       className={cn(
-        "sticky top-0 z-10 flex h-9 items-center gap-2 border-y bg-surface-strong px-4 caps font-medium",
+        "sticky top-0 z-10 flex h-8 items-center gap-2 border-y bg-muted/60 px-4 text-xs font-medium",
         accent ? "text-foreground" : "text-muted-foreground",
       )}
     >
       {label}
-      <span className="num bg-background px-1.5 py-0.5 text-[0.6875rem] leading-none text-muted-foreground">{count}</span>
+      <span className="num font-normal text-muted-foreground">{count}</span>
+      {/* Qué es cada columna de las filas: existencias y costo unitario. */}
+      <span className="ml-auto font-normal text-muted-foreground">Disponible · c/u</span>
     </h3>
   );
 }
@@ -572,7 +574,7 @@ function LineRow({ rc, line: l, target }: { rc: Reconcile; line: InvoiceLine; ta
         type="button"
         aria-pressed={selected}
         onClick={() => rc.pick(selected ? null : l)}
-        className={cn("flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-accent/60", selected && "shadow-[inset_4px_0_0_var(--primary)]")}
+        className={cn("flex w-full flex-col gap-0.5 px-4 py-2 text-left hover:bg-accent/60", selected && "shadow-[inset_4px_0_0_var(--primary)]")}
       >
         <span className="flex items-center justify-between gap-3">
           <span className={cn("truncate font-mono text-sm font-medium", !l.code && "font-normal text-muted-foreground")} title={l.code}>
@@ -585,7 +587,7 @@ function LineRow({ rc, line: l, target }: { rc: Reconcile; line: InvoiceLine; ta
             {l.name}
           </span>
           {/* Precio unitario de la factura (sin IVA), para compararlo con lo que paga el contrato. */}
-          <span className="num shrink-0 text-xs text-muted-foreground">{formatCents(l.unitCostCents)} c/u</span>
+          <span className="num shrink-0 text-xs text-muted-foreground">{formatCents(l.unitCostCents)}</span>
         </span>
       </button>
       {selected && <AssignTo rc={rc} target={target} />}
@@ -696,7 +698,7 @@ function StockRow({ rc, row: r, target }: { rc: Reconcile; row: StockResult; tar
         type="button"
         aria-pressed={selected}
         onClick={() => rc.pickStock(selected ? null : r)}
-        className={cn("flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-accent/60", selected && "shadow-[inset_4px_0_0_var(--primary)]")}
+        className={cn("flex w-full flex-col gap-0.5 px-4 py-2 text-left hover:bg-accent/60", selected && "shadow-[inset_4px_0_0_var(--primary)]")}
       >
         <span className="flex items-center justify-between gap-3">
           <span className={cn("truncate font-mono text-sm font-medium", !codesOf(r) && "font-normal text-muted-foreground")} title={codesOf(r)}>
@@ -717,7 +719,7 @@ function StockRow({ rc, row: r, target }: { rc: Reconcile; row: StockResult; tar
               const costs = r.lots.filter((l) => l.costCents !== null).map((l) => l.costCents as number);
               if (costs.length === 0) return "Sin costo";
               const min = Math.min(...costs);
-              return `${new Set(costs).size > 1 ? "desde " : ""}${formatCents(min)} c/u`;
+              return `${new Set(costs).size > 1 ? "desde " : ""}${formatCents(min)}`;
             })()}
           </span>
         </span>
