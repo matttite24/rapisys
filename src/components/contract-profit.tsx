@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { PageLoading } from "@/components/page-loading";
+import { ProfitTabs } from "@/components/profit-tabs";
 import { PageSection, TABLE_TD as TD, TABLE_TH as TH } from "@/components/page-section";
 import { getContract } from "@/lib/contract-data";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
@@ -103,16 +104,16 @@ async function Profit({ params }: { params: IdParams }) {
         </p>
       </PageSection>
 
-      {rows.length === 0 ? (
-        <PageSection label="Por item" className="p-0">
-          <p className="p-6 text-sm text-muted-foreground">Este contrato aún no tiene items en sus listas.</p>
-        </PageSection>
-      ) : (
-        [...groups.entries()].map(([listId, g]) => {
+      <ProfitTabs
+        tabs={[
+          ...[...groups.entries()].map(([listId, g]) => {
           const gs = contractProfit(g.rows, 0);
-          return (
+          return {
+            key: listId,
+            label: g.name,
+            count: g.rows.length,
+            panel: (
             <PageSection
-              key={listId}
               label={`Lista · ${g.name}`}
               meta={`${g.rows.length} ${g.rows.length === 1 ? "línea" : "líneas"} · Utilidad ${formatCents(gs.itemsProfit)}`}
               className="p-0"
@@ -157,10 +158,10 @@ async function Profit({ params }: { params: IdParams }) {
                 </table>
               </div>
             </PageSection>
-          );
-        })
-      )}
-
+            ),
+          };
+        }),
+          { key: "facturas", label: "Facturas", count: purchases.length, panel: (
       <PageSection label="Facturas" meta={`${purchases.length} · Total s/IVA ${formatCents(invoiced)}`} className="p-0">
         {purchases.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">Aún no hay facturas de compra.</p>
@@ -198,7 +199,8 @@ async function Profit({ params }: { params: IdParams }) {
           </div>
         )}
       </PageSection>
-
+          ) },
+          { key: "gastos", label: "Gastos", count: expenses.length, panel: (
       <PageSection label="Gastos" meta={`${expenses.length} · Total ${formatCents(sum.expenses)}`} className="p-0">
         {expenses.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">Aún no hay gastos registrados.</p>
@@ -229,6 +231,9 @@ async function Profit({ params }: { params: IdParams }) {
           </div>
         )}
       </PageSection>
+          ) },
+        ]}
+      />
     </>
   );
 }
