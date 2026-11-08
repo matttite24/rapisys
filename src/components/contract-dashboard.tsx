@@ -174,14 +174,14 @@ export async function ContractDashboard({
       <PageRefresh stamp={new Date().toISOString()} />
       {/* Hero a todo el ancho: identifica el contrato y reúne sus tres cifras. El montacargas se apoya en el borde inferior. */}
       <section className="overflow-hidden border-b bg-surface-strong">
-        <div className="flex items-end justify-between gap-8 pl-6 lg:pr-10">
+        <div className="flex items-end justify-between gap-8 pl-6 pr-6 xl:pr-10">
           <div className="flex min-w-0 flex-1 flex-col gap-8 py-8">
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-3">
                 <StatusChip status={c.status} />
                 <span className="num text-sm text-muted-foreground">{c.code}</span>
               </div>
-              <h2 className="font-heading text-3xl leading-tight font-semibold text-balance md:text-4xl">{c.name}</h2>
+              <h2 className="font-heading text-3xl leading-tight font-semibold text-balance xl:text-4xl">{c.name}</h2>
               <p className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <Ico icon={Building03Icon} />
@@ -195,16 +195,16 @@ export async function ContractDashboard({
               </p>
             </div>
 
-            <dl className="grid max-w-4xl gap-6 sm:grid-cols-3 sm:divide-x [&>div]:flex [&>div]:flex-col [&>div]:gap-2 sm:[&>div]:px-6 sm:[&>div:first-child]:pl-0">
+            <dl className="grid max-w-4xl gap-6 md:grid-cols-3 md:divide-x [&>div]:flex [&>div]:min-w-0 [&>div]:flex-col [&>div]:gap-2 md:[&>div]:px-4 xl:[&>div]:px-6 md:[&>div:first-child]:pl-0">
               <div>
                 <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Wallet01Icon} className="size-3.5" />Monto del contrato (IVA incl.)</dt>
-                <dd className="text-3xl leading-none font-semibold tracking-tight tabular-nums">{formatCents(contractTotal)}</dd>
+                <dd className="text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl">{formatCents(contractTotal)}</dd>
                 <Meter value={contractTotal > 0 ? (spent / contractTotal) * 100 : 0} label="Comprado sobre el monto" />
                 <span className="text-xs text-muted-foreground">Comprado {formatCents(spent)} · {spentPct} %</span>
               </div>
               <div>
                 <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Calendar03Icon} className="size-3.5" />Plazo</dt>
-                <dd className={cn("text-3xl leading-none font-semibold tracking-tight tabular-nums", late && "text-destructive")}>
+                <dd className={cn("text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl", late && "text-destructive")}>
                   {remaining === null ? "—" : remaining >= 0 ? `${remaining} ${remaining === 1 ? "día" : "días"}` : `${-remaining} ${remaining === -1 ? "día" : "días"} de atraso`}
                 </dd>
                 <Meter value={timePct} label="Plazo transcurrido" />
@@ -214,7 +214,7 @@ export async function ContractDashboard({
               </div>
               <div>
                 <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={DeliveryTruck01Icon} className="size-3.5" />Líneas entregadas</dt>
-                <dd className="text-3xl leading-none font-semibold tracking-tight tabular-nums">
+                <dd className="text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl">
                   {counts.delivered} <span className="text-lg font-normal text-muted-foreground">de {totalLines}</span>
                 </dd>
                 <Meter value={pct(counts.delivered)} label="Líneas entregadas" />
@@ -228,15 +228,15 @@ export async function ContractDashboard({
             src="/Dummies/Forklift.avif"
             alt=""
             aria-hidden
-            className="pointer-events-none hidden size-64 shrink-0 translate-y-4 object-contain md:block lg:size-80"
+            className="pointer-events-none hidden size-64 shrink-0 translate-y-4 object-contain xl:block 2xl:size-80"
           />
         </div>
       </section>
 
       <div className="flex flex-col gap-4 p-4">
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 xl:grid-cols-3">
         {/* Abastecimiento */}
-        <Card size="sm" className="rounded-lg lg:col-span-2">
+        <Card size="sm" className="rounded-lg xl:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Ico icon={PackageProcessIcon} />Abastecimiento</CardTitle>
             <CardDescription>{totalLines} {totalLines === 1 ? "línea" : "líneas"} en el contrato</CardDescription>
@@ -284,7 +284,7 @@ export async function ContractDashboard({
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         {/* Compras recientes */}
         <Card size="sm" className="rounded-lg">
           <CardHeader>

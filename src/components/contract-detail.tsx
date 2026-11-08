@@ -84,7 +84,7 @@ export function ContractDetailSkeleton() {
   return (
     <div role="status" aria-label="Cargando el contrato" className="flex flex-col">
       <section className="border-b bg-surface-strong">
-        <div className="flex items-end justify-between gap-8 pl-6 lg:pr-10">
+        <div className="flex items-end justify-between gap-8 pl-6 pr-6 xl:pr-10">
           <div className="flex min-w-0 flex-1 flex-col gap-8 py-8">
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
@@ -94,7 +94,7 @@ export function ContractDetailSkeleton() {
               <Skeleton className="h-10 w-3/5 max-w-xl bg-foreground/10" />
               <Skeleton className="h-4 w-80 max-w-full bg-foreground/10" />
             </div>
-            <div className="grid max-w-4xl gap-6 sm:grid-cols-3">
+            <div className="grid max-w-4xl gap-6 md:grid-cols-3">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="flex flex-col gap-2">
                   <Skeleton className="h-3 w-32 bg-foreground/10" />
@@ -105,12 +105,12 @@ export function ContractDetailSkeleton() {
               ))}
             </div>
           </div>
-          <Skeleton className="hidden size-64 shrink-0 translate-y-4 bg-foreground/10 md:block lg:size-72" />
+          <Skeleton className="hidden size-64 shrink-0 translate-y-4 bg-foreground/10 xl:block" />
         </div>
       </section>
       <div className="flex flex-col gap-4 p-4">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Card size="sm" className="rounded-lg lg:col-span-2">
+        <div className="grid gap-4 xl:grid-cols-3">
+          <Card size="sm" className="rounded-lg xl:col-span-2">
             <CardHeader>
               <Skeleton className="h-5 w-36" />
             </CardHeader>
@@ -133,7 +133,7 @@ export function ContractDetailSkeleton() {
             </CardContent>
           </Card>
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 xl:grid-cols-2">
           <TableCardSkeleton />
           <TableCardSkeleton />
         </div>
