@@ -24,18 +24,14 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
   const { c } = found;
 
   const supabase = await createClient();
-  const count = (table: string) => supabase.from(table).select("id", { count: "exact", head: true }).eq("contract_id", id);
-  const [{ data: client }, lists, lines, purchases, deliveries, expenses, files, blocker] = await Promise.all([
+  const [{ data: client }, { data: navCounts }, blocker] = await Promise.all([
     supabase.from("clients").select("name").eq("id", c.client_id).maybeSingle(),
-    count("contract_lists"),
-    count("contract_items"),
-    count("purchases"),
-    count("deliveries"),
-    count("contract_expenses"),
-    count("contract_files"),
+    // Los seis contadores del menú, en una sola llamada.
+    supabase.rpc("contract_nav_counts", { p_contract_id: id }),
     c.status === "in_progress" ? finishBlocker(supabase, id) : Promise.resolve(null),
   ]);
 
+  const counts = (navCounts ?? {}) as Partial<Record<"lists" | "lines" | "purchases" | "deliveries" | "expenses" | "files", number>>;
   const deliveryIso = addDaysIso(c.start_date, Number(c.term_days));
   const summary = {
     code: c.code as string,
@@ -67,12 +63,12 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
       {/* Contadores a la derecha de cada sección en el menú de opciones: listas, líneas, facturas y entregas. */}
       <NavBadges
         badges={{
-          items: lists.count ?? 0,
-          abastecimiento: lines.count ?? 0,
-          compras: purchases.count ?? 0,
-          entregas: deliveries.count ?? 0,
-          gastos: expenses.count ?? 0,
-          archivos: files.count ?? 0,
+          items: counts.lists ?? 0,
+          abastecimiento: counts.lines ?? 0,
+          compras: counts.purchases ?? 0,
+          entregas: counts.deliveries ?? 0,
+          gastos: counts.expenses ?? 0,
+          archivos: counts.files ?? 0,
         }}
       />
       <PanelTop>

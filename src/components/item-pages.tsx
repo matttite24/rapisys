@@ -90,7 +90,7 @@ async function EditForm({ params }: { params: IdParams }) {
 
   const supabase = await createClient();
   const [itemRes, pricesRes, linksRes, options, role, lotsRes, stockRes] = await Promise.all([
-    supabase.from("items").select("*").eq("id", id).eq("organization_id", orgId).maybeSingle(),
+    supabase.from("items").select("id, name, sku, line, description, category_id, part_numbers, specs, margin_percent, is_active").eq("id", id).eq("organization_id", orgId).maybeSingle(),
     supabase
       .from("item_supplier_prices")
       .select("supplier_id, unit_cost_cents, vat_rate, supplier_sku")

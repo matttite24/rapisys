@@ -105,6 +105,7 @@ async function Report({ params }: { params: DeliveryParams }) {
       ? supabase
           .from("contract_item_supply")
           .select("id, n, part_number, description, unit, quantity")
+          .eq("contract_id", id)
           .in("id", dl.map((l) => l.contract_item_id))
       : { data: [] },
     list?.asset_id

@@ -19,6 +19,7 @@ import { HeaderAction } from "@/components/header-action";
 import { getContract } from "@/lib/contract-data";
 import { formatIso } from "@/lib/dates";
 import { centsToInput, formatCents, lineAmounts, vatOf } from "@/lib/money";
+import { supplierNames } from "@/lib/supplier-names";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,7 @@ async function List({ params }: { params: IdParams }) {
   await connection();
   const [{ org, id }, supabase] = await Promise.all([params, createClient()]);
 
-  const [found, pRes, totRes, supRes] = await Promise.all([
+  const [found, pRes, totRes] = await Promise.all([
     getContract(org, id),
     supabase
       .from("purchases")
@@ -50,7 +51,6 @@ async function List({ params }: { params: IdParams }) {
       .select("purchase_id, lines, units, subtotal_cents, vat_cents, unassigned, received")
       .eq("contract_id", id)
       .limit(200),
-    supabase.from("suppliers").select("id, name"),
   ]);
   if (!found) notFound();
   const purchases = (pRes.data ?? []) as {
@@ -71,7 +71,7 @@ async function List({ params }: { params: IdParams }) {
       received: number;
     }[]).map((t) => [t.purchase_id, t]),
   );
-  const supplier = new Map(((supRes.data ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]));
+  const supplier = await supplierNames(supabase, purchases.map((p) => p.supplier_id));
   const canAct = found.c.status === "in_progress";
 
   return (

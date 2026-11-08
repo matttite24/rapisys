@@ -11,6 +11,7 @@ import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
 import { formatIso } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { contractProfit, lineProfit } from "@/lib/profit";
+import { supplierNames } from "@/lib/supplier-names";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -37,12 +38,11 @@ const tone = (cents: number) => (cents < 0 ? "text-destructive" : "");
 async function Profit({ params }: { params: IdParams }) {
   await connection();
   const [{ org, id }, supabase] = await Promise.all([params, createClient()]);
-  const [contract, { data, error }, pRes, tRes, sRes, eRes] = await Promise.all([
+  const [contract, { data, error }, pRes, tRes, eRes] = await Promise.all([
     getContract(org, id),
     supabase.rpc("contract_profit_view", { p_contract_id: id }),
     supabase.from("purchases").select("id, number, supplier_id, purchased_on, status").eq("contract_id", id).order("purchased_on", { ascending: false }).limit(500),
     supabase.from("purchase_totals").select("purchase_id, subtotal_cents, vat_cents").eq("contract_id", id).limit(500),
-    supabase.from("suppliers").select("id, name"),
     supabase.from("contract_expenses").select("id, spent_on, concept, payee, amount_cents").eq("contract_id", id).order("spent_on", { ascending: false }).limit(500),
   ]);
   if (!contract) notFound();
@@ -62,9 +62,9 @@ async function Profit({ params }: { params: IdParams }) {
     unknown: Number(r.unknown),
     sources: Number(r.sources),
   }));
-  const supplier = new Map(((sRes.data ?? []) as { id: string; name: string }[]).map((x) => [x.id, x.name]));
   const totals = new Map(((tRes.data ?? []) as { purchase_id: string; subtotal_cents: number; vat_cents: number }[]).map((t) => [t.purchase_id, t]));
   const purchases = (pRes.data ?? []) as { id: string; number: string | null; supplier_id: string | null; purchased_on: string; status: string }[];
+  const supplier = await supplierNames(supabase, purchases.map((p) => p.supplier_id));
   const expenses = (eRes.data ?? []) as { id: string; spent_on: string; concept: string; payee: string; amount_cents: number }[];
   const invoiced = purchases.reduce((a, p) => a + Number(totals.get(p.id)?.subtotal_cents ?? 0), 0);
   const base = `/${org}/contratos/${id}`;

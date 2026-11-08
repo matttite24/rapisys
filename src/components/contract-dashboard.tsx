@@ -24,6 +24,7 @@ import { PageRefresh } from "@/components/page-refresh";
 import { StatusChip } from "@/components/status-chip";
 import { addDaysIso, formatIso, todayEcuador } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
+import { supplierNames } from "@/lib/supplier-names";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -80,10 +81,10 @@ export async function ContractDashboard({
   const supabase = await createClient();
   const base = `/${org}/contratos/${id}`;
 
-  const [clientRes, managerRes, supplyRes, listsRes, purchasesRes, totalsRes, suppliersRes, deliveriesRes] = await Promise.all([
+  const [clientRes, managerRes, supplyRes, listsRes, purchasesRes, totalsRes, deliveriesRes] = await Promise.all([
     supabase.from("clients").select("name").eq("id", c.client_id).maybeSingle(),
     supabase.from("contract_managers").select("name, ruc").eq("id", c.manager_id).maybeSingle(),
-    supabase.from("contract_item_supply").select("state, list_id").eq("contract_id", id).limit(20000),
+    supabase.rpc("contract_state_counts", { p_contract_id: id }),
     supabase.from("contract_lists").select("id, name").eq("contract_id", id).order("created_at"),
     supabase
       .from("purchases")
@@ -93,7 +94,6 @@ export async function ContractDashboard({
       .order("created_at", { ascending: false })
       .limit(500),
     supabase.from("purchase_totals").select("purchase_id, units, subtotal_cents, vat_cents, received").eq("contract_id", id).limit(500),
-    supabase.from("suppliers").select("id, name"),
     supabase
       .from("deliveries")
       .select("id, list_id, number, delivered_on, received_by")
@@ -111,17 +111,19 @@ export async function ContractDashboard({
   const timePct = termDays > 0 ? (elapsed / termDays) * 100 : 0;
 
   // Abastecimiento: el recuento es por líneas del contrato.
-  const rows = (supplyRes.data ?? []) as { state: SupplyState; list_id: string }[];
+  const rows = (supplyRes.data ?? []) as { list_id: string; state: SupplyState; n: number }[];
   const counts: Record<SupplyState, number> = { pending: 0, quoted: 0, purchased: 0, partial: 0, in_stock: 0, delivered: 0 };
   const byList = new Map<string, { total: number; delivered: number }>();
+  let totalLines = 0;
   for (const r of rows) {
-    counts[r.state] += 1;
+    const n = Number(r.n);
+    counts[r.state] += n;
+    totalLines += n;
     const l = byList.get(r.list_id) ?? { total: 0, delivered: 0 };
-    l.total += 1;
-    if (r.state === "delivered") l.delivered += 1;
+    l.total += n;
+    if (r.state === "delivered") l.delivered += n;
     byList.set(r.list_id, l);
   }
-  const totalLines = rows.length;
   const pct = (n: number) => (totalLines > 0 ? (n / totalLines) * 100 : 0);
 
   // Compras
@@ -129,7 +131,7 @@ export async function ContractDashboard({
   const totals = new Map(
     ((totalsRes.data ?? []) as { purchase_id: string; units: number; subtotal_cents: number; vat_cents: number; received: number }[]).map((t) => [t.purchase_id, t]),
   );
-  const supplier = new Map(((suppliersRes.data ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]));
+  const supplier = await supplierNames(supabase, purchases.map((p) => p.supplier_id));
   const purchaseTotal = (pid: string) => {
     const t = totals.get(pid);
     return t ? Number(t.subtotal_cents) + Number(t.vat_cents) : 0;
