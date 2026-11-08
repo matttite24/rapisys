@@ -365,6 +365,7 @@ export function LinesTableSkeleton({ rows = 6 }: { rows?: number }) {
             <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
             <TableHead className={TH}>Unidad</TableHead>
             <TableHead className={`${TH} text-right`}>Valor unit. ref.</TableHead>
+            <TableHead className={`${TH} text-right`}>Total ref.</TableHead>
             <TableHead className={`${TH} w-px`}><span className="sr-only">Acciones</span></TableHead>
           </TableRow>
         </TableHeader>
@@ -377,6 +378,7 @@ export function LinesTableSkeleton({ rows = 6 }: { rows?: number }) {
               <TableCell className={TD}><Skeleton className="ml-auto h-4 w-8" /></TableCell>
               <TableCell className={TD}><Skeleton className="h-4 w-16" /></TableCell>
               <TableCell className={TD}><Skeleton className="ml-auto h-4 w-16" /></TableCell>
+              <TableCell className={TD}><Skeleton className="ml-auto h-4 w-20" /></TableCell>
               <TableCell className={cn(TD, "p-1")}><Skeleton className="size-7" /></TableCell>
             </TableRow>
           ))}
@@ -458,6 +460,7 @@ function LinesTable({
             <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
             <TableHead className={TH}>Unidad</TableHead>
             <TableHead className={`${TH} text-right`}>Valor unit. ref.</TableHead>
+            <TableHead className={`${TH} text-right`}>Total ref.</TableHead>
             <TableHead className={`${TH} w-px`}><span className="sr-only">Acciones</span></TableHead>
           </TableRow>
         </TableHeader>
@@ -518,6 +521,7 @@ function LineRow({
       <TableCell className={`${TD} num text-right`}>{l.quantity}</TableCell>
       <TableCell className={`${TD} whitespace-nowrap`}>{unitLabel(l.unit)}</TableCell>
       <TableCell className={`${TD} num whitespace-nowrap text-right`}>{l.referencePriceCents === null || l.quantity <= 0 ? "—" : formatCents(Math.round(l.referencePriceCents / l.quantity))}</TableCell>
+      <TableCell className={`${TD} num whitespace-nowrap text-right font-medium`}>{l.referencePriceCents === null ? "—" : formatCents(l.referencePriceCents)}</TableCell>
       <TableCell className={cn(TD, "p-1 whitespace-nowrap")}>
         {saving ? null : (
           <span className="flex gap-1">
