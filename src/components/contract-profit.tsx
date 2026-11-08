@@ -86,6 +86,9 @@ async function Profit({ params }: { params: IdParams }) {
 
   return (
     <>
+
+      <ProfitTabs
+        summary={(
       <PageSection label="Revisión de rentabilidad" meta="Sin IVA" className="p-0">
         <dl className="grid divide-x divide-y border-b sm:grid-cols-2 lg:grid-cols-5 lg:divide-y-0 [&>div]:p-4">
           {figures.map((f) => (
@@ -103,8 +106,7 @@ async function Profit({ params }: { params: IdParams }) {
           {sum.partial > 0 && ` ${sum.partial} tienen costo incompleto.`}
         </p>
       </PageSection>
-
-      <ProfitTabs
+        )}
         tabs={[
           { key: "facturas", label: "Facturas", count: purchases.length, figures: [{ label: "Facturas", value: String(purchases.length) }, { label: "Total s/IVA", value: formatCents(invoiced) }], panel: (
       <PageSection className="p-0">
