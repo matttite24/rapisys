@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import type { ListView } from "@/components/contract-lists";
+import type { ListView } from "@/components/contract-lists-model";
 import { PageSection } from "@/components/page-section";
 import { SupplyBoard, SupplySkeleton, type SupplyLine, type SupplyState } from "@/components/supply-board";
 import { getContract } from "@/lib/contract-data";
