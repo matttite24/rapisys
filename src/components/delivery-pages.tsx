@@ -228,7 +228,7 @@ async function Report({ params }: { params: DeliveryParams }) {
                 {items.length} {items.length === 1 ? "línea" : "líneas"}
               </td>
               <td className="num px-2 py-2 text-right font-semibold">{totalUnits}</td>
-              <td colSpan={2} />
+              <td />
             </tr>
           </tfoot>
         </table>
