@@ -1,9 +1,10 @@
 "use client";
 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useState } from "react";
 import Link from "next/link";
 import { PageFooterActions } from "@/components/page-shortcuts";
-import { PageSection, TABLE_TD as TD, TABLE_TH as TH } from "@/components/page-section";
+import { PageSection } from "@/components/page-section";
 import { SearchInput } from "@/components/search-input";
 import { SearchBar } from "@/components/url-search";
 import { buttonVariants } from "@/components/ui/button";
@@ -46,37 +47,37 @@ export function DeliveryList({ org, contractId: id, rows }: { org: string; contr
         <p role="status" className="p-6 text-sm text-muted-foreground">Ninguna entrega coincide con la búsqueda.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th scope="col" className={TH}>Entrega</th>
-                <th scope="col" className={TH}>Fecha</th>
-                <th scope="col" className={TH}>Lista</th>
-                <th scope="col" className={`${TH} text-right`}>Líneas</th>
-                <th scope="col" className={`${TH} text-right`}>Unidades</th>
-                <th scope="col" className={TH}>Recibe</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-transparent">
+                <TableHead>Entrega</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Lista</TableHead>
+                <TableHead className="text-right">Líneas</TableHead>
+                <TableHead className="text-right">Unidades</TableHead>
+                <TableHead>Recibe</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {deliveries.map((d) => (
-                <tr key={d.id} className="border-b last:border-b-0 hover:bg-accent/60">
-                  <td className={`${TD} p-0`}>
+                <TableRow key={d.id} className="border-b last:border-b-0 hover:bg-accent/60">
+                  <TableCell className="p-0">
                     <Link
                       href={`/${org}/contratos/${id}/entregas/${d.id}`}
                       className="block px-4 py-3 font-mono font-medium underline-offset-4 hover:underline"
                     >
                       {deliveryCode(d.number)}
                     </Link>
-                  </td>
-                  <td className={`${TD} num whitespace-nowrap`}>{formatIso(d.delivered_on)}</td>
-                  <td className={TD}>{d.listName}</td>
-                  <td className={`${TD} num text-right`}>{d.lines}</td>
-                  <td className={`${TD} num text-right`}>{d.units}</td>
-                  <td className={TD}>{d.received_by ?? "—"}</td>
-                </tr>
+                  </TableCell>
+                  <TableCell className="num whitespace-nowrap">{formatIso(d.delivered_on)}</TableCell>
+                  <TableCell>{d.listName}</TableCell>
+                  <TableCell className="num text-right">{d.lines}</TableCell>
+                  <TableCell className="num text-right">{d.units}</TableCell>
+                  <TableCell>{d.received_by ?? "—"}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </PageSection>

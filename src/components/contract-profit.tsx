@@ -1,10 +1,11 @@
 import { Suspense } from "react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { PageLoading } from "@/components/page-loading";
 import { ProfitTabs } from "@/components/profit-tabs";
-import { PageSection, TABLE_TD as TD, TABLE_TH as TH } from "@/components/page-section";
+import { PageSection } from "@/components/page-section";
 import { getContract } from "@/lib/contract-data";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
 import { formatIso } from "@/lib/dates";
@@ -108,35 +109,35 @@ async function Profit({ params }: { params: IdParams }) {
           <p className="p-6 text-sm text-muted-foreground">Aún no hay facturas de compra.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-strong">
-                <tr className="border-b">
-                  <th scope="col" className={TH}>Factura</th>
-                  <th scope="col" className={TH}>Proveedor</th>
-                  <th scope="col" className={TH}>Fecha</th>
-                  <th scope="col" className={`${TH} text-right`}>Subtotal</th>
-                  <th scope="col" className={`${TH} text-right`}>IVA</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader className="bg-surface-strong">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Factura</TableHead>
+                  <TableHead>Proveedor</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead className="text-right">Subtotal</TableHead>
+                  <TableHead className="text-right">IVA</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {purchases.map((p) => {
                   const t = totals.get(p.id);
                   const href = `${base}/compras/${p.id}${p.status === "draft" ? "/editar" : ""}`;
                   return (
-                    <tr key={p.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
-                      <td className={TD}>
+                    <TableRow key={p.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
+                      <TableCell>
                         <Link href={href} className="font-mono underline-offset-4 after:absolute after:inset-0 hover:underline" title="Ajustar en Compras">{p.number ?? "Sin número"}</Link>
                         {p.status === "draft" && <span className="ml-2 text-xs text-muted-foreground">Borrador</span>}
-                      </td>
-                      <td className={TD}>{p.supplier_id ? (supplier.get(p.supplier_id) ?? "—") : "—"}</td>
-                      <td className={`${TD} whitespace-nowrap`}>{formatIso(p.purchased_on)}</td>
-                      <td className={`${TD} num text-right`}>{t ? formatCents(Number(t.subtotal_cents)) : "—"}</td>
-                      <td className={`${TD} num text-right`}>{t ? formatCents(Number(t.vat_cents)) : "—"}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell>{p.supplier_id ? (supplier.get(p.supplier_id) ?? "—") : "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap">{formatIso(p.purchased_on)}</TableCell>
+                      <TableCell className="num text-right">{t ? formatCents(Number(t.subtotal_cents)) : "—"}</TableCell>
+                      <TableCell className="num text-right">{t ? formatCents(Number(t.vat_cents)) : "—"}</TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </PageSection>
@@ -147,28 +148,28 @@ async function Profit({ params }: { params: IdParams }) {
           <p className="p-6 text-sm text-muted-foreground">Aún no hay gastos registrados.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-strong">
-                <tr className="border-b">
-                  <th scope="col" className={TH}>Concepto</th>
-                  <th scope="col" className={TH}>Pagado a</th>
-                  <th scope="col" className={TH}>Fecha</th>
-                  <th scope="col" className={`${TH} text-right`}>Monto</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader className="bg-surface-strong">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Concepto</TableHead>
+                  <TableHead>Pagado a</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {expenses.map((e) => (
-                  <tr key={e.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
-                    <td className={TD}>
+                  <TableRow key={e.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
+                    <TableCell>
                       <Link href={`${base}/gastos?${new URLSearchParams({ q: e.concept })}`} className="underline-offset-4 after:absolute after:inset-0 hover:underline" title="Ajustar en Gastos">{e.concept}</Link>
-                    </td>
-                    <td className={TD}>{e.payee || "—"}</td>
-                    <td className={`${TD} whitespace-nowrap`}>{formatIso(e.spent_on)}</td>
-                    <td className={`${TD} num text-right`}>{formatCents(Number(e.amount_cents))}</td>
-                  </tr>
+                    </TableCell>
+                    <TableCell>{e.payee || "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatIso(e.spent_on)}</TableCell>
+                    <TableCell className="num text-right">{formatCents(Number(e.amount_cents))}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </PageSection>
@@ -195,43 +196,43 @@ async function Profit({ params }: { params: IdParams }) {
             panel: (
             <PageSection className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-surface-strong">
-                    <tr className="border-b">
-                      <th scope="col" className={TH}>Item</th>
-                      <th scope="col" className={`${TH} text-right`}>Cant.</th>
-                      <th scope="col" className={`${TH} text-right`}>Precio ref.</th>
-                      <th scope="col" className={`${TH} text-right`}>Costo</th>
-                      <th scope="col" className={`${TH} text-right`}>Utilidad</th>
-                      <th scope="col" className={`${TH} text-right`}>Margen</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table>
+                  <TableHeader className="bg-surface-strong">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Cant.</TableHead>
+                      <TableHead className="text-right">Precio ref.</TableHead>
+                      <TableHead className="text-right">Costo</TableHead>
+                      <TableHead className="text-right">Utilidad</TableHead>
+                      <TableHead className="text-right">Margen</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {g.rows.map((r) => {
                       const p = lineProfit(r);
                       const done = p.kind === "ok" || p.kind === "partial";
                       const fix = `${base}/abastecimiento?${new URLSearchParams({ lista: r.list_id, q: r.part_number || r.description })}`;
                       return (
-                        <tr key={r.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
-                          <td className={cn(TD, "min-w-56")}>
+                        <TableRow key={r.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
+                          <TableCell className={cn("min-w-56")}>
                             <Link href={fix} className="underline-offset-4 after:absolute after:inset-0 hover:underline" title="Ajustar en Abastecimiento">{r.description}</Link>
                             {r.part_number && <p className="font-mono text-xs text-muted-foreground">{r.part_number}</p>}
-                          </td>
-                          <td className={`${TD} num whitespace-nowrap text-right`}>{Number(r.quantity)} {r.unit}</td>
-                          <td className={`${TD} num whitespace-nowrap text-right`}>{r.referenceCents === null ? "—" : formatCents(r.referenceCents)}</td>
-                          <td className={`${TD} num whitespace-nowrap text-right`}>{r.sources > 0 ? formatCents(r.costCents) : "—"}</td>
-                          <td className={cn(TD, "num whitespace-nowrap text-right font-medium", done && tone(p.profitCents))}>
+                          </TableCell>
+                          <TableCell className="num whitespace-nowrap text-right">{Number(r.quantity)} {r.unit}</TableCell>
+                          <TableCell className="num whitespace-nowrap text-right">{r.referenceCents === null ? "—" : formatCents(r.referenceCents)}</TableCell>
+                          <TableCell className="num whitespace-nowrap text-right">{r.sources > 0 ? formatCents(r.costCents) : "—"}</TableCell>
+                          <TableCell className={cn("num whitespace-nowrap text-right font-medium", done && tone(p.profitCents))}>
                             {done ? formatCents(p.profitCents) : <span className="text-xs font-normal text-muted-foreground">{p.kind === "none" ? "Sin precio ref." : "Sin compra"}</span>}
                             {p.kind === "partial" && <span className="block text-xs font-normal text-muted-foreground">Costo incompleto</span>}
-                          </td>
-                          <td className={cn(TD, "num whitespace-nowrap text-right", done && p.marginPct !== null && p.marginPct < 0 && "text-destructive")}>
+                          </TableCell>
+                          <TableCell className={cn("num whitespace-nowrap text-right", done && p.marginPct !== null && p.marginPct < 0 && "text-destructive")}>
                             {done ? pct(p.marginPct) : "—"}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </PageSection>
             ),

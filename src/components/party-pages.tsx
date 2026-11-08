@@ -1,4 +1,5 @@
 import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState, NO_RESULTS_IMAGE } from "@/components/empty-state";
 import Link from "next/link";
@@ -7,7 +8,7 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { HeaderAction } from "@/components/header-action";
-import { PageSection, TABLE_TH as TH, TABLE_TD as TD } from "@/components/page-section";
+import { PageSection } from "@/components/page-section";
 import { PartyForm } from "@/components/party-form";
 import { cleanSearch } from "@/lib/search";
 import { SearchBar, UrlSearch } from "@/components/url-search";
@@ -74,31 +75,31 @@ async function List({ kind, params, searchParams }: { kind: PartyKind; params: P
         )
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th scope="col" className={TH}>Nombre</th>
-                <th scope="col" className={TH}>RUC / cédula</th>
-                <th scope="col" className={TH}>Dirección</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-transparent">
+                <TableHead>Nombre</TableHead>
+                <TableHead>RUC / cédula</TableHead>
+                <TableHead>Dirección</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b last:border-b-0 hover:bg-accent/60">
-                  <td className={`${TD} p-0`}>
+                <TableRow key={r.id} className="border-b last:border-b-0 hover:bg-accent/60">
+                  <TableCell className="p-0">
                     <Link
                       href={`/${org}/${cfg.path}/${r.id}`}
                       className="block px-4 py-3 font-medium underline-offset-4 hover:underline"
                     >
                       {r.name}
                     </Link>
-                  </td>
-                  <td className={`${TD} num`}>{r.ruc ?? "—"}</td>
-                  <td className={TD}>{r.address ?? "—"}</td>
-                </tr>
+                  </TableCell>
+                  <TableCell className="num">{r.ruc ?? "—"}</TableCell>
+                  <TableCell>{r.address ?? "—"}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
       <Pager basePath={`/${org}/${cfg.path}`} page={page} total={total} params={q ? { q } : {}} />

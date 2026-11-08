@@ -1,8 +1,8 @@
 "use client";
 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { ConfirmTap } from "@/components/confirm-tap";
-import { TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
 import { startTransition, useActionState, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -22,7 +22,6 @@ import { ROLE_LABEL, type Role } from "@/lib/roles";
 const day = (iso: string) =>
   new Date(iso).toLocaleDateString("es-EC", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" });
 
-const TD = `${TABLE_TD} align-middle`;
 
 export type MemberView = {
   userId: string;
@@ -46,21 +45,21 @@ export function MembersTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/50">
-            <th scope="col" className={TH}>Miembro</th>
-            <th scope="col" className={TH}>Rol</th>
-            <th scope="col" className={TH}>Desde</th>
-            <th scope="col" className={`${TH} w-px`}><span className="sr-only">Acciones</span></th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50 hover:bg-transparent">
+            <TableHead>Miembro</TableHead>
+            <TableHead>Rol</TableHead>
+            <TableHead>Desde</TableHead>
+            <TableHead className="w-px"><span className="sr-only">Acciones</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {members.map((m) => (
             <MemberRow key={m.userId} org={org} m={m} isMe={m.userId === meId} canManage={canManage} />
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -98,16 +97,16 @@ function MemberRow({
   const canRemove = canManage || isMe;
 
   return (
-    <tr className="border-b last:border-b-0">
-      <td className={TD}>
+    <TableRow className="border-b last:border-b-0">
+      <TableCell>
         <div className="font-medium">
           {m.name || m.email}
           {isMe && <span className="ml-2 font-mono text-xs text-muted-foreground">(tú)</span>}
         </div>
         {m.name && <div className="font-mono text-xs text-muted-foreground">{m.email}</div>}
         {error && <p role="alert" className="mt-1 text-sm text-destructive">{error}</p>}
-      </td>
-      <td className={TD}>
+      </TableCell>
+      <TableCell>
         {canManage ? (
           <NativeSelect
             aria-label={`Rol de ${m.name || m.email}`}
@@ -123,9 +122,9 @@ function MemberRow({
         ) : (
           <span className="caps-md">{ROLE_LABEL[m.role]}</span>
         )}
-      </td>
-      <td className={`${TD} num`}>{day(m.since)}</td>
-      <td className={`${TD} whitespace-nowrap`}>
+      </TableCell>
+      <TableCell className="num">{day(m.since)}</TableCell>
+      <TableCell className="whitespace-nowrap">
         {canRemove && (
           <ConfirmTap
             variant="outline"
@@ -142,8 +141,8 @@ function MemberRow({
             {isMe ? "Salir" : "Quitar"}
           </ConfirmTap>
         )}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -222,24 +221,24 @@ export function InvitationsTable({ org, invitations }: { org: string; invitation
   return (
     <div className="overflow-x-auto">
       {error && <p role="alert" className="px-4 py-2 text-sm text-destructive">{error}</p>}
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/50">
-            <th scope="col" className={TH}>Correo</th>
-            <th scope="col" className={TH}>Rol</th>
-            <th scope="col" className={TH}>Vence</th>
-            <th scope="col" className={`${TH} w-px`}><span className="sr-only">Acciones</span></th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50 hover:bg-transparent">
+            <TableHead>Correo</TableHead>
+            <TableHead>Rol</TableHead>
+            <TableHead>Vence</TableHead>
+            <TableHead className="w-px"><span className="sr-only">Acciones</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {invitations.map((i) => (
-            <tr key={i.id} className="border-b last:border-b-0">
-              <td className={`${TD} font-mono text-xs`}>{i.email}</td>
-              <td className={TD}>
+            <TableRow key={i.id} className="border-b last:border-b-0">
+              <TableCell className="font-mono text-xs">{i.email}</TableCell>
+              <TableCell>
                 <span className="caps-md">{ROLE_LABEL[i.role]}</span>
-              </td>
-              <td className={`${TD} num`}>{day(i.expires)}</td>
-              <td className={`${TD} whitespace-nowrap`}>
+              </TableCell>
+              <TableCell className="num">{day(i.expires)}</TableCell>
+              <TableCell className="whitespace-nowrap">
                 <span className="flex gap-2">
                   <Button
                     variant="outline"
@@ -260,11 +259,11 @@ export function InvitationsTable({ org, invitations }: { org: string; invitation
                     Revocar
                   </Button>
                 </span>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

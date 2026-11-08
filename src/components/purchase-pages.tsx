@@ -1,11 +1,12 @@
 import { PageLoading } from "@/components/page-loading";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { purchaseState } from "@/lib/purchase-state";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { PageSection, TABLE_TD as TD, TABLE_TH as TH } from "@/components/page-section";
+import { PageSection } from "@/components/page-section";
 import { AttachFiles } from "@/components/attach-files";
 import { DeletePurchase } from "@/components/purchase-actions-ui";
 import { PurchaseForm, type DraftData } from "@/components/purchase-form";
@@ -88,55 +89,55 @@ async function List({ params }: { params: IdParams }) {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th scope="col" className={TH}>Factura</th>
-                <th scope="col" className={TH}>Estado</th>
-                <th scope="col" className={TH}>Fecha</th>
-                <th scope="col" className={TH}>Proveedor</th>
-                <th scope="col" className={`${TH} text-right`}>Líneas</th>
-                <th scope="col" className={`${TH} text-right`}>Unidades</th>
-                <th scope="col" className={`${TH} text-right`}>Recibidas</th>
-                <th scope="col" className={`${TH} text-right`}>Sin reservar</th>
-                <th scope="col" className={`${TH} text-right`}>Total c/IVA</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-transparent">
+                <TableHead>Factura</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Proveedor</TableHead>
+                <TableHead className="text-right">Líneas</TableHead>
+                <TableHead className="text-right">Unidades</TableHead>
+                <TableHead className="text-right">Recibidas</TableHead>
+                <TableHead className="text-right">Sin reservar</TableHead>
+                <TableHead className="text-right">Total c/IVA</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {purchases.map((p) => {
                 const t = totals.get(p.id);
                 const draft = p.status === "draft";
                 return (
-                  <tr key={p.id} className="border-b last:border-b-0 hover:bg-accent/60">
-                    <td className={`${TD} p-0`}>
+                  <TableRow key={p.id} className="border-b last:border-b-0 hover:bg-accent/60">
+                    <TableCell className="p-0">
                       <Link
                         href={`/${org}/contratos/${id}/compras/${p.id}${draft ? "/editar" : ""}`}
                         className="block px-4 py-3 font-mono font-medium underline-offset-4 hover:underline"
                       >
                         {p.number ?? "Sin número"}
                       </Link>
-                    </td>
-                    <td className={TD}>
+                    </TableCell>
+                    <TableCell>
                       <Badge variant={purchaseState(p.status, t).variant}>{purchaseState(p.status, t).label}</Badge>
-                    </td>
-                    <td className={`${TD} num whitespace-nowrap`}>{formatIso(p.purchased_on)}</td>
-                    <td className={TD}>{(p.supplier_id && supplier.get(p.supplier_id)) || "—"}</td>
-                    <td className={`${TD} num text-right`}>{t ? Number(t.lines) : 0}</td>
-                    <td className={`${TD} num text-right`}>{t ? Number(t.units) : 0}</td>
-                    <td className={cn(TD, "num text-right", t && Number(t.received) >= Number(t.units) && Number(t.units) > 0 && "font-medium")}>
+                    </TableCell>
+                    <TableCell className="num whitespace-nowrap">{formatIso(p.purchased_on)}</TableCell>
+                    <TableCell>{(p.supplier_id && supplier.get(p.supplier_id)) || "—"}</TableCell>
+                    <TableCell className="num text-right">{t ? Number(t.lines) : 0}</TableCell>
+                    <TableCell className="num text-right">{t ? Number(t.units) : 0}</TableCell>
+                    <TableCell className={cn("num text-right", t && Number(t.received) >= Number(t.units) && Number(t.units) > 0 && "font-medium")}>
                       {t ? Number(t.received) : 0}
-                    </td>
-                    <td className={cn(TD, "num text-right", t && Number(t.unassigned) > 0 && "font-medium")}>
+                    </TableCell>
+                    <TableCell className={cn("num text-right", t && Number(t.unassigned) > 0 && "font-medium")}>
                       {draft ? "—" : t ? Number(t.unassigned) : 0}
-                    </td>
-                    <td className={`${TD} num text-right`}>
+                    </TableCell>
+                    <TableCell className="num text-right">
                       {t ? formatCents(Number(t.subtotal_cents) + Number(t.vat_cents)) : "—"}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </PageSection>

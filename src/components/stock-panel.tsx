@@ -1,12 +1,13 @@
 "use client";
 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { startTransition, useRef, useState } from "react";
 import { Add01Icon, Edit02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FormField } from "@/components/form-field";
 import { MoneyInput } from "@/components/money-input";
 import { NumericInput } from "@/components/numeric-input";
-import { PageSection, TABLE_TD as TD, TABLE_TH as TH } from "@/components/page-section";
+import { PageSection } from "@/components/page-section";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FieldError } from "@/components/ui/field";
@@ -72,31 +73,31 @@ export function StockPanel({
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th scope="col" className={TH}>Fecha</th>
-                  <th scope="col" className={TH}>Proveedor</th>
-                  <th scope="col" className={`${TH} text-right`}>Costo s/IVA</th>
-                  <th scope="col" className={`${TH} text-right`}>Entró</th>
-                  <th scope="col" className={`${TH} text-right`}>Queda</th>
-                  <th scope="col" className={TH}>Origen</th>
-                  <th scope="col" className={TH}>Nota</th>
-                  {canEdit && <th scope="col" className={`${TH} w-px`}><span className="sr-only">Ajustar</span></th>}
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-transparent">
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Proveedor</TableHead>
+                  <TableHead className="text-right">Costo s/IVA</TableHead>
+                  <TableHead className="text-right">Entró</TableHead>
+                  <TableHead className="text-right">Queda</TableHead>
+                  <TableHead>Origen</TableHead>
+                  <TableHead>Nota</TableHead>
+                  {canEdit && <TableHead className="w-px"><span className="sr-only">Ajustar</span></TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {lots.map((l) => (
-                  <tr key={l.id} className={cn("border-b last:border-b-0", l.remaining === 0 && "text-muted-foreground")}>
-                    <td className={`${TD} num whitespace-nowrap`}>{l.date}</td>
-                    <td className={TD}>{l.supplier || "—"}</td>
-                    <td className={`${TD} num text-right`}>{l.costCents === null ? "—" : formatCents(l.costCents)}</td>
-                    <td className={`${TD} num text-right`}>{l.received}</td>
-                    <td className={`${TD} num text-right font-medium`}>{l.remaining}</td>
-                    <td className={TD}>{KIND_LABEL[l.kind]}</td>
-                    <td className={`${TD} max-w-64 break-words`}>{l.note || "—"}</td>
+                  <TableRow key={l.id} className={cn("border-b last:border-b-0", l.remaining === 0 && "text-muted-foreground")}>
+                    <TableCell className="num whitespace-nowrap">{l.date}</TableCell>
+                    <TableCell>{l.supplier || "—"}</TableCell>
+                    <TableCell className="num text-right">{l.costCents === null ? "—" : formatCents(l.costCents)}</TableCell>
+                    <TableCell className="num text-right">{l.received}</TableCell>
+                    <TableCell className="num text-right font-medium">{l.remaining}</TableCell>
+                    <TableCell>{KIND_LABEL[l.kind]}</TableCell>
+                    <TableCell className="max-w-64 break-words">{l.note || "—"}</TableCell>
                     {canEdit && (
-                      <td className={cn(TD, "p-1")}>
+                      <TableCell className={cn("p-1")}>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -106,12 +107,12 @@ export function StockPanel({
                         >
                           <HugeiconsIcon icon={Edit02Icon} className="size-4" />
                         </Button>
-                      </td>
+                      </TableCell>
                     )}
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </PageSection>
