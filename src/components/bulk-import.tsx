@@ -37,7 +37,8 @@ type Row = {
   description: string;
   quantity: string;
   unit: string;
-  cpc: string;
+  // Precio referencial unitario (sin IVA): se escribe a mano al revisar.
+  price: string;
   raw: string;
   review: boolean;
 };
@@ -86,7 +87,8 @@ const ReviewRow = memo(function ReviewRow({
         {err("quantity") && <p className="pt-1 text-xs text-destructive">{err("quantity")}</p>}
       </td>
       <td className="px-2 py-1.5">
-        <Input aria-label={`CPC, fila ${i + 1}`} aria-invalid={!!err("cpc") || undefined} className="h-8 font-mono" value={r.cpc} onChange={(e) => onPatch(r.id, { cpc: e.target.value })} />
+        <Input aria-label={`Precio ref., fila ${i + 1}`} aria-invalid={!!err("reference_price") || undefined} inputMode="decimal" placeholder="0,00" className="h-8 text-right font-mono" value={r.price} onChange={(e) => onPatch(r.id, { price: e.target.value })} />
+        {err("reference_price") && <p className="pt-1 text-xs text-destructive">{err("reference_price")}</p>}
       </td>
       <td className="px-3 py-1.5">
         <Button type="button" variant="ghost" size="icon" className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Quitar la fila ${i + 1}`} onClick={() => onRemove(r.id)}>
@@ -172,7 +174,7 @@ export function BulkImport({
           description: r.description,
           quantity: r.quantity,
           unit: "unit",
-          cpc: r.cpc,
+          price: "",
           raw: r.raw,
           review: r.review,
         })),
@@ -215,7 +217,7 @@ export function BulkImport({
         org,
         contractId,
         listId,
-        rows.map((r) => ({ partNumber: r.part, description: r.description, quantity: r.quantity, unit: r.unit, cpc: r.cpc })),
+        rows.map((r) => ({ partNumber: r.part, description: r.description, quantity: r.quantity, unit: r.unit, referencePrice: r.price })),
       );
       setSaving(false);
       if (res?.error) setError(res.error);
@@ -409,7 +411,7 @@ export function BulkImport({
                       <th className="w-56 px-2 py-2">Part. num.</th>
                       <th className="px-2 py-2">Descripción</th>
                       <th className="w-32 px-2 py-2">Cantidad</th>
-                      <th className="w-44 px-2 py-2">CPC</th>
+                      <th className="w-44 px-2 py-2 text-right">Precio ref.</th>
                       <th className="w-px px-3 py-2"><span className="sr-only">Quitar</span></th>
                     </tr>
                   </thead>

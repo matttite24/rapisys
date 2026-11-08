@@ -3,7 +3,7 @@
 import { finishBlocker } from "@/lib/contract-completion";
 import { revalidatePath } from "next/cache";
 import { MAX_LINES_PER_LIST, STATUS_ORDER } from "@/lib/contracts";
-import { parseDecimal } from "@/lib/money";
+import { parseCents, parseDecimal } from "@/lib/money";
 import { isUnit } from "@/lib/units";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
@@ -30,17 +30,18 @@ type LineValues = {
   description: string;
   quantity: number;
   unit: string;
-  cpc: string | null;
+  // Precio referencial unitario, sin IVA, en centavos.
+  referencePriceCents: number | null;
 };
 
-type RawLine = { partNumber: string; description: string; quantity: string; unit: string; cpc: string };
+type RawLine = { partNumber: string; description: string; quantity: string; unit: string; referencePrice: string };
 
 // Valida los campos de una línea; los mismos para agregar, editar y la carga masiva.
 function parseLineValues(raw: RawLine): { values: LineValues } | { fields: Record<string, string> } {
   const partNumber = raw.partNumber.trim();
   const description = raw.description.trim();
   const unit = raw.unit.trim();
-  const cpc = raw.cpc.trim();
+  const priceText = raw.referencePrice.trim();
   const quantity = parseDecimal(raw.quantity.trim());
 
   const fields: Record<string, string> = {};
@@ -51,11 +52,17 @@ function parseLineValues(raw: RawLine): { values: LineValues } | { fields: Recor
     fields.quantity = "Escribe una cantidad mayor a 0, con máximo 2 decimales.";
   }
   if (!isUnit(unit)) fields.unit = "Elige una unidad de medida.";
-  if (cpc.length > 20) fields.cpc = "Máximo 20 caracteres.";
+  let referencePriceCents: number | null = null;
+  if (priceText) {
+    const price = parseCents(priceText);
+    if (!price.ok) fields.reference_price = price.error;
+    else if (price.cents > 10_000_000_000) fields.reference_price = "El precio es demasiado alto.";
+    else referencePriceCents = price.cents;
+  }
   if (Object.keys(fields).length || quantity === null) return { fields };
 
   return {
-    values: { partNumber: partNumber || null, description, quantity, unit, cpc: cpc || null },
+    values: { partNumber: partNumber || null, description, quantity, unit, referencePriceCents },
   };
 }
 
@@ -65,7 +72,7 @@ function parseLine(formData: FormData) {
     description: text(formData, "description"),
     quantity: text(formData, "quantity"),
     unit: text(formData, "unit"),
-    cpc: text(formData, "cpc"),
+    referencePrice: text(formData, "reference_price"),
   });
 }
 
@@ -96,7 +103,7 @@ export async function addLines(
       description: v.description,
       quantity: v.quantity,
       unit: v.unit,
-      cpc: v.cpc ?? "",
+      reference_price_cents: v.referencePriceCents,
     });
   });
   if (Object.keys(fields).length) return { fields };
@@ -133,7 +140,7 @@ export async function addLine(
     p_description: v.description,
     p_quantity: v.quantity,
     p_unit: v.unit,
-    p_cpc: v.cpc as string,
+    p_reference_price_cents: v.referencePriceCents,
   });
   if (error) {
     if (error.message === "list_not_found") return { error: "No encontramos la lista." };
@@ -175,7 +182,7 @@ export async function updateLine(
       description: v.description,
       quantity: v.quantity,
       unit: v.unit,
-      cpc: v.cpc,
+      reference_price_cents: v.referencePriceCents,
     })
     .eq("id", lineId)
     .eq("contract_id", contractId)

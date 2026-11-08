@@ -42,7 +42,6 @@ type View = {
     description: string;
     quantity: number;
     unit: string;
-    cpc: string | null;
   }[];
   keys: { id: string; part: string | null; description: string }[];
 };
@@ -94,6 +93,18 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
     view.keys.map((k, i) => [k.id, { n: i + 1, dupOf: dups[i]?.kind === "batch" ? dups[i]!.ref : undefined }]),
   );
 
+  // El precio referencial no viene en la función de la lista: se piden aparte los de las líneas de esta página.
+  const lineIds = view.lines.map((l) => l.id);
+  const priceRes = lineIds.length
+    ? await supabase.from("contract_items").select("id, reference_price_cents").in("id", lineIds)
+    : { data: [] };
+  const prices = new Map(
+    ((priceRes.data ?? []) as { id: string; reference_price_cents: number | null }[]).map((r) => [
+      r.id,
+      r.reference_price_cents === null ? null : Number(r.reference_price_cents),
+    ]),
+  );
+
   const lines: LineView[] = view.lines.map((l, i) => ({
     id: l.id,
     listId: l.list_id,
@@ -103,7 +114,7 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
     description: l.description,
     quantity: Number(l.quantity),
     unit: l.unit,
-    cpc: l.cpc ?? "",
+    referencePriceCents: prices.get(l.id) ?? null,
   }));
 
   const extras = await assetExtras(supabase, view.lists.map((l) => l.asset_id));

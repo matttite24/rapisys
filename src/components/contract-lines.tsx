@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { addLine, removeLine, updateLine, type LineState } from "@/lib/contract-actions";
 import { LINES_PAGE_SIZE, MAX_LINES_PER_LIST } from "@/lib/contracts";
-import { parseDecimal } from "@/lib/money";
+import { centsToInput, formatCents, parseCents, parseDecimal } from "@/lib/money";
 import { UNITS, isUnit, unitLabel } from "@/lib/units";
 
 // Encabezado de esta lista: negrita y texto pleno, no gris.
@@ -46,7 +46,8 @@ export type LineView = {
   description: string;
   quantity: number;
   unit: string;
-  cpc: string;
+  // Precio referencial unitario (sin IVA), en centavos.
+  referencePriceCents: number | null;
 };
 
 type OptimisticAction =
@@ -363,7 +364,7 @@ export function LinesTableSkeleton({ rows = 6 }: { rows?: number }) {
             <TableHead className={TH}>Descripción</TableHead>
             <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
             <TableHead className={TH}>Unidad</TableHead>
-            <TableHead className={TH}>CPC</TableHead>
+            <TableHead className={`${TH} text-right`}>Precio ref.</TableHead>
             <TableHead className={`${TH} w-px`}><span className="sr-only">Acciones</span></TableHead>
           </TableRow>
         </TableHeader>
@@ -375,7 +376,7 @@ export function LinesTableSkeleton({ rows = 6 }: { rows?: number }) {
               <TableCell className={cn(TD, "w-1/2")}><Skeleton className={cn("h-4", SKELETON_WIDTHS[(i + 2) % 6])} /></TableCell>
               <TableCell className={TD}><Skeleton className="ml-auto h-4 w-8" /></TableCell>
               <TableCell className={TD}><Skeleton className="h-4 w-16" /></TableCell>
-              <TableCell className={TD}><Skeleton className="h-4 w-24" /></TableCell>
+              <TableCell className={TD}><Skeleton className="ml-auto h-4 w-16" /></TableCell>
               <TableCell className={cn(TD, "p-1")}><Skeleton className="size-7" /></TableCell>
             </TableRow>
           ))}
@@ -456,7 +457,7 @@ function LinesTable({
             <TableHead className={TH}>Descripción</TableHead>
             <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
             <TableHead className={TH}>Unidad</TableHead>
-            <TableHead className={TH}>CPC</TableHead>
+            <TableHead className={`${TH} text-right`}>Precio ref.</TableHead>
             <TableHead className={`${TH} w-px`}><span className="sr-only">Acciones</span></TableHead>
           </TableRow>
         </TableHeader>
@@ -516,7 +517,7 @@ function LineRow({
       <TableCell className={`${TD} break-words`}>{l.description}</TableCell>
       <TableCell className={`${TD} num text-right`}>{l.quantity}</TableCell>
       <TableCell className={`${TD} whitespace-nowrap`}>{unitLabel(l.unit)}</TableCell>
-      <TableCell className={`${TD} whitespace-nowrap font-mono text-xs`}>{l.cpc || "—"}</TableCell>
+      <TableCell className={`${TD} num whitespace-nowrap text-right`}>{l.referencePriceCents === null ? "—" : formatCents(l.referencePriceCents)}</TableCell>
       <TableCell className={cn(TD, "p-1 whitespace-nowrap")}>
         {saving ? null : (
           <span className="flex gap-1">
@@ -596,20 +597,26 @@ function LineForm({
     const description = String(data.get("description") ?? "").trim();
     const quantity = parseDecimal(String(data.get("quantity") ?? ""));
     const unit = String(data.get("unit") ?? "");
-    const cpc = String(data.get("cpc") ?? "").trim();
+    const priceText = String(data.get("reference_price") ?? "").trim();
 
     // Se valida aquí para responder al instante; el servidor vuelve a validar.
     const fields: Record<string, string> = {};
     if (!description) fields.description = MESSAGES.description;
     if (quantity === null || quantity <= 0) fields.quantity = MESSAGES.quantity;
     if (!isUnit(unit)) fields.unit = MESSAGES.unit;
+    let referencePriceCents: number | null = null;
+    if (priceText) {
+      const price = parseCents(priceText);
+      if (!price.ok) fields.reference_price = price.error;
+      else referencePriceCents = price.cents;
+    }
     if (Object.keys(fields).length || quantity === null) {
       setState({ fields });
       return;
     }
 
     setState(undefined);
-    const line = { listId, n: editing?.n ?? 0, partNumber, description, quantity, unit, cpc };
+    const line = { listId, n: editing?.n ?? 0, partNumber, description, quantity, unit, referencePriceCents };
 
     if (editing) {
       // La fila cambia ya; el formulario sale de edición cuando el servidor confirma.
@@ -633,7 +640,7 @@ function LineForm({
       const res = await addLine(org, contractId, listId, data);
       if (res?.error || res?.fields) {
         // No se guardó: se devuelve lo escrito para no perderlo.
-        for (const name of ["part_number", "description", "quantity", "unit", "cpc"]) {
+        for (const name of ["part_number", "description", "quantity", "unit", "reference_price"]) {
           const el = form.elements.namedItem(name);
           if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) {
             el.value = String(data.get(name) ?? "");
@@ -689,9 +696,17 @@ function LineForm({
           </NativeSelect>
         )}
       </FormField>
-      <FormField name="cpc" label="CPC" error={errors.cpc}>
+      <FormField name="reference_price" label="Precio ref." error={errors.reference_price}>
         {(a11y) => (
-          <Input {...a11y} autoComplete="off" maxLength={20} className="font-mono" defaultValue={editing?.cpc} />
+          <Input
+            {...a11y}
+            autoComplete="off"
+            inputMode="decimal"
+            maxLength={16}
+            className="text-right font-mono"
+            placeholder="0,00"
+            defaultValue={editing?.referencePriceCents != null ? centsToInput(editing.referencePriceCents) : ""}
+          />
         )}
       </FormField>
       {/* Etiqueta vacía del mismo alto que las demás: el botón queda a la altura de los campos. */}

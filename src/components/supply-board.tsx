@@ -33,7 +33,6 @@ export type SupplyLine = {
   description: string;
   quantity: number;
   unit: string;
-  cpc: string;
   reserved: number;
   purchased: number;
   delivered: number;

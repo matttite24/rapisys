@@ -104,7 +104,7 @@ async function Report({ params }: { params: DeliveryParams }) {
     dl.length
       ? supabase
           .from("contract_item_supply")
-          .select("id, n, part_number, description, unit, cpc, quantity")
+          .select("id, n, part_number, description, unit, quantity")
           .in("id", dl.map((l) => l.contract_item_id))
       : { data: [] },
     list?.asset_id
@@ -118,7 +118,6 @@ async function Report({ params }: { params: DeliveryParams }) {
     part_number: string | null;
     description: string;
     unit: string;
-    cpc: string | null;
     quantity: number;
   }[]).sort((a, b) => a.n - b.n);
   const asset = assetRes.data as {
@@ -210,7 +209,6 @@ async function Report({ params }: { params: DeliveryParams }) {
               <th className="px-2 py-2">Descripción</th>
               <th className="px-2 py-2 text-right">Cantidad</th>
               <th className="px-2 py-2">Unidad</th>
-              <th className="px-2 py-2">CPC</th>
             </tr>
           </thead>
           <tbody>
@@ -221,7 +219,6 @@ async function Report({ params }: { params: DeliveryParams }) {
                 <td className="px-2 py-2">{i.description}</td>
                 <td className="num px-2 py-2 text-right">{qtyByItem.get(i.id)}</td>
                 <td className="px-2 py-2">{unitLabel(i.unit)}</td>
-                <td className="px-2 py-2 font-mono text-xs">{i.cpc ?? "—"}</td>
               </tr>
             ))}
           </tbody>

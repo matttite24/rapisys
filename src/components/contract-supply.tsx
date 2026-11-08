@@ -46,7 +46,6 @@ type View = {
     description: string;
     quantity: number;
     unit: string;
-    cpc: string | null;
     reserved: number;
     purchased: number;
     delivered: number;
@@ -151,7 +150,6 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     description: l.description,
     quantity: Number(l.quantity),
     unit: l.unit,
-    cpc: l.cpc ?? "",
     reserved: Number(l.reserved),
     purchased: Number(l.purchased),
     delivered: Number(l.delivered),
