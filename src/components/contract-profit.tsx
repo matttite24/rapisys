@@ -106,61 +106,6 @@ async function Profit({ params }: { params: IdParams }) {
 
       <ProfitTabs
         tabs={[
-          ...[...groups.entries()].map(([listId, g]) => {
-          const gs = contractProfit(g.rows, 0);
-          return {
-            key: listId,
-            label: g.name,
-            count: g.rows.length,
-            figures: [
-              { label: g.rows.length === 1 ? "Línea" : "Líneas", value: String(g.rows.length) },
-              { label: "Utilidad de la lista", value: formatCents(gs.itemsProfit), ...(gs.itemsProfit < 0 ? { tone: "warn" as const } : {}) },
-            ],
-            panel: (
-            <PageSection className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-surface-strong">
-                    <tr className="border-b">
-                      <th scope="col" className={TH}>Item</th>
-                      <th scope="col" className={`${TH} text-right`}>Cant.</th>
-                      <th scope="col" className={`${TH} text-right`}>Precio ref.</th>
-                      <th scope="col" className={`${TH} text-right`}>Costo</th>
-                      <th scope="col" className={`${TH} text-right`}>Utilidad</th>
-                      <th scope="col" className={`${TH} text-right`}>Margen</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {g.rows.map((r) => {
-                      const p = lineProfit(r);
-                      const done = p.kind === "ok" || p.kind === "partial";
-                      const fix = `${base}/abastecimiento?${new URLSearchParams({ lista: r.list_id, q: r.part_number || r.description })}`;
-                      return (
-                        <tr key={r.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
-                          <td className={cn(TD, "min-w-56")}>
-                            <Link href={fix} className="underline-offset-4 after:absolute after:inset-0 hover:underline" title="Ajustar en Abastecimiento">{r.description}</Link>
-                            {r.part_number && <p className="font-mono text-xs text-muted-foreground">{r.part_number}</p>}
-                          </td>
-                          <td className={`${TD} num whitespace-nowrap text-right`}>{Number(r.quantity)} {r.unit}</td>
-                          <td className={`${TD} num whitespace-nowrap text-right`}>{r.referenceCents === null ? "—" : formatCents(r.referenceCents)}</td>
-                          <td className={`${TD} num whitespace-nowrap text-right`}>{r.sources > 0 ? formatCents(r.costCents) : "—"}</td>
-                          <td className={cn(TD, "num whitespace-nowrap text-right font-medium", done && tone(p.profitCents))}>
-                            {done ? formatCents(p.profitCents) : <span className="text-xs font-normal text-muted-foreground">{p.kind === "none" ? "Sin precio ref." : "Sin compra"}</span>}
-                            {p.kind === "partial" && <span className="block text-xs font-normal text-muted-foreground">Costo incompleto</span>}
-                          </td>
-                          <td className={cn(TD, "num whitespace-nowrap text-right", done && p.marginPct !== null && p.marginPct < 0 && "text-destructive")}>
-                            {done ? pct(p.marginPct) : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </PageSection>
-            ),
-          };
-        }),
           { key: "facturas", label: "Facturas", count: purchases.length, figures: [{ label: "Facturas", value: String(purchases.length) }, { label: "Total s/IVA", value: formatCents(invoiced) }], panel: (
       <PageSection className="p-0">
         {purchases.length === 0 ? (
@@ -232,6 +177,62 @@ async function Profit({ params }: { params: IdParams }) {
         )}
       </PageSection>
           ) },
+          ...[...groups.entries()].map(([listId, g]) => {
+          const gs = contractProfit(g.rows, 0);
+          return {
+            key: listId,
+            list: true,
+            label: g.name,
+            count: g.rows.length,
+            figures: [
+              { label: g.rows.length === 1 ? "Línea" : "Líneas", value: String(g.rows.length) },
+              { label: "Utilidad de la lista", value: formatCents(gs.itemsProfit), ...(gs.itemsProfit < 0 ? { tone: "warn" as const } : {}) },
+            ],
+            panel: (
+            <PageSection className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-surface-strong">
+                    <tr className="border-b">
+                      <th scope="col" className={TH}>Item</th>
+                      <th scope="col" className={`${TH} text-right`}>Cant.</th>
+                      <th scope="col" className={`${TH} text-right`}>Precio ref.</th>
+                      <th scope="col" className={`${TH} text-right`}>Costo</th>
+                      <th scope="col" className={`${TH} text-right`}>Utilidad</th>
+                      <th scope="col" className={`${TH} text-right`}>Margen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.rows.map((r) => {
+                      const p = lineProfit(r);
+                      const done = p.kind === "ok" || p.kind === "partial";
+                      const fix = `${base}/abastecimiento?${new URLSearchParams({ lista: r.list_id, q: r.part_number || r.description })}`;
+                      return (
+                        <tr key={r.id} className="relative border-b last:border-b-0 hover:bg-accent/40">
+                          <td className={cn(TD, "min-w-56")}>
+                            <Link href={fix} className="underline-offset-4 after:absolute after:inset-0 hover:underline" title="Ajustar en Abastecimiento">{r.description}</Link>
+                            {r.part_number && <p className="font-mono text-xs text-muted-foreground">{r.part_number}</p>}
+                          </td>
+                          <td className={`${TD} num whitespace-nowrap text-right`}>{Number(r.quantity)} {r.unit}</td>
+                          <td className={`${TD} num whitespace-nowrap text-right`}>{r.referenceCents === null ? "—" : formatCents(r.referenceCents)}</td>
+                          <td className={`${TD} num whitespace-nowrap text-right`}>{r.sources > 0 ? formatCents(r.costCents) : "—"}</td>
+                          <td className={cn(TD, "num whitespace-nowrap text-right font-medium", done && tone(p.profitCents))}>
+                            {done ? formatCents(p.profitCents) : <span className="text-xs font-normal text-muted-foreground">{p.kind === "none" ? "Sin precio ref." : "Sin compra"}</span>}
+                            {p.kind === "partial" && <span className="block text-xs font-normal text-muted-foreground">Costo incompleto</span>}
+                          </td>
+                          <td className={cn(TD, "num whitespace-nowrap text-right", done && p.marginPct !== null && p.marginPct < 0 && "text-destructive")}>
+                            {done ? pct(p.marginPct) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </PageSection>
+            ),
+          };
+        }),
         ]}
       />
     </>
