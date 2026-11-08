@@ -25,13 +25,14 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
 
   const supabase = await createClient();
   const count = (table: string) => supabase.from(table).select("id", { count: "exact", head: true }).eq("contract_id", id);
-  const [{ data: client }, lists, lines, purchases, deliveries, expenses, blocker] = await Promise.all([
+  const [{ data: client }, lists, lines, purchases, deliveries, expenses, files, blocker] = await Promise.all([
     supabase.from("clients").select("name").eq("id", c.client_id).maybeSingle(),
     count("contract_lists"),
     count("contract_items"),
     count("purchases"),
     count("deliveries"),
     count("contract_expenses"),
+    count("contract_files"),
     c.status === "in_progress" ? finishBlocker(supabase, id) : Promise.resolve(null),
   ]);
 
@@ -71,6 +72,7 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
           compras: purchases.count ?? 0,
           entregas: deliveries.count ?? 0,
           gastos: expenses.count ?? 0,
+          archivos: files.count ?? 0,
         }}
       />
       <PanelTop>
