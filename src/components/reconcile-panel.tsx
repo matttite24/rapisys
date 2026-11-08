@@ -147,6 +147,38 @@ export function ReconcilePanel({
         </div>
       </div>
 
+      <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b px-4">
+        <div role="tablist" aria-label="Qué mostrar" className="flex h-full min-w-0 gap-3 overflow-x-auto [scrollbar-width:none]">
+          {(
+            [
+              ["asignados", "Asignados", sources?.length ?? null, ClipboardCheckIcon],
+              ["cotizaciones", "Cotizaciones", null, ClipboardPenLineIcon],
+              ["facturas", "Facturas", null, Invoice01Icon],
+              ["bodega", "Bodega", null, Archive02Icon],
+            ] as const
+          ).map(([key, label, count, icon]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={rc.source === key}
+              disabled={!canAct && key !== "asignados" && key !== "cotizaciones"}
+              onClick={() => rc.setSource(key)}
+              className={cn(
+                "-mb-px flex h-full shrink-0 items-center gap-1.5 border-b-2 font-sans text-sm transition-colors",
+                rc.source === key ? "border-b-brand font-bold text-foreground" : "border-b-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <HugeiconsIcon icon={icon} className="size-4 shrink-0" aria-hidden="true" />
+              {label}
+              {count !== null && count > 0 && (
+                <span className="num bg-muted px-1.5 py-0.5 text-[0.6875rem] leading-none text-muted-foreground">{count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Presupuesto de la línea: el precio referencial contra el costo de lo asignado, para no pasarse de lo que paga el contrato. */}
       {focus && (
         <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 border-b bg-surface-strong px-4 py-2 text-xs" aria-live="polite">
@@ -182,38 +214,6 @@ export function ReconcilePanel({
           )}
         </div>
       )}
-
-      <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b px-4">
-        <div role="tablist" aria-label="Qué mostrar" className="flex h-full min-w-0 gap-3 overflow-x-auto [scrollbar-width:none]">
-          {(
-            [
-              ["asignados", "Asignados", sources?.length ?? null, ClipboardCheckIcon],
-              ["cotizaciones", "Cotizaciones", null, ClipboardPenLineIcon],
-              ["facturas", "Facturas", null, Invoice01Icon],
-              ["bodega", "Bodega", null, Archive02Icon],
-            ] as const
-          ).map(([key, label, count, icon]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={rc.source === key}
-              disabled={!canAct && key !== "asignados" && key !== "cotizaciones"}
-              onClick={() => rc.setSource(key)}
-              className={cn(
-                "-mb-px flex h-full shrink-0 items-center gap-1.5 border-b-2 font-sans text-sm transition-colors",
-                rc.source === key ? "border-b-brand font-bold text-foreground" : "border-b-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <HugeiconsIcon icon={icon} className="size-4 shrink-0" aria-hidden="true" />
-              {label}
-              {count !== null && count > 0 && (
-                <span className="num bg-muted px-1.5 py-0.5 text-[0.6875rem] leading-none text-muted-foreground">{count}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {!focus ? (
