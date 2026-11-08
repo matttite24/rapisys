@@ -6,7 +6,8 @@ import { Add01Icon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { HeaderAction } from "@/components/header-action";
 import { PageFigures, PageFooterActions, PagePagination } from "@/components/page-shortcuts";
-import { PageSection, TABLE_TH, TABLE_TD } from "@/components/page-section";
+import { PageSection } from "@/components/page-section";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, NO_RESULTS_IMAGE } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/search-input";
@@ -46,14 +47,30 @@ export function DirectoryBoard({ org, initial }: { org: string; initial: Directo
       <EmptyState fill image={q ? NO_RESULTS_IMAGE : "File Cabinet "} action={!q && <Button variant="brand" onClick={() => setNewOpen(true)}>{cfg.newLabel}</Button>}>
         {q ? `Ningún ${cfg.singular} coincide con la búsqueda.` : managers ? cfg.empty : scope ? `Todavía no hay ${CLIENT_TYPE_PLURAL[scope].toLowerCase()} registradas.` : "Todavía no hay clientes en el directorio."}
       </EmptyState>
-    ) : <div className="overflow-x-auto"><table className="w-full text-sm">
-      <thead className="bg-surface-strong"><tr className="border-b"><th scope="col" className={TABLE_TH}>Nombre</th>{!managers && <th scope="col" className={TABLE_TH}>Tipo</th>}<th scope="col" className={TABLE_TH}>RUC / cédula</th><th scope="col" className={TABLE_TH}>Dirección</th></tr></thead>
-      <tbody>{rows.map((row) => <tr key={row.id} className="border-b last:border-b-0 hover:bg-accent/40">
-        <td className={`${TABLE_TD} p-0`}><Link href={`/${org}/${cfg.path}/${row.id}`} className="block px-4 py-3 font-medium underline-offset-4 hover:underline">{row.name}</Link></td>
-        {!managers && <td className={TABLE_TD}>{row.client_type ? CLIENT_TYPES[row.client_type] : "—"}</td>}
-        <td className={`${TABLE_TD} num`}>{row.ruc || "—"}</td><td className={TABLE_TD}>{row.address || "—"}</td>
-      </tr>)}</tbody>
-    </table></div>}
+    ) : (
+      <Table>
+        <TableHeader className="bg-surface-strong">
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Nombre</TableHead>
+            {!managers && <TableHead>Tipo</TableHead>}
+            <TableHead>RUC / cédula</TableHead>
+            <TableHead>Dirección</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.id} className="hover:bg-accent/40">
+              <TableCell className="p-0">
+                <Link href={`/${org}/${cfg.path}/${row.id}`} className="block px-4 py-3 font-medium underline-offset-4 hover:underline">{row.name}</Link>
+              </TableCell>
+              {!managers && <TableCell>{row.client_type ? CLIENT_TYPES[row.client_type] : "—"}</TableCell>}
+              <TableCell className="num">{row.ruc || "—"}</TableCell>
+              <TableCell>{row.address || "—"}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    )}
     <PagePagination basePath={`/${org}/directorio`} page={page} total={loading || error ? 0 : total} params={params} />
     <Pager basePath={`/${org}/directorio`} page={page} total={loading || error ? 0 : total} params={params} className="md:hidden" />
   </PageSection>;
