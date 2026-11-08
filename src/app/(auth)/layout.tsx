@@ -11,47 +11,34 @@ const PHASES = [
   { label: "Cobrado", dot: "bg-state-delivered" },
 ];
 
-function Brand({ className }: { className?: string }) {
-  return (
-    <div className={`flex items-center gap-3 font-mono text-lg font-medium ${className ?? ""}`}>
-      <span aria-hidden className="grid size-9 place-items-center bg-brand text-brand-foreground">
-        <HugeiconsIcon icon={PowerServiceIcon} className="size-5" strokeWidth={2} />
-      </span>
-      Rapisys
-    </div>
-  );
-}
-
-// Mismo lenguaje que la app: capas grises separadas por líneas finas, rótulos en mayúsculas mono y el amarillo solo en
-// la marca y la acción principal.
+// La pantalla de entrada es el marco de la app sin su contenido: fila superior con la marca y el tema entre líneas finas,
+// y el formulario como una celda sobre la capa gris.
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="grid min-h-svh bg-background lg:grid-cols-[5fr_4fr]">
-      <section className="hidden flex-col justify-between border-r bg-layer-1 p-10 lg:flex">
-        <Brand />
-        <div className="flex max-w-md flex-col gap-4">
-          <p className="caps text-muted-foreground">Contratos de suministro</p>
-          <h2 className="text-4xl leading-tight font-semibold text-balance">Gestión de procesos de contrato</h2>
+    <main className="flex min-h-svh flex-col bg-layer-2">
+      <header className="flex h-15 shrink-0 items-stretch border-b bg-background">
+        <div className="grid w-16 shrink-0 place-items-center bg-brand text-brand-foreground">
+          <HugeiconsIcon icon={PowerServiceIcon} aria-hidden className="size-6" strokeWidth={2} />
         </div>
-        <ol aria-label="Fases de un contrato" className="grid grid-cols-5 divide-x border bg-background">
-          {PHASES.map((phase, i) => (
-            <li key={phase.label} className="flex flex-col gap-2 px-3 py-3">
-              <span className="num text-2xs text-muted-foreground">{String(i + 1).padStart(2, "0")}</span>
-              <span className="flex items-center gap-2 text-sm font-medium">
+        <p className="flex min-w-0 flex-1 items-center px-6 font-mono text-lg font-medium">Rapisys</p>
+        <div className="grid w-16 shrink-0 place-items-center border-l [&_button]:size-full [&_button]:rounded-none">
+          <ThemeToggle variant="ghost" />
+        </div>
+      </header>
+
+      <section className="flex flex-1 flex-col items-center justify-center gap-10 px-4 py-10">
+        {children}
+        <div className="flex max-w-sm flex-col items-center gap-3 text-center">
+          <p className="caps text-muted-foreground">Gestión de procesos de contrato</p>
+          <ol aria-label="Fases de un contrato" className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            {PHASES.map((phase) => (
+              <li key={phase.label} className="flex items-center gap-2">
                 <span aria-hidden className={`size-2 shrink-0 rounded-full ${phase.dot}`} />
                 {phase.label}
-              </span>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="relative flex flex-col items-center justify-center gap-8 p-6">
-        <div className="absolute top-4 right-4">
-          <ThemeToggle />
+              </li>
+            ))}
+          </ol>
         </div>
-        <Brand className="lg:hidden" />
-        {children}
       </section>
     </main>
   );

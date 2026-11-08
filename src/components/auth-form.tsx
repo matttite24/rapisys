@@ -18,7 +18,7 @@ export function AuthForm({ mode, action, next }: Props) {
   const isLogin = mode === "login";
 
   return (
-    <div className="w-full max-w-sm border bg-card">
+    <div className="crosshair-start w-full max-w-sm border bg-card shadow-raised">
       <h1 className="flex h-12 items-center border-b px-6 caps-md font-bold">{isLogin ? "Iniciar sesión" : "Crear cuenta"}</h1>
       <form action={formAction} className="flex flex-col gap-6 p-6">
         <p className="text-sm text-muted-foreground">{isLogin ? "Entra a Rapisys con tu correo." : "Regístrate en Rapisys."}</p>
