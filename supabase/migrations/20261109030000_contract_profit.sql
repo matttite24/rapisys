@@ -17,6 +17,7 @@ as $$
       from (
         select
           ci.id,
+          ci.list_id,
           row_number() over (partition by ci.list_id order by ci.created_at, ci.id) as n,
           cl.name as list_name,
           ci.part_number,
