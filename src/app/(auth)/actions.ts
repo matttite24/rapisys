@@ -61,6 +61,23 @@ export async function signup(_: AuthState, formData: FormData): Promise<AuthStat
   redirect(next);
 }
 
+// Entrar con Google: Supabase manda a Google y vuelve a /auth/callback, que cierra la sesión y lleva a `next`.
+// Requiere activar el proveedor Google en Supabase (Authentication → Providers).
+export async function loginWithGoogle(_: AuthState, formData: FormData): Promise<AuthState> {
+  const next = safeNext(formData.get("next"));
+  const site =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
+    (process.env.NODE_ENV !== "production" ? (await headers()).get("origin") : null);
+  if (!site) return { error: "Falta configurar NEXT_PUBLIC_SITE_URL para entrar con Google." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${site}/auth/callback?next=${encodeURIComponent(next)}` },
+  });
+  if (error || !data.url) return { error: "No pudimos abrir Google. Inténtalo de nuevo." };
+  redirect(data.url);
+}
+
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
