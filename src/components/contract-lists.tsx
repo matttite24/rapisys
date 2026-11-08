@@ -3,6 +3,7 @@
 import { ConfirmTap } from "@/components/confirm-tap";
 import { CELL_ROW } from "@/components/cell-header";
 import { TabCount } from "@/components/count-tabs";
+import { FolderTabs } from "@/components/folder-tabs";
 import { startTransition, useEffect, useRef, useState } from "react";
 import {
   Add01Icon,
@@ -173,37 +174,13 @@ export function ListTabs({
   onSelect: (id: string) => void;
 }) {
   return (
-    // Pestañas tipo carpeta: sobre una franja gris, la activa sube al color del contenido y se une a él; las demás quedan
-    // hundidas. La línea de abajo pasa por debajo de las inactivas y la activa la tapa.
-    <div
-      role="tablist"
-      aria-label="Listas del contrato"
-      className="sticky top-0 z-20 flex h-12 items-end gap-1 overflow-x-auto overflow-y-hidden bg-layer-2 px-4 pt-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-border" />
-      <AllLists lists={lists} counts={counts} activeId={activeId} onSelect={onSelect} />
-      {lists.map((l) => {
-        const active = l.id === activeId;
-        return (
-          <button
-            key={l.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onSelect(l.id)}
-            className={cn(
-              "relative flex h-full max-w-64 shrink-0 items-center gap-2 rounded-t-lg px-4 text-sm transition-colors",
-              active
-                ? "z-10 bg-background font-semibold text-foreground"
-                : "mb-px font-medium text-muted-foreground hover:bg-foreground/[0.09] hover:text-foreground",
-            )}
-          >
-            <span className="truncate">{l.name}</span>
-            <TabCount n={counts[l.id] ?? 0} active={active} />
-          </button>
-        );
-      })}
-    </div>
+    <FolderTabs
+      label="Listas del contrato"
+      tabs={lists.map((l) => ({ key: l.id, label: l.name, count: counts[l.id] ?? 0 }))}
+      activeKey={activeId}
+      onSelect={onSelect}
+      leading={<AllLists lists={lists} counts={counts} activeId={activeId} onSelect={onSelect} />}
+    />
   );
 }
 

@@ -5,6 +5,7 @@ import { Cancel01Icon, LeftToRightListBulletIcon } from "@hugeicons/core-free-ic
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CELL_ROW } from "@/components/cell-header";
 import { TabCount } from "@/components/count-tabs";
+import { FolderTabs } from "@/components/folder-tabs";
 import { SearchInput } from "@/components/search-input";
 import { PageFigures, type PageFigure } from "@/components/page-shortcuts";
 import { Button } from "@/components/ui/button";
@@ -27,44 +28,25 @@ export function ProfitTabs({ tabs, top }: { tabs: Tab[]; top?: React.ReactNode }
   return (
     <>
       {top}
-      {/* Mismas pestañas tipo carpeta que las listas del contrato. */}
-      <div
-        role="tablist"
-        aria-label="Revisión por facturas, gastos y listas"
-        className="sticky top-0 z-20 flex h-12 items-end gap-1 overflow-x-auto overflow-y-hidden bg-layer-2 px-4 pt-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-border" />
-        {lists.length > 0 && (
-          <button
-            type="button"
-            aria-label={`Ver todas las listas (${lists.length})`}
-            title="Todas las listas"
-            onClick={() => setOpen(true)}
-            className="mr-2 mb-px flex h-full shrink-0 items-center px-2 text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-5" />
-          </button>
-        )}
-        {tabs.map((t) => {
-          const on = current?.key === t.key;
-          return (
+      <FolderTabs
+        label="Revisión por facturas, gastos y listas"
+        tabs={tabs.map((t) => ({ key: t.key, label: t.label, count: t.count }))}
+        activeKey={current?.key}
+        onSelect={setActive}
+        leading={
+          lists.length > 0 ? (
             <button
-              key={t.key}
               type="button"
-              role="tab"
-              aria-selected={on}
-              onClick={() => setActive(t.key)}
-              className={cn(
-                "relative flex h-full max-w-64 shrink-0 items-center gap-2 rounded-t-lg px-4 text-sm transition-colors",
-                on ? "z-10 bg-background font-semibold text-foreground" : "mb-px font-medium text-muted-foreground hover:bg-foreground/[0.09] hover:text-foreground",
-              )}
+              aria-label={`Ver todas las listas (${lists.length})`}
+              title="Todas las listas"
+              onClick={() => setOpen(true)}
+              className="mr-2 mb-px flex h-full shrink-0 items-center px-2 text-muted-foreground transition-colors hover:text-foreground"
             >
-              <span className="truncate">{t.label}</span>
-              <TabCount n={t.count} active={on} />
+              <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-5" />
             </button>
-          );
-        })}
-      </div>
+          ) : null
+        }
+      />
       <PageFigures figures={current?.figures ?? []} />
       <p className="border-b px-4 py-3 text-xs text-muted-foreground">{current?.note}</p>
       {current?.panel}
