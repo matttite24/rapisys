@@ -6,6 +6,7 @@ import { PanelLoading } from "@/components/panel-loading";
 import { FormField } from "@/components/form-field";
 import { NumericInput } from "@/components/numeric-input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { addQuotation, listQuotations, type Quotation } from "@/lib/quotation-actions";
 import { formatCents } from "@/lib/money";
@@ -93,7 +94,7 @@ export function LineQuotations({ org, contractId, lineId, canAct, onSaved }: {
               <FormField name="contact" label="Contacto">{(props) => <Input {...props} maxLength={300} placeholder="Teléfono o correo" />}</FormField>
             </div>
             <FormField name="note" label="Gestión y siguiente paso" hint="Puedes registrar una llamada aunque todavía no tengas precio.">{(props) => (
-              <textarea {...props} required autoFocus maxLength={5000} rows={3} placeholder="Llamé al proveedor. Confirmará disponibilidad mañana…" className="w-full resize-y border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30" />
+              <Textarea {...props} required autoFocus maxLength={5000} rows={3} placeholder="Llamé al proveedor. Confirmará disponibilidad mañana…" />
             )}</FormField>
             <div className="grid grid-cols-2 gap-3">
               <FormField name="unitCost" label="Precio unitario (USD)" hint="Opcional, sin IVA">{(props) => <NumericInput {...props} kind="decimal" placeholder="0,00" />}</FormField>

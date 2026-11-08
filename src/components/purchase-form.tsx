@@ -15,6 +15,7 @@ import { NumericInput } from "@/components/numeric-input";
 import { PageSection } from "@/components/page-section";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { centsToInput, formatCents, lineAmounts, parseCents, parseDecimal, vatOf } from "@/lib/money";
 import {
@@ -568,9 +569,8 @@ export function PurchaseForm({
       <div className="border-t px-6 py-4">
         <FormField name="notes" label="Notas (opcional)">
           {(a11y) => (
-            <textarea
+            <Textarea
               {...a11y}
-              className="min-h-20 w-full min-w-0 resize-y rounded-lg border border-input bg-background px-2.5 py-2 text-base outline-none transition-[color,border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 md:text-sm"
               rows={2}
               maxLength={500}
               value={notes}

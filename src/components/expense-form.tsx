@@ -8,6 +8,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { DatePicker, toIsoDate } from "@/components/date-picker";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -85,7 +86,7 @@ export function ExpenseForm({ org, contractId, expense, onClose }: {
             {fields.lines && <p role="alert" className="text-sm text-destructive">{fields.lines}</p>}
             <Button type="button" variant="outline" size="sm" disabled={lines.length >= MAX_EXPENSE_LINES} onClick={() => { const key = nextKey.current++; setLines((current) => [...current, { key, concept: "", category: "other", amount: "" }]); clearLineErrors(); }}><HugeiconsIcon icon={Add01Icon} className="size-4" />Añadir línea</Button>
           </section>
-          <FormField name="notes" label="Observaciones (opcional)" error={fields.notes}>{(props) => <textarea {...props} maxLength={2000} rows={3} defaultValue={expense?.notes} className="w-full resize-y border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30" />}</FormField>
+          <FormField name="notes" label="Observaciones (opcional)" error={fields.notes}>{(props) => <Textarea {...props} maxLength={2000} rows={3} defaultValue={expense?.notes} />}</FormField>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         </fieldset>
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t p-4">
