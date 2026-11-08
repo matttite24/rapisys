@@ -88,7 +88,7 @@ async function Profit({ params }: { params: IdParams }) {
     <>
 
       <ProfitTabs
-        summary={(
+        top={(
       <PageSection label="Revisión de rentabilidad" meta="Sin IVA" className="p-0">
         <dl className="grid divide-x divide-y border-b sm:grid-cols-2 lg:grid-cols-5 lg:divide-y-0 [&>div]:p-4">
           {figures.map((f) => (
@@ -99,13 +99,17 @@ async function Profit({ params }: { params: IdParams }) {
             </div>
           ))}
         </dl>
+      </PageSection>
+        )}
+        summary={(
+          <PageSection className="p-0">
         <p className="px-4 py-3 text-xs text-muted-foreground">
           Utilidad de un item = precio ref. − costo de compra. Utilidad del contrato = suma de las utilidades − gastos.
           {sum.pending > 0 && ` ${sum.pending} sin compra todavía no cuentan.`}
           {sum.noPrice > 0 && ` ${sum.noPrice} sin precio ref. no se pueden calcular.`}
           {sum.partial > 0 && ` ${sum.partial} tienen costo incompleto.`}
         </p>
-      </PageSection>
+          </PageSection>
         )}
         tabs={[
           { key: "facturas", label: "Facturas", count: purchases.length, figures: [{ label: "Facturas", value: String(purchases.length) }, { label: "Total s/IVA", value: formatCents(invoiced) }], panel: (
