@@ -8,7 +8,7 @@ import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
 type Meta = { name: string; size: number; type: string; source: FileSource; sourceId: string | null };
-export type PrepareResult = { error?: string; path?: string; token?: string; mime?: string };
+export type PrepareResult = { error?: string; path?: string; token?: string; mime?: string; thumbPath?: string; thumbToken?: string };
 export type FileResult = { error?: string; id?: string };
 
 const SOURCES: FileSource[] = ["contract", "purchase", "expense"];
@@ -50,11 +50,17 @@ export async function prepareUpload(org: string, contractId: string, meta: Meta)
     console.error("[archivos] firmar subida", error?.message);
     return { error: "No se pudo preparar la subida. Inténtalo de nuevo." };
   }
+  // Las imágenes llevan una miniatura aparte (la hace el navegador; si falla, el archivo se sube igual).
+  if (c.mime.startsWith("image/") && c.mime !== "image/heic") {
+    const thumbPath = `${path}.thumb.webp`;
+    const thumb = await c.supabase.storage.from(FILES_BUCKET).createSignedUploadUrl(thumbPath);
+    if (thumb.data) return { path, token: data.token, mime: c.mime, thumbPath, thumbToken: thumb.data.token };
+  }
   return { path, token: data.token, mime: c.mime };
 }
 
 // Paso 2: con el archivo ya subido, se registra. Se comprueba que el objeto exista y que la ruta sea de este contrato.
-export async function finishUpload(org: string, contractId: string, meta: Meta & { path: string }): Promise<FileResult> {
+export async function finishUpload(org: string, contractId: string, meta: Meta & { path: string; thumbPath?: string }): Promise<FileResult> {
   const c = await check(org, contractId, meta);
   if ("error" in c) return { error: c.error };
   if (!String(meta.path).startsWith(`${c.orgId}/${contractId}/`)) return { error: "La ruta del archivo no es válida." };
@@ -62,6 +68,13 @@ export async function finishUpload(org: string, contractId: string, meta: Meta &
   const bucket = c.supabase.storage.from(FILES_BUCKET);
   const { data: there } = await bucket.exists(meta.path);
   if (!there) return { error: "No se encontró el archivo subido. Vuelve a intentarlo." };
+
+  // La miniatura solo se acepta con la ruta que corresponde a este archivo y si de verdad se subió.
+  let thumbPath: string | null = null;
+  if (meta.thumbPath && meta.thumbPath === `${meta.path}.thumb.webp`) {
+    const { data: thumbThere } = await bucket.exists(meta.thumbPath);
+    if (thumbThere) thumbPath = meta.thumbPath;
+  }
 
   const { data, error } = await c.supabase
     .from("contract_files")
@@ -74,12 +87,13 @@ export async function finishUpload(org: string, contractId: string, meta: Meta &
       path: meta.path,
       mime_type: c.mime,
       size_bytes: meta.size,
+      thumb_path: thumbPath,
     })
     .select("id")
     .single();
   if (error) {
     // Sin registro, el objeto quedaría huérfano: se quita.
-    await bucket.remove([meta.path]);
+    await bucket.remove(thumbPath ? [meta.path, thumbPath] : [meta.path]);
     logDbError("archivos", error);
     return { error: isSchemaError(error) ? SCHEMA_MESSAGE : "No se pudo guardar el archivo. Inténtalo de nuevo." };
   }
@@ -102,14 +116,14 @@ export async function getFileUrl(org: string, contractId: string, fileId: string
 export async function deleteFile(org: string, contractId: string, fileId: string): Promise<FileResult> {
   await requireUser();
   const supabase = await createClient();
-  const { data: file } = await supabase.from("contract_files").select("path").eq("id", fileId).eq("contract_id", contractId).maybeSingle();
+  const { data: file } = await supabase.from("contract_files").select("path, thumb_path").eq("id", fileId).eq("contract_id", contractId).maybeSingle();
   if (!file) return { error: "No encontramos el archivo." };
   const { error } = await supabase.from("contract_files").delete().eq("id", fileId);
   if (error) {
     logDbError("archivos", error);
     return { error: "No se pudo borrar. Inténtalo de nuevo." };
   }
-  await supabase.storage.from(FILES_BUCKET).remove([file.path]);
+  await supabase.storage.from(FILES_BUCKET).remove(file.thumb_path ? [file.path, file.thumb_path] : [file.path]);
   revalidatePath(`/${org}/contratos/${contractId}/archivos`);
   return {};
 }

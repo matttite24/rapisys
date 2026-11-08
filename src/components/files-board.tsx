@@ -25,7 +25,7 @@ import { deleteFile, getFileUrl } from "@/lib/file-actions";
 import { fileKind, formatBytes, SOURCE_LABEL, type FileKind, type FileSource } from "@/lib/files";
 import { formatIso } from "@/lib/dates";
 
-export type FileRow = { id: string; name: string; source: FileSource; sourceId: string | null; mime: string; size: number; createdAt: string };
+export type FileRow = { id: string; name: string; source: FileSource; sourceId: string | null; mime: string; size: number; createdAt: string; thumbUrl?: string };
 export type SourceOption = { id: string; label: string };
 
 const KIND_ICON: Record<FileKind, IconSvgElement> = { pdf: PdfIcon, image: Image01Icon, sheet: File01Icon, doc: File01Icon, xml: File01Icon, other: File01Icon };
@@ -135,7 +135,12 @@ export function FilesBoard({
                 <TableRow key={f.id}>
                   <TableCell className="max-w-0 min-w-56">
                     <span className="flex items-center gap-3">
-                      <HugeiconsIcon icon={KIND_ICON[kind]} aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+                      {f.thumbUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={f.thumbUrl} alt="" loading="lazy" className="size-9 shrink-0 rounded-sm bg-muted object-cover" />
+                      ) : (
+                        <HugeiconsIcon icon={KIND_ICON[kind]} aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+                      )}
                       <span className="truncate font-medium" title={f.name}>
                         {f.name}
                       </span>

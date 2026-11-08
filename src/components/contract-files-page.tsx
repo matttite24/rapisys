@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { FilesBoard, type FileRow, type SourceOption } from "@/components/files-board";
 import { PageLoading } from "@/components/page-loading";
 import { getContract } from "@/lib/contract-data";
-import type { FileSource } from "@/lib/files";
+import { FILES_BUCKET, type FileSource } from "@/lib/files";
 import { createClient } from "@/lib/supabase/server";
 
 type IdParams = Promise<{ org: string; id: string }>;
@@ -18,7 +18,7 @@ async function Files({ params }: { params: IdParams }) {
   const [filesRes, purchasesRes, expensesRes] = await Promise.all([
     supabase
       .from("contract_files")
-      .select("id, name, source, source_id, mime_type, size_bytes, created_at")
+      .select("id, name, source, source_id, mime_type, size_bytes, created_at, thumb_path")
       .eq("contract_id", id)
       .order("created_at", { ascending: false })
       .limit(1000),
@@ -28,7 +28,7 @@ async function Files({ params }: { params: IdParams }) {
 
   const purchases: SourceOption[] = ((purchasesRes.data ?? []) as { id: string; number: string | null }[]).map((p) => ({ id: p.id, label: p.number ?? "Sin número" }));
   const expenses: SourceOption[] = ((expensesRes.data ?? []) as { id: string; concept: string }[]).map((e) => ({ id: e.id, label: e.concept }));
-  const files: FileRow[] = ((filesRes.data ?? []) as {
+  const rows = (filesRes.data ?? []) as {
     id: string;
     name: string;
     source: FileSource;
@@ -36,7 +36,13 @@ async function Files({ params }: { params: IdParams }) {
     mime_type: string;
     size_bytes: number;
     created_at: string;
-  }[]).map((f) => ({
+    thumb_path: string | null;
+  }[];
+  // Direcciones firmadas de las miniaturas, todas en una sola llamada (duran una hora).
+  const thumbPaths = rows.map((f) => f.thumb_path).filter((p): p is string => !!p);
+  const signed = thumbPaths.length ? await supabase.storage.from(FILES_BUCKET).createSignedUrls(thumbPaths, 3600) : null;
+  const thumbUrl = new Map((signed?.data ?? []).map((s) => [s.path, s.signedUrl]));
+  const files: FileRow[] = rows.map((f) => ({
     id: f.id,
     name: f.name,
     source: f.source,
@@ -44,6 +50,7 @@ async function Files({ params }: { params: IdParams }) {
     mime: f.mime_type,
     size: Number(f.size_bytes),
     createdAt: f.created_at,
+    thumbUrl: (f.thumb_path && thumbUrl.get(f.thumb_path)) || undefined,
   }));
 
   return <FilesBoard org={org} contractId={id} files={files} purchases={purchases} expenses={expenses} />;

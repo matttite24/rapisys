@@ -13,6 +13,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { finishUpload, prepareUpload } from "@/lib/file-actions";
 import { FILE_ACCEPT, FILES_BUCKET, MAX_FILE_BYTES, formatBytes, resolveMime, type FileSource } from "@/lib/files";
 import { createClient } from "@/lib/supabase/client";
+import { makeThumbnail } from "@/lib/thumbnail";
 import { cn } from "@/lib/utils";
 
 // Cargar uno o varios archivos al contrato, a la vez, indicando a qué pertenecen. La subida va directo a Storage con una URL
@@ -79,7 +80,16 @@ export function FilesUploadDialog({
         if (prep.error || !prep.path || !prep.token) throw new Error(prep.error ?? "No se pudo preparar la subida.");
         const { error: upErr } = await supabase.storage.from(FILES_BUCKET).uploadToSignedUrl(prep.path, prep.token, f, { contentType: prep.mime });
         if (upErr) throw new Error("No se pudo subir el archivo. Revisa tu conexión.");
-        const fin = await finishUpload(org, contractId, { ...meta, path: prep.path });
+        // Miniatura (solo imágenes): si algo falla, el archivo queda igual, sin vista previa.
+        let thumbPath: string | undefined;
+        if (prep.thumbPath && prep.thumbToken) {
+          const blob = await makeThumbnail(f);
+          if (blob) {
+            const up = await supabase.storage.from(FILES_BUCKET).uploadToSignedUrl(prep.thumbPath, prep.thumbToken, blob, { contentType: "image/webp" });
+            if (!up.error) thumbPath = prep.thumbPath;
+          }
+        }
+        const fin = await finishUpload(org, contractId, { ...meta, path: prep.path, thumbPath });
         if (fin.error) throw new Error(fin.error);
         ok++;
         setProgress({ done: ok, total: picked.length });
