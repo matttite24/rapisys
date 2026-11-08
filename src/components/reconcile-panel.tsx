@@ -169,7 +169,8 @@ export function ReconcilePanel({
                 rc.source === key ? "border-b-brand font-bold text-foreground" : "border-b-transparent text-muted-foreground hover:text-foreground",
               )}
             >
-              <HugeiconsIcon icon={icon} className="size-4 shrink-0" aria-hidden="true" />
+              {/* El ícono solo en la pestaña activa, para no saturar. */}
+              {rc.source === key && <HugeiconsIcon icon={icon} className="size-4 shrink-0" aria-hidden="true" />}
               {label}
               {count !== null && count > 0 && (
                 <span className="num bg-muted px-1.5 py-0.5 text-[0.6875rem] leading-none text-muted-foreground">{count}</span>
