@@ -127,3 +127,21 @@ export async function deleteFile(org: string, contractId: string, fileId: string
   revalidatePath(`/${org}/contratos/${contractId}/archivos`);
   return {};
 }
+
+export type SourceOption = { id: string; label: string };
+
+// Compras y gastos del contrato a los que se puede adjuntar un archivo. Se piden al elegirlos en el cuadro de carga, no al abrir la lista.
+export async function listFileSources(org: string, contractId: string): Promise<{ purchases: SourceOption[]; expenses: SourceOption[] }> {
+  await requireUser();
+  const orgId = await getOrgId(org);
+  if (!orgId) return { purchases: [], expenses: [] };
+  const supabase = await createClient();
+  const [p, e] = await Promise.all([
+    supabase.from("purchases").select("id, number").eq("contract_id", contractId).order("purchased_on", { ascending: false }).limit(500),
+    supabase.from("contract_expenses").select("id, concept").eq("contract_id", contractId).order("spent_on", { ascending: false }).limit(500),
+  ]);
+  return {
+    purchases: ((p.data ?? []) as { id: string; number: string | null }[]).map((x) => ({ id: x.id, label: x.number ?? "Sin número" })),
+    expenses: ((e.data ?? []) as { id: string; concept: string }[]).map((x) => ({ id: x.id, label: x.concept })),
+  };
+}

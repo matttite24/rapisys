@@ -4,13 +4,12 @@ import { useRef, useState } from "react";
 import { Upload01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { toast } from "sonner";
-import type { SourceOption } from "@/components/files-board";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FieldError } from "@/components/ui/field";
 import { NativeSelect } from "@/components/ui/native-select";
-import { finishUpload, prepareUpload } from "@/lib/file-actions";
+import { finishUpload, listFileSources, prepareUpload, type SourceOption } from "@/lib/file-actions";
 import { FILE_ACCEPT, FILES_BUCKET, MAX_FILE_BYTES, formatBytes, resolveMime, type FileSource } from "@/lib/files";
 import { createClient } from "@/lib/supabase/client";
 import { makeThumbnail } from "@/lib/thumbnail";
@@ -21,8 +20,6 @@ import { cn } from "@/lib/utils";
 export function FilesUploadDialog({
   org,
   contractId,
-  purchases = [],
-  expenses = [],
   fixed,
   onUploaded,
   open,
@@ -30,8 +27,6 @@ export function FilesUploadDialog({
 }: {
   org: string;
   contractId: string;
-  purchases?: SourceOption[];
-  expenses?: SourceOption[];
   // Si se abre desde una compra o un gasto, el archivo pertenece a ese y no se elige.
   fixed?: { source: "purchase" | "expense"; id: string; label: string };
   onUploaded?: () => void;
@@ -42,6 +37,8 @@ export function FilesUploadDialog({
   const [picked, setPicked] = useState<File[]>([]);
   const [source, setSource] = useState<FileSource>(fixed?.source ?? "contract");
   const [sourceId, setSourceId] = useState(fixed?.id ?? "");
+  // Compras y gastos para elegir a qué pertenece: se piden la primera vez que se necesitan.
+  const [sources, setSources] = useState<{ purchases: SourceOption[]; expenses: SourceOption[] } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -109,7 +106,7 @@ export function FilesUploadDialog({
     onOpenChange(false);
   }
 
-  const options = source === "purchase" ? purchases : expenses;
+  const options = !sources ? [] : source === "purchase" ? sources.purchases : sources.expenses;
 
   return (
     <Dialog
@@ -184,7 +181,11 @@ export function FilesUploadDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField name="file_source" label="Pertenece a">
               {(a11y) => (
-                <NativeSelect {...a11y} className="w-full" value={source} disabled={uploading} onChange={(e) => { setSource(e.target.value as FileSource); setSourceId(""); }}>
+                <NativeSelect {...a11y} className="w-full" value={source} disabled={uploading} onChange={(e) => {
+                  setSource(e.target.value as FileSource);
+                  setSourceId("");
+                  if (e.target.value !== "contract" && !sources) void listFileSources(org, contractId).then(setSources);
+                }}>
                   <option value="contract">El contrato</option>
                   <option value="purchase">Una compra</option>
                   <option value="expense">Un gasto</option>
