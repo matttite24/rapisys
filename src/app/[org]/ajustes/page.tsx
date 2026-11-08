@@ -30,7 +30,7 @@ async function Settings({ params }: { params: Params }) {
   const [{ data, error }, role] = await Promise.all([
     supabase
       .from("organizations")
-      .select("name, slug, created_at, ruc, address, phone, vat_rate, invitation_days")
+      .select("name, slug, created_at, ruc, address, phone, invitation_days")
       .eq("id", orgId)
       .maybeSingle(),
     getMyRole(orgId),
@@ -53,7 +53,6 @@ async function Settings({ params }: { params: Params }) {
             ruc: data.ruc ?? "",
             address: data.address ?? "",
             phone: data.phone ?? "",
-            vatRate: String(data.vat_rate),
             invitationDays: Number(data.invitation_days),
           }}
         />

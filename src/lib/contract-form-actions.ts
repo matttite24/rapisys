@@ -138,7 +138,7 @@ export async function createContract(_: ContractState, formData: FormData): Prom
     client_id: parties.clientId,
     manager_id: parties.managerId,
     total_cents: v.totalCents,
-    vat_rate: await orgVatRate(organizationId),
+    vat_rate: VAT_RATE,
     term_days: v.termDays,
     start_date: v.startDate,
   });
@@ -187,13 +187,6 @@ export async function updateContract(
   revalidatePath(`/${org}/contratos/${contractId}`);
   revalidatePath(`/${org}/contratos`);
   return { saved: true };
-}
-
-// IVA por defecto de la organización (Ajustes); si no se puede leer, el de siempre.
-export async function orgVatRate(organizationId: string): Promise<number> {
-  const supabase = await createClient();
-  const { data } = await supabase.from("organizations").select("vat_rate").eq("id", organizationId).maybeSingle();
-  return data?.vat_rate != null ? Number(data.vat_rate) : VAT_RATE;
 }
 
 // Datos para el formulario de edición del contrato (se piden al abrirlo, no en cada pantalla).

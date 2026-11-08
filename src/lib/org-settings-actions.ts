@@ -16,7 +16,6 @@ export async function updateOrganization(org: string, _: OrgSettingsState, formD
   const ruc = get("ruc");
   const address = get("address");
   const phone = get("phone");
-  const vatRaw = get("vat_rate").replace(",", ".");
   const days = Number(get("invitation_days"));
 
   const fields: Record<string, string> = {};
@@ -25,8 +24,6 @@ export async function updateOrganization(org: string, _: OrgSettingsState, formD
   if (ruc && !/^[0-9]{13}$/.test(ruc)) fields.ruc = "El RUC tiene 13 dígitos.";
   if (address.length > 200) fields.address = "Máximo 200 caracteres.";
   if (phone.length > 30) fields.phone = "Máximo 30 caracteres.";
-  const vat = Number(vatRaw);
-  if (vatRaw === "" || !Number.isFinite(vat) || vat < 0 || vat > 100) fields.vat_rate = "Escribe un IVA entre 0 y 100.";
   if (!Number.isInteger(days) || days < 1 || days > 30) fields.invitation_days = "Escribe entre 1 y 30 días.";
   if (Object.keys(fields).length) return { fields };
 
@@ -42,7 +39,6 @@ export async function updateOrganization(org: string, _: OrgSettingsState, formD
       ruc: ruc || null,
       address: address || null,
       phone: phone || null,
-      vat_rate: vat,
       invitation_days: days,
     })
     .eq("id", orgId);

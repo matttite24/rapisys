@@ -15,7 +15,6 @@ export type OrgSettingsValues = {
   ruc: string;
   address: string;
   phone: string;
-  vatRate: string;
   invitationDays: number;
 };
 
@@ -58,20 +57,6 @@ export function OrgSettingsForm({ org, values, canEdit }: { org: string; values:
           </FormField>
           <FormField name="phone" label="Teléfono (opcional)" error={errors.phone}>
             {(a11y) => <Input {...a11y} maxLength={30} inputMode="tel" defaultValue={values.phone} disabled={disabled} />}
-          </FormField>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet>
-        <FieldLegend>Facturación</FieldLegend>
-        <FieldGroup className="grid gap-6 md:grid-cols-2">
-          <FormField
-            name="vat_rate"
-            label="IVA por defecto (%)"
-            error={errors.vat_rate}
-            hint="Se aplica a los contratos nuevos. Cada contrato guarda el suyo."
-          >
-            {(a11y) => <Input {...a11y} inputMode="decimal" className="font-mono" defaultValue={values.vatRate} disabled={disabled} />}
           </FormField>
         </FieldGroup>
       </FieldSet>
