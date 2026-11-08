@@ -891,14 +891,14 @@ function AssignedView({
       </div>
       <ul className="min-h-0 flex-1 divide-y overflow-y-auto">
         {sources.map((s) => (
-          // Misma forma que las filas de Facturas y Bodega: código y cantidad, nombre y costo, origen y Liberar.
+          // Nombre primero y, debajo, el código; después el origen con Liberar.
           <li key={s.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1 px-4 py-3.5">
-            <span className={cn("truncate font-mono text-sm font-medium", ![s.itemSku, ...s.partNumbers].some(Boolean) && "font-normal text-muted-foreground")}>
-              {[s.itemSku, ...s.partNumbers].filter(Boolean).join(" · ") || "Sin código"}
+            <span className="line-clamp-2 text-sm font-medium" title={s.itemName}>
+              {s.itemName}
             </span>
             <span className="num text-right font-mono text-sm">{s.quantity}</span>
-            <span className="line-clamp-2 text-xs text-muted-foreground" title={s.itemName}>
-              {s.itemName}
+            <span className={cn("truncate font-mono text-xs text-muted-foreground", ![s.itemSku, ...s.partNumbers].some(Boolean) && "opacity-70")}>
+              {[s.itemSku, ...s.partNumbers].filter(Boolean).join(" · ") || "Sin código"}
             </span>
             <span className="num text-right text-xs text-muted-foreground">
               {s.costCents === null ? "Sin costo" : `${formatCents(s.costCents)} c/u`}
