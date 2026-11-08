@@ -30,7 +30,7 @@ type LineValues = {
   description: string;
   quantity: number;
   unit: string;
-  // Precio referencial unitario, sin IVA, en centavos.
+  // Precio referencial total de la línea, sin IVA, en centavos.
   referencePriceCents: number | null;
 };
 

@@ -46,7 +46,7 @@ export type LineView = {
   description: string;
   quantity: number;
   unit: string;
-  // Precio referencial unitario (sin IVA), en centavos.
+  // Precio referencial TOTAL de la línea (sin IVA), en centavos. El valor unitario es este total ÷ la cantidad.
   referencePriceCents: number | null;
 };
 
@@ -364,7 +364,7 @@ export function LinesTableSkeleton({ rows = 6 }: { rows?: number }) {
             <TableHead className={TH}>Descripción</TableHead>
             <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
             <TableHead className={TH}>Unidad</TableHead>
-            <TableHead className={`${TH} text-right`}>Precio ref.</TableHead>
+            <TableHead className={`${TH} text-right`}>Valor unit. ref.</TableHead>
             <TableHead className={`${TH} w-px`}><span className="sr-only">Acciones</span></TableHead>
           </TableRow>
         </TableHeader>
@@ -457,7 +457,7 @@ function LinesTable({
             <TableHead className={TH}>Descripción</TableHead>
             <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
             <TableHead className={TH}>Unidad</TableHead>
-            <TableHead className={`${TH} text-right`}>Precio ref.</TableHead>
+            <TableHead className={`${TH} text-right`}>Valor unit. ref.</TableHead>
             <TableHead className={`${TH} w-px`}><span className="sr-only">Acciones</span></TableHead>
           </TableRow>
         </TableHeader>
@@ -517,7 +517,7 @@ function LineRow({
       <TableCell className={`${TD} break-words`}>{l.description}</TableCell>
       <TableCell className={`${TD} num text-right`}>{l.quantity}</TableCell>
       <TableCell className={`${TD} whitespace-nowrap`}>{unitLabel(l.unit)}</TableCell>
-      <TableCell className={`${TD} num whitespace-nowrap text-right`}>{l.referencePriceCents === null ? "—" : formatCents(l.referencePriceCents)}</TableCell>
+      <TableCell className={`${TD} num whitespace-nowrap text-right`}>{l.referencePriceCents === null || l.quantity <= 0 ? "—" : formatCents(Math.round(l.referencePriceCents / l.quantity))}</TableCell>
       <TableCell className={cn(TD, "p-1 whitespace-nowrap")}>
         {saving ? null : (
           <span className="flex gap-1">
@@ -696,7 +696,7 @@ function LineForm({
           </NativeSelect>
         )}
       </FormField>
-      <FormField name="reference_price" label="Precio ref." error={errors.reference_price}>
+      <FormField name="reference_price" label="Precio ref. (total)" error={errors.reference_price}>
         {(a11y) => (
           <Input
             {...a11y}

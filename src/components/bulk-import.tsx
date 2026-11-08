@@ -37,7 +37,7 @@ type Row = {
   description: string;
   quantity: string;
   unit: string;
-  // Precio referencial unitario (sin IVA): se escribe a mano al revisar.
+  // Precio referencial total de la fila (sin IVA): se escribe a mano al revisar.
   price: string;
   raw: string;
   review: boolean;
@@ -87,7 +87,7 @@ const ReviewRow = memo(function ReviewRow({
         {err("quantity") && <p className="pt-1 text-xs text-destructive">{err("quantity")}</p>}
       </td>
       <td className="px-2 py-1.5">
-        <Input aria-label={`Precio ref., fila ${i + 1}`} aria-invalid={!!err("reference_price") || undefined} inputMode="decimal" placeholder="0,00" className="h-8 text-right font-mono" value={r.price} onChange={(e) => onPatch(r.id, { price: e.target.value })} />
+        <Input aria-label={`Precio ref. total, fila ${i + 1}`} aria-invalid={!!err("reference_price") || undefined} inputMode="decimal" placeholder="0,00" className="h-8 text-right font-mono" value={r.price} onChange={(e) => onPatch(r.id, { price: e.target.value })} />
         {err("reference_price") && <p className="pt-1 text-xs text-destructive">{err("reference_price")}</p>}
       </td>
       <td className="px-3 py-1.5">
@@ -411,7 +411,7 @@ export function BulkImport({
                       <th className="w-56 px-2 py-2">Part. num.</th>
                       <th className="px-2 py-2">Descripción</th>
                       <th className="w-32 px-2 py-2">Cantidad</th>
-                      <th className="w-44 px-2 py-2 text-right">Precio ref.</th>
+                      <th className="w-44 px-2 py-2 text-right">Precio ref. (total)</th>
                       <th className="w-px px-3 py-2"><span className="sr-only">Quitar</span></th>
                     </tr>
                   </thead>

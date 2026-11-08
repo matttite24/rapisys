@@ -1,5 +1,5 @@
--- Precio referencial de cada línea del contrato: el valor unitario (sin IVA) por el que se espera comprar el item.
--- Con él se calcula la utilidad por item: (precio referencial × cantidad) − costo de compra.
+-- Precio referencial de cada línea del contrato: el valor TOTAL de la fila (sin IVA) que paga el cliente por ese item.
+-- El valor unitario es este total ÷ la cantidad. Con él se calcula la utilidad por item: precio referencial − costo de compra.
 -- Reemplaza al CPC en la pantalla de listas. La columna `cpc` se conserva en la base (las vistas de abastecimiento,
 -- entregas y compras la siguen leyendo), pero ya no se llena ni se muestra.
 
