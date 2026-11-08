@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Cancel01Icon, LeftToRightListBulletIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CELL_ROW } from "@/components/cell-header";
@@ -13,22 +13,34 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-type Tab = { key: string; label: string; count: number; figures: PageFigure[]; note: React.ReactNode; panel: React.ReactNode; list?: boolean };
+export type ProfitTab = { key: string; label: string; count: number; list?: boolean };
 
-// Pestañas de la revisión, con forma de carpeta: facturas y gastos primero, luego una por lista.
+// Pestañas de la revisión, con forma de carpeta: facturas y gastos primero, luego una por lista. La pestaña viaja en la
+// dirección (?pestana=) y el servidor entrega solo el contenido de la activa: cambiarla pide únicamente esa pestaña.
 // El botón de la izquierda abre el cajón con todas las listas (son muchas para caber en la fila).
-export function ProfitTabs({ tabs, top }: { tabs: Tab[]; top?: React.ReactNode }) {
-  // La pestaña queda en la dirección (?pestana=), así recargar o compartir el enlace vuelve a la misma.
-  const initial = useSearchParams().get("pestana");
-  const [active, setActive] = useState(tabs.some((t) => t.key === initial) ? initial : tabs[0]?.key);
+export function ProfitTabs({
+  tabs,
+  activeKey,
+  top,
+  figures,
+  note,
+  children,
+}: {
+  tabs: ProfitTab[];
+  activeKey: string;
+  top?: React.ReactNode;
+  figures: PageFigure[];
+  note: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [pending, startTransition] = useTransition();
   function select(key: string) {
-    setActive(key);
-    const url = new URL(window.location.href);
-    url.searchParams.set("pestana", key);
-    window.history.replaceState(null, "", url);
+    startTransition(() => router.replace(`${pathname}?pestana=${encodeURIComponent(key)}`, { scroll: false }));
   }
   const [open, setOpen] = useState(false);
-  const current = tabs.find((t) => t.key === active) ?? tabs[0];
+  const current = tabs.find((t) => t.key === activeKey) ?? tabs[0];
   const [q, setQ] = useState("");
   const lists = tabs.filter((t) => t.list);
   const term = q.trim().toLowerCase();
@@ -56,9 +68,11 @@ export function ProfitTabs({ tabs, top }: { tabs: Tab[]; top?: React.ReactNode }
           ) : null
         }
       />
-      <PageFigures figures={current?.figures ?? []} />
-      <p className="border-b px-4 py-3 text-xs text-muted-foreground">{current?.note}</p>
-      {current?.panel}
+      <PageFigures figures={figures} />
+      <p className="border-b px-4 py-3 text-xs text-muted-foreground">{note}</p>
+      <div aria-busy={pending} className={cn("transition-opacity", pending && "opacity-60")}>
+        {children}
+      </div>
 
       <Sheet
         open={open}

@@ -140,14 +140,8 @@ export async function proposeMatches(
   if (!lines.length) return { proposals: [], unmatched: 0 };
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("contract_item_supply")
-    .select("id, list_id, n, part_number, description, quantity, reserved, purchased")
-    .eq("contract_id", contractId)
-    .not("part_number", "is", null)
-    .order("list_id")
-    .order("n")
-    .limit(5000);
+  // Solo las líneas con número de parte y unidades por cubrir, filtradas en la base.
+  const { data } = await supabase.rpc("contract_open_lines", { p_contract_id: contractId });
   const rows = ((data ?? []) as {
     id: string;
     list_id: string;

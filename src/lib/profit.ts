@@ -23,34 +23,21 @@ export function lineProfit(l: ProfitLine): LineProfit {
   };
 }
 
-export function contractProfit(lines: ProfitLine[], expensesCents: number) {
-  let reference = 0;
-  let cost = 0;
-  let itemsProfit = 0;
-  let pending = 0;
-  let noPrice = 0;
-  let partial = 0;
-  for (const l of lines) {
-    const p = lineProfit(l);
-    if (p.kind === "none") noPrice++;
-    else if (p.kind === "pending") pending++;
-    else {
-      reference += l.referenceCents ?? 0;
-      cost += l.costCents;
-      itemsProfit += p.profitCents;
-      if (p.kind === "partial") partial++;
-    }
-  }
+// Cifras de un grupo de líneas ya agregadas (la base las suma por lista) y gastos del contrato.
+export type ProfitTotals = { reference: number; cost: number; pending: number; noPrice: number; partial: number };
+
+export function summarizeProfit(groups: ProfitTotals[], expensesCents: number) {
+  const t = groups.reduce(
+    (a, g) => ({
+      reference: a.reference + g.reference,
+      cost: a.cost + g.cost,
+      pending: a.pending + g.pending,
+      noPrice: a.noPrice + g.noPrice,
+      partial: a.partial + g.partial,
+    }),
+    { reference: 0, cost: 0, pending: 0, noPrice: 0, partial: 0 },
+  );
+  const itemsProfit = t.reference - t.cost;
   const profit = itemsProfit - expensesCents;
-  return {
-    reference, // precio referencial de las líneas ya compradas
-    cost,
-    itemsProfit,
-    expenses: expensesCents,
-    profit,
-    marginPct: reference > 0 ? (profit / reference) * 100 : null,
-    pending,
-    noPrice,
-    partial,
-  };
+  return { ...t, itemsProfit, expenses: expensesCents, profit, marginPct: t.reference > 0 ? (profit / t.reference) * 100 : null };
 }

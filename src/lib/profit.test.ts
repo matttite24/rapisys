@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contractProfit, lineProfit } from "./profit";
+import { lineProfit, summarizeProfit } from "./profit";
 
 const line = (referenceCents: number | null, costCents: number, sources = 1, unknown = 0) => ({ referenceCents, costCents, sources, unknown });
 
@@ -15,7 +15,13 @@ describe("rentabilidad", () => {
     expect(lineProfit(line(10000, 5000, 2, 1)).kind).toBe("partial");
   });
   it("contrato = suma de utilidades − gastos", () => {
-    const r = contractProfit([line(10000, 7000), line(5000, 6000), line(null, 0), line(8000, 0, 0)], 1000);
+    const r = summarizeProfit(
+      [
+        { reference: 10000, cost: 7000, pending: 0, noPrice: 0, partial: 0 },
+        { reference: 5000, cost: 6000, pending: 1, noPrice: 1, partial: 0 },
+      ],
+      1000,
+    );
     expect(r.itemsProfit).toBe(2000);
     expect(r.profit).toBe(1000);
     expect(r.noPrice).toBe(1);
