@@ -362,7 +362,7 @@ function InvoiceMode({ rc, target, partNumber }: { rc: Reconcile; target: Target
   return (
     <div ref={root} onKeyDown={onKeyDown} className="flex min-h-0 flex-1 flex-col">
       {/* Mismo alto que la fila de datos del activo de la izquierda (3,5 rem). */}
-      <div className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
+      <div className="flex h-14 shrink-0 items-center gap-3 border-b bg-surface-strong px-4">
         <HugeiconsIcon icon={Invoice01Icon} aria-hidden className="size-6 shrink-0 text-muted-foreground" />
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-medium">{invoice?.supplier || "Sin proveedor"}</span>
@@ -628,7 +628,7 @@ function StockMode({ rc, target, partNumber }: { rc: Reconcile; target: Target; 
   return (
     <div onKeyDown={onKeyDown} className="flex min-h-0 flex-1 flex-col">
       {/* Mismo alto y forma que la fila de la factura elegida: qué hay en la bodega, en cifras. */}
-      <div className="flex h-20 shrink-0 items-center gap-3 border-b px-4">
+      <div className="flex h-14 shrink-0 items-center gap-3 border-b bg-surface-strong px-4">
         <HugeiconsIcon icon={Archive02Icon} aria-hidden className="size-6 shrink-0 text-muted-foreground" />
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-medium">Bodega</span>

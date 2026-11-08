@@ -71,12 +71,19 @@ export function LineQuotations({ org, contractId, lineId, canAct, onSaved }: {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="space-y-3 border-b p-4">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold">Historial de cotizaciones</h3>
-          {canAct && !editing && <Button size="sm" onClick={() => setEditing(true)}>Registrar gestión</Button>}
+      {/* Misma altura y forma que la fila de la factura y la de la bodega: título, una línea de detalle y la acción. */}
+      <div className="flex h-14 items-center justify-between gap-3 border-b bg-surface-strong px-4">
+        <div className="flex min-w-0 flex-col">
+          <h3 className="truncate text-sm font-medium">Historial</h3>
+          <p className="truncate font-mono text-xs text-muted-foreground" title="El primer registro pasa la línea pendiente a Cotizando.">
+            Consultas, precios y proformas
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground">Guarda consultas, precios y proformas para continuar la búsqueda. El primer registro pasa la línea pendiente a Cotizando.</p>
+        {canAct && !editing && (
+          <Button size="xs" aria-label="Registrar gestión" onClick={() => setEditing(true)}>
+            Registrar
+          </Button>
+        )}
       </div>
       {editing && canAct && (
         <form onSubmit={save} className="space-y-4 border-b bg-muted/20 p-4">
