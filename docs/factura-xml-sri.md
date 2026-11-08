@@ -30,6 +30,26 @@ Campos que usamos de la factura:
 IVA (`codigoPorcentaje`, a confirmar con la ficha técnica vigente del SRI): 0 → 0 %, 2 → 12 %, 3 → 14 %,
 4 → 15 %, 5 → 5 %, 10 → 13 %; 6 = no objeto de IVA y 7 = exento (ambos 0 %). Se usa `tarifa` cuando viene.
 
+### Lo que mostraron los dos XML de ejemplo (`docs/Factura.xml`, `docs/Factura-2.xml`)
+
+| | Factura.xml (Kabelmorante) | Factura-2.xml (Inverneg, autorizada) |
+|---|---|---|
+| Formato | Comprobante solo, con sangría | `<autorizacion>` + CDATA, una sola línea (74 KB) |
+| Líneas | 16 | 142 |
+| `codigoPrincipal` | **No trae** en ninguna línea | Siempre; **se repite en varias líneas** |
+| Descuento por línea | No | 7 líneas |
+| IVA | 0 % y 15 % mezclados (códigos 0 y 4) | Solo 15 % |
+| Líneas de 1 centavo | No | Sí (`0.01`, precio simbólico) |
+
+Consecuencias:
+- **Sin código no hay emparejamiento por código** (Factura.xml): hay que caer a la descripción. La revisión debe poder
+  elegir producto a mano en todas las líneas, no solo en las "no encontradas".
+- **Un mismo código en varias líneas** (Factura-2): no se fusionan; cada línea del XML es una línea de la factura.
+- **`precioUnitario` trae 3-4 decimales** y `cantidad × precioUnitario` no da `precioTotalSinImpuesto` (21 de 142 líneas
+  difieren por redondeo). Confirma usar el total de la línea ÷ cantidad, nunca el unitario.
+- `cantidad` puede venir como `1.0000`: leer como número.
+- La suma de las líneas sí cuadra con `totalSinImpuestos` en ambas (448.22 y 16 797.93). IVA por línea y por tasa también.
+
 ## 2. De XML a nuestro modelo
 
 ```
@@ -106,7 +126,19 @@ El XML original se guarda como adjunto de la factura cuando exista el módulo **
 - **Proveedor no encontrado por RUC:** se crea desde la revisión con la razón social y el RUC del XML.
 
 **Pendientes**
+0. **La precisión en centavos no basta (hallazgo con Factura-2).** Si el costo unitario se guarda redondeado a centavos
+   (`unit_cost_cents` entero), `costo × cantidad` ya no da el subtotal del XML: en Factura-2 la suma queda en
+   **16 797.73 vs 16 797.93** (-$0.20), y en una línea de 329 unidades el error llega a ~$1.6. La decisión "el subtotal
+   del XML manda" no se puede cumplir con solo `unit_cost_cents`. Opciones:
+   a) guardar también el subtotal de la línea (`line_total_cents`) y usarlo para totales;
+   b) ampliar la precisión del costo (p. ej. `unit_cost_micros`), con migración y cambios en kardex/lotes;
+   c) aceptar la diferencia y mostrarla en el cuadre como "redondeo".
+   Recomendado **a**: mínimo cambio, y el cuadre con el SRI queda exacto. Hay que decidirlo antes de la etapa 2.
 1. **Códigos del proveedor:** `codigoPrincipal` es el código del proveedor, no el nuestro. ¿Se guarda ese código en el
    producto (como número de parte alterno) al emparejar por primera vez, para que la siguiente factura lo encuentre
    sola? Recomendado: sí.
-2. Hace falta **un XML real** (idealmente 2 o 3 de proveedores distintos, con y sin descuento) para fijar las pruebas.
+2. ~~Hace falta un XML real~~: ya hay dos (`docs/`). Sirven de pruebas de la etapa 1; falta uno con IVA 5 %/exento
+   si se quiere cubrir esos códigos.
+3. **Emparejar sin código** (Factura.xml): ¿solo por descripción exacta/aproximada con sugerencias, o siempre manual
+   la primera vez y se guarda la descripción del proveedor como alias? Recomendado: sugerencias por descripción y
+   guardar el alias al confirmar.
