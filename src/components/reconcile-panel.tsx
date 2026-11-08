@@ -147,8 +147,8 @@ export function ReconcilePanel({
         </div>
       </div>
 
-      <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b px-4">
-        <div role="tablist" aria-label="Qué mostrar" className="flex h-full min-w-0 gap-3 overflow-x-auto [scrollbar-width:none]">
+      <div className="flex h-12 shrink-0 border-b">
+        <div role="tablist" aria-label="Qué mostrar" className="flex h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none]">
           {(
             [
               ["asignados", "Asignados", sources?.length ?? null, ClipboardCheckIcon],
@@ -165,7 +165,7 @@ export function ReconcilePanel({
               disabled={!canAct && key !== "asignados" && key !== "cotizaciones"}
               onClick={() => rc.setSource(key)}
               className={cn(
-                "-mb-px flex h-full shrink-0 items-center gap-1.5 border-b-2 font-sans text-sm transition-colors",
+                "-mb-px flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 border-b-2 px-2 font-sans text-sm transition-colors",
                 rc.source === key ? "border-b-brand font-bold text-foreground" : "border-b-transparent text-muted-foreground hover:text-foreground",
               )}
             >
