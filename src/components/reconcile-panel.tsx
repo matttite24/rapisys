@@ -575,7 +575,7 @@ function LineRow({ rc, line: l, target }: { rc: Reconcile; line: InvoiceLine; ta
         type="button"
         aria-pressed={selected}
         onClick={() => rc.pick(selected ? null : l)}
-        className={cn("flex w-full flex-col gap-0.5 px-4 py-2 text-left hover:bg-accent/60", selected && "shadow-[inset_4px_0_0_var(--primary)]")}
+        className={cn("flex w-full flex-col gap-1 px-4 py-3.5 text-left hover:bg-accent/60", selected && "shadow-[inset_4px_0_0_var(--primary)]")}
       >
         <span className="flex items-center justify-between gap-3">
           <span className={cn("truncate font-mono text-sm font-medium", !l.code && "font-normal text-muted-foreground")} title={l.code}>
@@ -699,7 +699,7 @@ function StockRow({ rc, row: r, target }: { rc: Reconcile; row: StockResult; tar
         type="button"
         aria-pressed={selected}
         onClick={() => rc.pickStock(selected ? null : r)}
-        className={cn("flex w-full flex-col gap-0.5 px-4 py-2 text-left hover:bg-accent/60", selected && "shadow-[inset_4px_0_0_var(--primary)]")}
+        className={cn("flex w-full flex-col gap-1 px-4 py-3.5 text-left hover:bg-accent/60", selected && "shadow-[inset_4px_0_0_var(--primary)]")}
       >
         <span className="flex items-center justify-between gap-3">
           <span className={cn("truncate font-mono text-sm font-medium", !codesOf(r) && "font-normal text-muted-foreground")} title={codesOf(r)}>
