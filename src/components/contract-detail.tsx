@@ -1,13 +1,13 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
+import { partyName } from "@/lib/party-name";
 import { ContractForm } from "@/components/contract-form";
 import { ContractDashboard } from "@/components/contract-dashboard";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageSection } from "@/components/page-section";
 import { getContract } from "@/lib/contract-data";
-import { createClient } from "@/lib/supabase/server";
 
 type IdParams = Promise<{ org: string; id: string }>;
 
@@ -18,13 +18,12 @@ async function Detail({ params }: { params: IdParams }) {
   const found = await getContract(org, id);
   if (!found) notFound();
   const { orgId, c } = found;
-  const supabase = await createClient();
 
   // En estado Nuevo se corrigen los datos del contrato; los items aún no se cargan.
   if (c.status === "new") {
-    const [clients, managers] = await Promise.all([
-      supabase.from("clients").select("id, name").eq("organization_id", orgId).order("name"),
-      supabase.from("contract_managers").select("id, name").eq("organization_id", orgId).order("name"),
+    const [clientName, managerName] = await Promise.all([
+      partyName(orgId, "client", c.client_id),
+      partyName(orgId, "manager", c.manager_id),
     ]);
     return (
       <>
@@ -38,8 +37,8 @@ async function Detail({ params }: { params: IdParams }) {
         </PageSection>
         <ContractForm
           org={org}
-          clients={clients.data ?? []}
-          managers={managers.data ?? []}
+          clientName={clientName}
+          managerName={managerName}
           contract={{
             id,
             name: c.name,

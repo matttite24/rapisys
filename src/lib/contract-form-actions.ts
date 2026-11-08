@@ -8,6 +8,7 @@ import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
 import { parseCents } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
+import { partyName } from "@/lib/party-name";
 import { requireUser } from "@/lib/auth";
 
 // `fields` asocia cada mensaje con el campo que lo causó; `error` es general.
@@ -201,21 +202,21 @@ export async function loadContractEdit(org: string, contractId: string) {
   const organizationId = await getOrgId(org);
   if (!organizationId) return null;
   const supabase = await createClient();
-  const [contract, clients, managers] = await Promise.all([
-    supabase
+  const contract = await supabase
       .from("contracts")
       .select("id, name, code, client_id, manager_id, total_cents, start_date, term_days, vat_rate")
       .eq("id", contractId)
       .eq("organization_id", organizationId)
-      .maybeSingle(),
-    supabase.from("clients").select("id, name").eq("organization_id", organizationId).order("name"),
-    supabase.from("contract_managers").select("id, name").eq("organization_id", organizationId).order("name"),
-  ]);
+      .maybeSingle();
   if (!contract.data) return null;
   const c = contract.data;
+  const [clientName, managerName] = await Promise.all([
+    partyName(organizationId, "client", c.client_id),
+    partyName(organizationId, "manager", c.manager_id),
+  ]);
   return {
-    clients: clients.data ?? [],
-    managers: managers.data ?? [],
+    clientName,
+    managerName,
     contract: {
       id: c.id as string,
       name: c.name as string,

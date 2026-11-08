@@ -12,12 +12,15 @@ import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { NativeSelect } from "@/components/ui/native-select";
+import { SearchInput } from "@/components/search-input";
+import { searchParties } from "@/lib/party-search-actions";
 import { CLIENT_TYPES } from "@/lib/parties";
+import { useDebouncedSearch } from "@/lib/use-debounced-search";
+import { cn } from "@/lib/utils";
 import { VAT_RATE } from "@/lib/contracts";
 import { addDaysIso, formatIso } from "@/lib/dates";
 import { centsToInput, formatCents, parseCents, splitVat } from "@/lib/money";
 
-type Option = { id: string; name: string };
 
 // Datos de un contrato existente, para corregirlo mientras está en estado Nuevo.
 export type ContractData = {
@@ -34,43 +37,115 @@ export type ContractData = {
 type Errors = Record<string, string>;
 const NEW = "__new__";
 
-// Selector de un registro existente, o alta rápida con nombre, RUC y dirección.
+// Buscador de un registro existente (por nombre o RUC), o alta rápida con nombre, RUC y dirección.
 function PartyPicker({
+  org,
   prefix,
   label,
-  options,
   errors,
-  initial = "",
+  initial,
 }: {
+  org: string;
   prefix: "client" | "manager";
   label: string;
-  options: Option[];
   errors: Errors;
-  initial?: string;
+  initial?: { id: string; name: string };
 }) {
-  const [value, setValue] = useState(initial);
+  // value: id elegido, NEW (alta rápida) o vacío.
+  const [value, setValue] = useState(initial?.id ?? "");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [q, setQ] = useState("");
+  const { results, loading, run, clear } = useDebouncedSearch((text: string) => searchParties(org, prefix, text));
+  const field = `${prefix}_id`;
 
   return (
     <div className="flex flex-col gap-4">
-      <FormField name={`${prefix}_id`} label={label} error={errors[`${prefix}_id`]}>
-        {(a11y) => (
-          <NativeSelect
-            {...a11y}
-            className="w-full"
-            required
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          >
-            <option value="">Selecciona…</option>
-            {options.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-            <option value={NEW}>+ Crear nuevo…</option>
-          </NativeSelect>
-        )}
+      <FormField name={field} label={label} error={errors[field]}>
+        {() =>
+          value ? (
+            <div id={field} className="flex h-10 min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-background px-2.5 text-base md:text-sm">
+              <span className="min-w-0 truncate">{value === NEW ? "Nuevo (se crea al guardar)" : name}</span>
+              <Button type="button" variant="ghost" size="sm" className="h-[1.5rem]" onClick={() => setValue("")}>
+                Cambiar
+              </Button>
+            </div>
+          ) : (
+            <div
+              className="relative"
+              onFocus={() => {
+                if (results === null && !loading && !q.trim()) run("", 0);
+              }}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget)) clear();
+              }}
+            >
+              <SearchInput
+                variant="field"
+                id={field}
+                label={`${label}: busca por nombre o RUC`}
+                placeholder="Busca por nombre o RUC"
+                value={q}
+                onChange={(v) => {
+                  setQ(v);
+                  if (v.trim()) run(v);
+                  else run("", 0);
+                }}
+                onKeyDown={(e) => e.key === "Escape" && clear()}
+              />
+              {(results !== null || loading) && (
+                <ul
+                  aria-label={label}
+                  aria-busy={loading}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className={cn(
+                    "absolute top-full right-0 left-0 z-20 mt-1 max-h-64 divide-y overflow-y-auto border bg-popover shadow-overlay transition-opacity",
+                    loading && results !== null && "opacity-60",
+                  )}
+                >
+                  {results === null ? (
+                    <li className="px-3 py-2 text-sm text-muted-foreground">Buscando…</li>
+                  ) : (
+                    <>
+                      {results.length === 0 && <li className="px-3 py-2 text-sm text-muted-foreground">Ninguno coincide.</li>}
+                      {results.map((r) => (
+                        <li key={r.id}>
+                          <button
+                            type="button"
+                            className="flex min-h-11 w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-accent"
+                            onClick={() => {
+                              setValue(r.id);
+                              setName(r.name);
+                              setQ("");
+                              clear();
+                            }}
+                          >
+                            <span>{r.name}</span>
+                            {r.ruc && <span className="font-mono text-xs text-muted-foreground">{r.ruc}</span>}
+                          </button>
+                        </li>
+                      ))}
+                      <li>
+                        <button
+                          type="button"
+                          className="flex min-h-11 w-full items-center px-3 py-2 text-left text-sm font-medium hover:bg-accent"
+                          onClick={() => {
+                            setValue(NEW);
+                            setQ("");
+                            clear();
+                          }}
+                        >
+                          + Crear nuevo…
+                        </button>
+                      </li>
+                    </>
+                  )}
+                </ul>
+              )}
+            </div>
+          )
+        }
       </FormField>
+      <input type="hidden" name={field} value={value} />
 
       {value === NEW && (
         <div className="flex flex-col gap-4 border bg-muted/50 p-4">
@@ -94,15 +169,16 @@ function PartyPicker({
 
 export function ContractForm({
   org,
-  clients,
-  managers,
+  clientName,
+  managerName,
   contract,
   onDone,
   defaultVatRate,
 }: {
   org: string;
-  clients: Option[];
-  managers: Option[];
+  // Nombre del cliente y del responsable guardados (solo al editar), para mostrarlos sin cargar toda la lista.
+  clientName?: string;
+  managerName?: string;
   contract?: ContractData;
   // IVA por defecto de la organización, para contratos nuevos.
   defaultVatRate?: number;
@@ -164,8 +240,8 @@ export function ContractForm({
 
       <PageSection index="02" label="Partes" className="p-0">
         <CellGrid className="border-0 md:grid-cols-2">
-          <PartyPicker prefix="client" label="Cliente" options={clients} errors={errors} initial={contract?.clientId} />
-          <PartyPicker prefix="manager" label="Responsable de contrato" options={managers} errors={errors} initial={contract?.managerId} />
+          <PartyPicker org={org} prefix="client" label="Cliente" errors={errors} initial={contract ? { id: contract.clientId, name: clientName ?? "" } : undefined} />
+          <PartyPicker org={org} prefix="manager" label="Responsable de contrato" errors={errors} initial={contract ? { id: contract.managerId, name: managerName ?? "" } : undefined} />
         </CellGrid>
       </PageSection>
 

@@ -47,8 +47,8 @@ export function EditContract({ org, contractId }: { org: string; contractId: str
             {data ? (
               <ContractForm
                 org={org}
-                clients={data.clients}
-                managers={data.managers}
+                clientName={data.clientName}
+                managerName={data.managerName}
                 contract={data.contract}
                 onDone={() => setOpen(false)}
               />
