@@ -123,7 +123,7 @@ export function ReconcilePanel({
     >
      <div
        ref={panelRef}
-       style={{ paddingBottom: focus ? (footerHeight ?? "var(--footer-height)") : undefined }}
+       style={{ paddingBottom: focus ? `calc(${footerHeight === null ? "var(--footer-height)" : `${footerHeight}px`} + 2rem)` : undefined }}
        className="relative flex h-full min-h-0 w-full flex-col border-l bg-background lg:ml-auto lg:w-[32rem] lg:shrink-0"
      >
       {/* Mismo alto que el encabezado de la página, para que lo de abajo siga alineado con la tabla. */}
@@ -180,9 +180,28 @@ export function ReconcilePanel({
         </div>
       </div>
 
-      {/* Presupuesto de la línea: el precio referencial contra el costo de lo asignado, para no pasarse de lo que paga el contrato. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {!focus ? (
+        <p className="p-6 text-sm text-muted-foreground">Toca una línea de la tabla para ver y asignarle productos.</p>
+      ) : rc.source === "asignados" ? (
+        activeSupply?.error ? (
+          <PanelError message={activeSupply.error} onRetry={() => { setSupply(null); setSupplyRetry((n) => n + 1); }} />
+        ) : <AssignedView rc={rc} org={org} contractId={contractId} sources={sources} canAct={canAct} />
+      ) : rc.source === "cotizaciones" ? (
+        <LineQuotations key={focus.id} org={org} contractId={contractId} lineId={focus.id} canAct={canAct} onSaved={rc.refresh} />
+      ) : !canAct ? (
+        <p className="p-6 text-sm text-muted-foreground">El abastecimiento se trabaja cuando el contrato está En ejecución.</p>
+      ) : rc.source === "facturas" ? (
+        <InvoiceMode rc={rc} target={target!} partNumber={focus?.partNumber ?? ""} />
+      ) : (
+        <StockMode rc={rc} target={target!} partNumber={focus?.partNumber ?? ""} />
+      )}
+
+      </div>
+
+      {/* Presupuesto de la línea, sobre el pie: el precio referencial contra el costo de lo asignado, para no pasarse de lo que paga el contrato. */}
       {focus && (
-        <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-0.5 border-b px-4 py-1.5 text-xs" aria-live="polite">
+        <div style={{ bottom: footerHeight ?? "var(--footer-height)" }} className="absolute inset-x-0 flex h-8 items-center gap-x-5 overflow-hidden border-t bg-background px-4 text-xs whitespace-nowrap" aria-live="polite">
           {focus.referenceCents === null ? (
             <span className="text-muted-foreground">Sin precio referencial: agrégalo en Listas para controlar el costo.</span>
           ) : (
@@ -215,25 +234,6 @@ export function ReconcilePanel({
           )}
         </div>
       )}
-
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      {!focus ? (
-        <p className="p-6 text-sm text-muted-foreground">Toca una línea de la tabla para ver y asignarle productos.</p>
-      ) : rc.source === "asignados" ? (
-        activeSupply?.error ? (
-          <PanelError message={activeSupply.error} onRetry={() => { setSupply(null); setSupplyRetry((n) => n + 1); }} />
-        ) : <AssignedView rc={rc} org={org} contractId={contractId} sources={sources} canAct={canAct} />
-      ) : rc.source === "cotizaciones" ? (
-        <LineQuotations key={focus.id} org={org} contractId={contractId} lineId={focus.id} canAct={canAct} onSaved={rc.refresh} />
-      ) : !canAct ? (
-        <p className="p-6 text-sm text-muted-foreground">El abastecimiento se trabaja cuando el contrato está En ejecución.</p>
-      ) : rc.source === "facturas" ? (
-        <InvoiceMode rc={rc} target={target!} partNumber={focus?.partNumber ?? ""} />
-      ) : (
-        <StockMode rc={rc} target={target!} partNumber={focus?.partNumber ?? ""} />
-      )}
-
-      </div>
 
       {/* Pie anclado al fondo y alineado con el borde superior real de la barra inferior. */}
       {focus && (
