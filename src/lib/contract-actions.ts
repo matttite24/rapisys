@@ -182,7 +182,7 @@ export async function updateLine(
     .select("id");
   if (error) {
     if (error.message === "below_reserved") {
-      return { fields: { quantity: "La cantidad no puede ser menor a lo ya reservado en bodega." } };
+      return { fields: { quantity: "La cantidad no puede ser menor a lo ya cubierto (asignado de la bodega o reservado por llegar)." } };
     }
     // La cantidad no puede quedar por debajo de lo ya recibido.
     if (error.code === "23514") return { fields: { quantity: "La cantidad es menor a lo ya recibido." } };

@@ -1,24 +1,28 @@
 import type { IconSvgElement } from "@hugeicons/react";
 import {
+  AddressBookIcon,
+  AddSquareIcon,
   Building03Icon,
+  CheckmarkCircle02Icon,
   Car01Icon,
   ContractsIcon,
-  DashboardSquare01Icon,
   DeliveryTruck01Icon,
   File01Icon,
   Folder01Icon,
+  LeftToRightListBulletIcon,
   Package01Icon,
   PackageProcessIcon,
   PlayCircleIcon,
   Settings02Icon,
   ShoppingCart01Icon,
+  BriefcaseBusinessIcon,
   UserCheck01Icon,
   UserGroupIcon,
   Wallet01Icon,
   WarehouseIcon,
 } from "@hugeicons/core-free-icons";
 
-export type NavItem = { title: string; href: string; icon?: IconSvgElement };
+export type NavItem = { title: string; href: string; icon?: IconSvgElement; badge?: number };
 export type NavGroup = { label?: string; items: NavItem[] };
 export type NavModule = {
   title: string;
@@ -32,12 +36,6 @@ export type NavModule = {
 // Primera columna = módulos; segunda columna = grupos del módulo activo.
 export const modules: NavModule[] = [
   {
-    title: "Inicio",
-    href: "/inicio",
-    icon: DashboardSquare01Icon,
-    groups: [{ items: [{ title: "Resumen", href: "/inicio", icon: DashboardSquare01Icon }] }],
-  },
-  {
     title: "Contratos",
     href: "/contratos",
     icon: ContractsIcon,
@@ -45,8 +43,10 @@ export const modules: NavModule[] = [
       {
         items: [
           { title: "Todos los contratos", href: "/contratos", icon: File01Icon },
-          { title: "En ejecución", href: "/contratos/ejecucion", icon: PlayCircleIcon },
-          { title: "Cierre y cobro", href: "/contratos/cierre", icon: Wallet01Icon },
+          { title: "Nuevos", href: "/contratos?estado=nuevos", icon: AddSquareIcon },
+          { title: "En ejecución", href: "/contratos?estado=ejecucion", icon: PlayCircleIcon },
+          { title: "Por cobrar", href: "/contratos?estado=cierre", icon: Wallet01Icon },
+          { title: "Cobrados", href: "/contratos?estado=cobrados", icon: CheckmarkCircle02Icon },
         ],
       },
     ],
@@ -59,35 +59,32 @@ export const modules: NavModule[] = [
       {
         items: [
           { title: "Items", href: "/bodega", icon: Package01Icon },
-          { title: "Activos", href: "/bodega/activos", icon: Car01Icon },
+          { title: "Activos", href: "/bodega?vista=activos", icon: Car01Icon },
         ],
       },
     ],
   },
   {
-    title: "Clientes",
-    href: "/clientes",
-    icon: Building03Icon,
-    groups: [{ items: [{ title: "Instituciones", href: "/clientes", icon: Building03Icon }] }],
+    title: "Directorio",
+    href: "/directorio",
+    icon: AddressBookIcon,
+    groups: [
+      { items: [
+        { title: "Todos los clientes", href: "/directorio", icon: UserGroupIcon },
+        { title: "Empresas", href: "/directorio?tipo=company", icon: BriefcaseBusinessIcon },
+        { title: "Instituciones", href: "/directorio?tipo=institution", icon: Building03Icon },
+        { title: "Personas", href: "/directorio?tipo=person", icon: UserGroupIcon },
+      ] },
+      { items: [
+        { title: "Responsables de contrato", href: "/directorio?grupo=responsables", icon: UserCheck01Icon },
+      ] },
+    ],
   },
   {
     title: "Proveedores",
     href: "/proveedores",
-    icon: DeliveryTruck01Icon,
-    groups: [{ items: [{ title: "Listado", href: "/proveedores", icon: DeliveryTruck01Icon }] }],
-  },
-  {
-    title: "Responsable de Contrato",
-    label: "Responsables",
-    href: "/responsables",
-    icon: UserCheck01Icon,
-    groups: [
-      {
-        items: [
-          { title: "Responsables", href: "/responsables", icon: UserCheck01Icon },
-        ],
-      },
-    ],
+    icon: BriefcaseBusinessIcon,
+    groups: [{ items: [{ title: "Listado", href: "/proveedores", icon: BriefcaseBusinessIcon }] }],
   },
   {
     title: "Ajustes",
@@ -108,10 +105,10 @@ export const modules: NavModule[] = [
 // Partes de un contrato: la columna de opciones las muestra dentro de un contrato.
 export const CONTRACT_SECTIONS = [
   { slug: "", title: "Detalle", icon: File01Icon },
-  { slug: "items", title: "Items", icon: Package01Icon },
+  { slug: "items", title: "Listas", icon: LeftToRightListBulletIcon },
+  { slug: "compras", title: "Compras", icon: ShoppingCart01Icon },
   { slug: "abastecimiento", title: "Abastecimiento", icon: PackageProcessIcon },
   { slug: "entregas", title: "Entregas", icon: DeliveryTruck01Icon },
-  { slug: "compras", title: "Compras", icon: ShoppingCart01Icon },
   { slug: "gastos", title: "Gastos", icon: Wallet01Icon },
   { slug: "archivos", title: "Archivos", icon: Folder01Icon },
 ] as const;

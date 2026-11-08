@@ -1,14 +1,18 @@
 "use client";
 
+import { ConfirmTap } from "@/components/confirm-tap";
+import { PageFigures, PageShortcuts } from "@/components/page-shortcuts";
+import { EmptyState, NO_RESULTS_IMAGE } from "@/components/empty-state";
 import { HeaderAction } from "@/components/header-action";
 import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { cn } from "@/lib/utils";
-import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, FileAddIcon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { LineSearch } from "@/components/line-search";
 import { Pager } from "@/components/pager";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { pageCount } from "@/lib/pagination";
 import { BulkImport } from "@/components/bulk-import";
@@ -25,12 +29,12 @@ import { parseDecimal } from "@/lib/money";
 import { UNITS, isUnit, unitLabel } from "@/lib/units";
 
 // Encabezado de esta lista: negrita y texto pleno, no gris.
-const TH = cn(TABLE_TH, "font-bold text-foreground");
+const TH = TABLE_TH;
 
 // Prefijo del id de una línea que aún no confirmó el servidor.
 const TEMP_PREFIX = "tmp-";
 
-const TD = cn(TABLE_TD, "py-1.5 align-middle");
+const TD = cn(TABLE_TD, "py-1.5");
 
 export type LineView = {
   id: string;
@@ -158,7 +162,7 @@ export function ReferenceList({
 
   const newListDialog = canAdd && (
     <>
-      <HeaderAction icon={Add01Icon} label="Nueva lista" onClick={() => setNewOpen(true)} />
+      <HeaderAction icon={FileAddIcon} label="Nueva lista" onClick={() => setNewOpen(true)} />
       <NewListDialog
         org={org}
         contractId={contractId}
@@ -190,12 +194,21 @@ export function ReferenceList({
   }
 
   const full = listCount >= MAX_LINES_PER_LIST;
-  const label = q
-    ? `${total} de ${listCount} ${listCount === 1 ? "línea" : "líneas"}`
-    : `${listCount} ${listCount === 1 ? "línea" : "líneas"}`;
+  // Cifra de la barra inferior: cuántas líneas tiene la lista (y cuántas coinciden con la búsqueda).
+  const figures = [
+    {
+      label: listCount === 1 ? "Línea" : "Líneas",
+      value: String(listCount),
+      ...(q ? { note: `${total} coinciden` } : {}),
+      ...(full ? { tone: "warn" as const } : {}),
+    },
+  ];
 
   return (
     <>
+      <PageFigures figures={figures} />
+      {/* Enter en cualquier campo de la banda agrega la línea (o guarda los cambios al editar). */}
+      {canAdd && !full && <PageShortcuts shortcuts={[{ keys: ["Enter"], label: editingId ? "Guardar" : "Añadir" }]} />}
       {newListDialog}
       <ListTabs
         lists={lists}
@@ -225,7 +238,7 @@ export function ReferenceList({
         <section className="border-b bg-surface-strong">
           {/* Agregar una línea es lo habitual: va sin barra de título para ocupar menos alto. */}
           {mode === "line" && editing && (
-            <div className="flex h-10 items-center justify-between px-6 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]">
+            <div className="flex h-10 items-center justify-between px-6 caps font-medium">
               <span>Editar línea {editing.n}</span>
               <button
                 type="button"
@@ -277,7 +290,7 @@ export function ReferenceList({
       {active && (
         <section className="border-b">
           {/* Fila de búsqueda desde el inicio; la carga masiva queda a la derecha. */}
-          <div className="flex h-12 items-stretch border-b">
+          <div className="sticky top-12 z-10 flex h-12 items-stretch border-b bg-popover">
             <LineSearch key={active.id} q={q} onSearch={(next) => go({ q: next })} />
             {canAdd && (
               <div className="flex shrink-0 items-center border-l px-3">
@@ -297,13 +310,13 @@ export function ReferenceList({
           ) : (
             <div>
             {shown.length === 0 ? (
-              <p className="p-6 text-muted-foreground">
-                {q
-                  ? `Ninguna línea coincide con «${q}».`
-                  : canAdd
-                    ? "Esta lista aún no tiene items. Agrega el primero arriba."
-                    : "Esta lista no tiene items."}
-              </p>
+              q ? (
+                <EmptyState image={NO_RESULTS_IMAGE}>{`Ninguna línea coincide con «${q}».`}</EmptyState>
+              ) : (
+                <p className="p-6 text-muted-foreground">
+                  {canAdd ? "Esta lista aún no tiene items. Agrega el primero arriba." : "Esta lista no tiene items."}
+                </p>
+              )
             ) : (
               <>
                 {error && <p role="alert" className="border-b p-3 text-sm text-destructive">{error}</p>}
@@ -326,10 +339,6 @@ export function ReferenceList({
               size={LINES_PAGE_SIZE}
               params={{ lista: active.id, ...(q ? { q } : {}) }}
             />
-            {/* Al final de la lista: cuántas líneas tiene. */}
-            <p className="border-t px-6 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {label}
-            </p>
           </div>
           )}
         </section>
@@ -345,33 +354,33 @@ const SKELETON_WIDTHS = ["w-4/5", "w-3/5", "w-11/12", "w-2/3", "w-3/4", "w-1/2"]
 // llegan después. Sirve también al cambiar de lista, de página o al buscar.
 export function LinesTableSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <div role="status" aria-label="Cargando líneas" className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/50">
-            <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
-            <th scope="col" className={TH}>Part. num.</th>
-            <th scope="col" className={TH}>Descripción</th>
-            <th scope="col" className={`${TH} text-right`}>Cantidad</th>
-            <th scope="col" className={TH}>Unidad</th>
-            <th scope="col" className={TH}>CPC</th>
-            <th scope="col" className={`${TH} w-px`}><span className="sr-only">Acciones</span></th>
-          </tr>
-        </thead>
-        <tbody>
+    <div role="status" aria-label="Cargando líneas">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className={`${TH} w-px text-right`}>N.º</TableHead>
+            <TableHead className={TH}>Part. num.</TableHead>
+            <TableHead className={TH}>Descripción</TableHead>
+            <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
+            <TableHead className={TH}>Unidad</TableHead>
+            <TableHead className={TH}>CPC</TableHead>
+            <TableHead className={`${TH} w-px`}><span className="sr-only">Acciones</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {Array.from({ length: rows }, (_, i) => (
-            <tr key={i} className="border-b last:border-b-0">
-              <td className={`${TD} w-px`}><Skeleton className="ml-auto h-4 w-5" /></td>
-              <td className={TD}><Skeleton className={cn("h-4", SKELETON_WIDTHS[i % 6])} /></td>
-              <td className={cn(TD, "w-1/2")}><Skeleton className={cn("h-4", SKELETON_WIDTHS[(i + 2) % 6])} /></td>
-              <td className={TD}><Skeleton className="ml-auto h-4 w-8" /></td>
-              <td className={TD}><Skeleton className="h-4 w-16" /></td>
-              <td className={TD}><Skeleton className="h-4 w-24" /></td>
-              <td className={cn(TD, "p-1")}><Skeleton className="size-7" /></td>
-            </tr>
+            <TableRow key={i} className="hover:bg-transparent">
+              <TableCell className={`${TD} w-px`}><Skeleton className="ml-auto h-4 w-5" /></TableCell>
+              <TableCell className={TD}><Skeleton className={cn("h-4", SKELETON_WIDTHS[i % 6])} /></TableCell>
+              <TableCell className={cn(TD, "w-1/2")}><Skeleton className={cn("h-4", SKELETON_WIDTHS[(i + 2) % 6])} /></TableCell>
+              <TableCell className={TD}><Skeleton className="ml-auto h-4 w-8" /></TableCell>
+              <TableCell className={TD}><Skeleton className="h-4 w-16" /></TableCell>
+              <TableCell className={TD}><Skeleton className="h-4 w-24" /></TableCell>
+              <TableCell className={cn(TD, "p-1")}><Skeleton className="size-7" /></TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -380,31 +389,40 @@ export function LinesTableSkeleton({ rows = 6 }: { rows?: number }) {
 export function ItemsSkeleton() {
   return (
     <div role="status" aria-label="Cargando items">
-      <div className="flex h-12 items-center gap-6 border-b px-6">
-        <Skeleton className="size-5" />
+      {/* Pestañas de las listas, con su contador. */}
+      <div className="relative flex h-12 items-end gap-1 bg-layer-2 px-4 pt-1.5">
+        <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-border" />
+        <Skeleton className="mr-2 mb-3 size-5" />
         {[36, 28, 32].map((w, i) => (
-          <Skeleton key={i} className="h-4" style={{ width: `${w * 4}px` }} />
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-x-12 gap-y-4 border-b px-6 py-4">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center gap-3">
-            <Skeleton className="size-5" />
-            <div className="flex flex-col gap-1.5">
-              <Skeleton className="h-3 w-14" />
-              <Skeleton className="h-4 w-28" />
-            </div>
+          <div key={i} className={cn("flex h-full items-center gap-2 rounded-t-lg px-4", i === 0 ? "z-10 bg-background" : "mb-px bg-foreground/[0.05]")}>
+            <Skeleton className="h-4" style={{ width: `${w * 3}px` }} />
+            <Skeleton className="h-5 w-6 rounded-sm" />
           </div>
         ))}
       </div>
+      {/* Datos del activo: ícono, etiqueta y valor en una línea, en dos filas. */}
+      <div className="grid auto-cols-max grid-flow-col grid-rows-2 gap-x-8 gap-y-2 overflow-hidden border-b px-6 py-4">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Skeleton className="size-4" />
+            <Skeleton className="h-3 w-12" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+        ))}
+      </div>
+      {/* Banda de agregar línea. */}
       <div className="border-b bg-surface-strong px-6 py-4">
-        <div className="grid gap-4 md:grid-cols-[9rem_1fr_6.5rem_9rem_9rem_3.5rem]">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+        <div className="grid gap-4 md:grid-cols-[9rem_1fr_6.5rem_9rem_9rem_auto]">
+          {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className="flex flex-col gap-2">
               <Skeleton className="h-3 w-16 bg-foreground/10" />
-              <Skeleton className="h-10 bg-foreground/10" />
+              <Skeleton className="h-10 rounded-lg bg-foreground/10" />
             </div>
           ))}
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-16 bg-transparent" />
+            <Skeleton className="h-10 w-28 rounded-full bg-foreground/10" />
+          </div>
         </div>
       </div>
       <div className="flex h-12 items-center gap-3 border-b px-6">
@@ -430,20 +448,19 @@ function LinesTable({
   onRemove: (id: string) => void;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/50">
-            <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
-            <th scope="col" className={TH}>Part. num.</th>
-            <th scope="col" className={TH}>Descripción</th>
-            <th scope="col" className={`${TH} text-right`}>Cantidad</th>
-            <th scope="col" className={TH}>Unidad</th>
-            <th scope="col" className={TH}>CPC</th>
-            <th scope="col" className={`${TH} w-px`}><span className="sr-only">Acciones</span></th>
-          </tr>
-        </thead>
-        <tbody>
+    <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className={`${TH} w-px text-right`}>N.º</TableHead>
+            <TableHead className={TH}>Part. num.</TableHead>
+            <TableHead className={TH}>Descripción</TableHead>
+            <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
+            <TableHead className={TH}>Unidad</TableHead>
+            <TableHead className={TH}>CPC</TableHead>
+            <TableHead className={`${TH} w-px`}><span className="sr-only">Acciones</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {lines.map((l) => (
             <LineRow
               key={l.id}
@@ -456,9 +473,8 @@ function LinesTable({
               onRemove={onRemove}
             />
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
   );
 }
 
@@ -479,40 +495,30 @@ function LineRow({
   onEdit: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
-  const [confirming, setConfirming] = useState(false);
   // Línea enviada y aún sin confirmar por el servidor.
   const saving = l.id.startsWith(TEMP_PREFIX);
 
   return (
-    <tr
+    <TableRow
       className={cn(
-        "border-b last:border-b-0",
+        "last:border-b-0",
         saving && "opacity-60",
         editing && "bg-muted",
-        // Pidiendo confirmar el borrado: los datos que se perderán, en rojo y negrita.
-        confirming && "bg-destructive/5 font-bold text-destructive [&>td]:text-destructive",
       )}
     >
-      <td className={`${TD} num text-right text-muted-foreground`}>{n}</td>
-      <td className={`${TD} whitespace-nowrap font-mono text-xs`}>
+      <TableCell className={`${TD} num text-right text-muted-foreground`}>{n}</TableCell>
+      <TableCell className={`${TD} whitespace-nowrap font-mono text-xs`}>
         {l.partNumber || "—"}
         {duplicateOf && (
           <span className="block font-sans text-[0.6875rem] font-medium text-destructive">Repetido: igual a la línea {duplicateOf}</span>
         )}
-      </td>
-      <td className={`${TD} break-words`}>{l.description}</td>
-      <td className={`${TD} num text-right`}>{l.quantity}</td>
-      <td className={`${TD} whitespace-nowrap`}>{unitLabel(l.unit)}</td>
-      <td className={`${TD} whitespace-nowrap font-mono text-xs`}>{l.cpc || "—"}</td>
-      <td className={cn(TD, "p-1 whitespace-nowrap")}>
-        {saving ? null : confirming ? (
-          <span className="flex gap-2">
-            <Button variant="destructive" onClick={() => onRemove(l.id)}>
-              Quitar
-            </Button>
-            <Button variant="outline" onClick={() => setConfirming(false)}>No</Button>
-          </span>
-        ) : (
+      </TableCell>
+      <TableCell className={`${TD} break-words`}>{l.description}</TableCell>
+      <TableCell className={`${TD} num text-right`}>{l.quantity}</TableCell>
+      <TableCell className={`${TD} whitespace-nowrap`}>{unitLabel(l.unit)}</TableCell>
+      <TableCell className={`${TD} whitespace-nowrap font-mono text-xs`}>{l.cpc || "—"}</TableCell>
+      <TableCell className={cn(TD, "p-1 whitespace-nowrap")}>
+        {saving ? null : (
           <span className="flex gap-1">
             {canEdit && (
               <Button
@@ -526,19 +532,20 @@ function LineRow({
                 <HugeiconsIcon icon={Edit02Icon} className="size-4" />
               </Button>
             )}
-            <Button
+            <ConfirmTap
               variant="ghost"
               size="icon"
               className="size-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
               aria-label={`Quitar la línea ${n} del contrato`}
-              onClick={() => setConfirming(true)}
+              hint="Toca otra vez para quitar"
+              onConfirm={() => onRemove(l.id)}
             >
               <HugeiconsIcon icon={Delete02Icon} className="size-4" />
-            </Button>
+            </ConfirmTap>
           </span>
         )}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -651,7 +658,7 @@ function LineForm({
           formRef.current?.requestSubmit();
         }
       }}
-      className="grid gap-4 md:grid-cols-[9rem_1fr_6.5rem_9rem_9rem_3.5rem] md:items-start [&_input]:bg-background [&_select]:bg-background"
+      className="grid gap-4 md:grid-cols-[9rem_1fr_6.5rem_9rem_9rem_auto] md:items-start [&_input]:bg-background [&_select]:bg-background"
     >
       <FormField name="part_number" label="Part. num." error={errors.part_number}>
         {(a11y) => (
@@ -694,11 +701,12 @@ function LineForm({
           type="submit"
           size="icon"
           disabled={saving}
-          className="h-10 w-full"
+          className="h-10 gap-2 rounded-full px-5"
           aria-label={editing ? "Guardar cambios" : "Agregar línea"}
           title={editing ? "Guardar cambios" : "Agregar línea"}
         >
-          <HugeiconsIcon icon={editing ? Tick02Icon : Add01Icon} className="size-6" strokeWidth={2} />
+          <HugeiconsIcon icon={editing ? Tick02Icon : Add01Icon} className="size-5" strokeWidth={2} />
+          {editing ? "Guardar" : "Añadir"}
         </Button>
       </Field>
       {state?.error && (

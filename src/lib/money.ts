@@ -103,3 +103,6 @@ export const withVatCents = (costCents: Cents, vatPercent: number) =>
 // Precio de venta sin IVA: costo + margen de utilidad sobre el costo.
 export const salePriceCents = (costCents: Cents, marginPercent: number) =>
   roundDiv(costCents * (10_000 + toBp(marginPercent)), 10_000);
+
+// IVA de un subtotal ya conocido (por ejemplo el total de la línea que trae la factura del SRI).
+export const vatOf = (subtotalCents: Cents, vatPercent: number) => roundDiv(subtotalCents * toBp(vatPercent), 10_000);

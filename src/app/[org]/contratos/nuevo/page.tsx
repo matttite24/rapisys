@@ -10,13 +10,19 @@ async function Form({ params }: { params: PageProps<"/[org]/contratos/nuevo">["p
   const { org } = await params;
   const [orgId, supabase] = await Promise.all([getOrgId(org), createClient()]);
 
-  const [clients, managers] = await Promise.all([
+  const [clients, managers, settings] = await Promise.all([
     supabase.from("clients").select("id, name").eq("organization_id", orgId ?? "").order("name"),
     supabase.from("contract_managers").select("id, name").eq("organization_id", orgId ?? "").order("name"),
+    supabase.from("organizations").select("vat_rate").eq("id", orgId ?? "").maybeSingle(),
   ]);
 
   return (
-    <ContractForm org={org} clients={clients.data ?? []} managers={managers.data ?? []} />
+    <ContractForm
+      org={org}
+      clients={clients.data ?? []}
+      managers={managers.data ?? []}
+      defaultVatRate={settings.data?.vat_rate != null ? Number(settings.data.vat_rate) : undefined}
+    />
   );
 }
 

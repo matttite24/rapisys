@@ -1,5 +1,6 @@
 "use client";
 
+import { PanelLoading } from "@/components/panel-loading";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,6 +26,7 @@ export function DeliveryActions({
   canAct,
   deliveries,
   ready,
+  hidden = false,
 }: {
   org: string;
   contractId: string;
@@ -34,12 +36,22 @@ export function DeliveryActions({
   deliveries: number;
   // Líneas con su stock completo, listas para entregar.
   ready: number;
+  // Se oculta (con un fundido) mientras otra columna ocupa el encabezado, por ejemplo el panel de asignar.
+  hidden?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
     <HeaderSlot>
-    <div className="flex h-full items-stretch gap-1">
+    <div
+      inert={hidden}
+      className={cn(
+        // Se va rápido, antes de que el encabezado se desplace, y vuelve cuando ya terminó de regresar: así nunca se ve
+        // deslizarse de lado mientras se desvanece.
+        "flex h-full items-stretch gap-1 transition-opacity ease-out motion-reduce:transition-none",
+        hidden ? "pointer-events-none opacity-0 duration-75" : "opacity-100 delay-200 duration-150",
+      )}
+    >
       <Link
         href={`/${org}/contratos/${contractId}/entregas`}
         className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 gap-1.5 self-center px-2.5")}
@@ -47,7 +59,7 @@ export function DeliveryActions({
         <span className="num">{deliveries}</span> {deliveries === 1 ? "entrega" : "entregas"}
       </Link>
       {canAct && (
-        <span className="self-stretch" title={ready === 0 ? "Aún ninguna línea tiene su stock completo" : undefined}>
+        <span className="self-stretch" title={ready === 0 ? "Aún ninguna línea tiene todo asignado de la bodega" : undefined}>
           <Button className="-mr-4 h-full! border-0! bg-clip-border! gap-2 px-5" disabled={ready === 0} onClick={() => setOpen(true)}>
             <HugeiconsIcon icon={DeliveryTruck01Icon} className="size-4" />
             Generar entrega{ready > 0 && <span className="num opacity-70">{ready}</span>}
@@ -57,7 +69,7 @@ export function DeliveryActions({
     </div>
     </HeaderSlot>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="bottom" className="h-[92svh] gap-0">
+        <SheetContent side="bottom" className="data-[side=bottom]:h-[92svh] gap-0">
           <SheetHeader>
             <SheetTitle>Nueva entrega · {listName}</SheetTitle>
             <SheetDescription className="sr-only">
@@ -95,6 +107,8 @@ function DeliveryBody({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
+  const [loadError, setLoadError] = useState("");
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -103,11 +117,11 @@ function DeliveryBody({
       setRows(r);
       // Por defecto, todo lo que está listo.
       setPicked(new Set(r.map((x) => x.id)));
-    });
+    }).catch(() => { if (alive) setLoadError("No se pudieron cargar las líneas y sus productos. Inténtalo de nuevo."); });
     return () => {
       alive = false;
     };
-  }, [contractId, listId]);
+  }, [contractId, listId, retry]);
 
   const selected = useMemo(() => (rows ?? []).filter((r) => picked.has(r.id)), [rows, picked]);
   const units = selected.reduce((s, r) => s + r.quantity, 0);
@@ -126,19 +140,17 @@ function DeliveryBody({
     setError(undefined);
     setSaving(true);
     startTransition(async () => {
-      const res = await createDelivery(org, contractId, listId, {
-        date,
-        receivedBy: receivedBy.trim(),
-        notes: notes.trim(),
-        lineIds: selected.map((r) => r.id),
-      });
-      if (res?.id) {
-        onClose();
-        router.push(`/${org}/contratos/${contractId}/entregas/${res.id}`);
-      } else {
-        setError(res?.error);
-        setSaving(false);
-      }
+      try {
+        const res = await createDelivery(org, contractId, listId, {
+          date, receivedBy: receivedBy.trim(), notes: notes.trim(), lineIds: selected.map((r) => r.id),
+        });
+        if (res?.id) {
+          onClose();
+          router.push(`/${org}/contratos/${contractId}/entregas/${res.id}`);
+        } else setError(res?.error ?? "No se pudo generar la entrega.");
+      } catch {
+        setError("No se pudo generar la entrega. Inténtalo de nuevo.");
+      } finally { setSaving(false); }
     });
   }
 
@@ -159,8 +171,13 @@ function DeliveryBody({
           </FormField>
         </div>
 
-        {rows === null ? (
-          <p className="p-6 text-muted-foreground">Cargando…</p>
+        {loadError ? (
+          <div role="alert" className="space-y-3 p-6">
+            <p className="text-sm text-destructive">{loadError}</p>
+            <Button variant="outline" onClick={() => { setLoadError(""); setRows(null); setRetry((n) => n + 1); }}>Reintentar</Button>
+          </div>
+        ) : rows === null ? (
+          <PanelLoading label="Cargando líneas y productos para entregar" />
         ) : rows.length === 0 ? (
           <p className="max-w-xl p-6 text-muted-foreground">
             Ninguna línea de esta lista está lista para entregar. Una línea se entrega completa, cuando todas sus
@@ -170,9 +187,10 @@ function DeliveryBody({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-muted/50 text-left font-mono text-[0.6875rem] font-bold uppercase tracking-[0.1em]">
+                <tr className="border-b bg-muted/50 text-left caps font-bold">
                   <th className="w-px px-4 py-3">
                     <input
+                      disabled={saving}
                       type="checkbox"
                       aria-label="Elegir todas las líneas"
                       className="size-4 accent-brand"
@@ -182,7 +200,7 @@ function DeliveryBody({
                   </th>
                   <th className="w-px px-2 py-3 text-right">N.º</th>
                   <th className="px-2 py-3">Part. num.</th>
-                  <th className="px-2 py-3">Descripción</th>
+                  <th className="px-2 py-3">Ítem solicitado y productos a entregar</th>
                   <th className="px-2 py-3 text-right">Cantidad</th>
                 </tr>
               </thead>
@@ -190,10 +208,11 @@ function DeliveryBody({
                 {rows.map((r) => {
                   const on = picked.has(r.id);
                   return (
-                    <tr key={r.id} className={cn("border-b last:border-b-0", !on && "text-muted-foreground")}>
+                    <tr key={r.id} className={cn("border-b last:border-b-0 align-top", !on && "text-muted-foreground")}>
                       <td className="px-4 py-2">
                         <input
                           type="checkbox"
+                          disabled={saving}
                           aria-label={`Entregar la línea ${r.n}`}
                           className="size-4 accent-brand"
                           checked={on}
@@ -202,7 +221,38 @@ function DeliveryBody({
                       </td>
                       <td className="num px-2 py-2 text-right">{r.n}</td>
                       <td className="px-2 py-2 font-mono text-xs">{r.partNumber || "—"}</td>
-                      <td className="px-2 py-2">{r.description}</td>
+                      <td className="min-w-80 px-2 py-3">
+                        <p className="font-medium">{r.description}</p>
+                        <div className="mt-3 border-l-2 border-brand/50 pl-4">
+                          <p className="mb-2 text-xs font-medium text-muted-foreground">Productos a entregar</p>
+                          {r.products.length === 0 ? (
+                            <p className="text-xs text-destructive">No se encontraron productos asignados. Actualiza antes de entregar.</p>
+                          ) : (
+                            <ul className="divide-y">
+                              {r.products.map((product) => (
+                                <li key={product.id} className="flex items-start justify-between gap-6 py-3 first:pt-0 last:pb-0">
+                                  <div className="min-w-0 space-y-1">
+                                    <p className="break-words text-sm font-medium">{product.name}</p>
+                                    {(product.sku || product.partNumbers.length > 0) && (
+                                      <p className="break-words text-xs text-muted-foreground">
+                                        {product.sku && <span>SKU: <span className="font-mono">{product.sku}</span></span>}
+                                        {product.sku && product.partNumbers.length > 0 && " · "}
+                                        {product.partNumbers.length > 0 && <span>N.º de parte: <span className="font-mono">{product.partNumbers.join(" · ")}</span></span>}
+                                      </p>
+                                    )}
+                                    {product.description && <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{product.description}</p>}
+                                    {product.line && <p className="text-xs text-muted-foreground">Línea: {product.line}</p>}
+                                    <p className="text-xs text-muted-foreground">Proveedor: {product.supplier || "Sin proveedor"}</p>
+                                  </div>
+                                  <span className="num shrink-0 whitespace-nowrap text-sm" aria-label={`Cantidad de ${product.name}: ${product.quantity}`}>
+                                    {product.quantity} <span className="font-sans text-xs text-muted-foreground">{unitLabel(r.unit)}</span>
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </td>
                       <td className="num whitespace-nowrap px-2 py-2 text-right">
                         {r.quantity} <span className="font-sans text-xs">{unitLabel(r.unit)}</span>
                       </td>
@@ -222,7 +272,7 @@ function DeliveryBody({
           </div>
         )}
         <div className="flex flex-wrap items-center gap-3 p-4">
-          <Button className="h-10" disabled={saving || selected.length === 0} onClick={submit}>
+          <Button className="h-10" disabled={saving || selected.length === 0 || selected.some((row) => row.products.length === 0)} onClick={submit}>
             {saving ? "Generando…" : "Generar entrega y reporte"}
           </Button>
           <Button variant="outline" className="h-10" disabled={saving} onClick={onClose}>

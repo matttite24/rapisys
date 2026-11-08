@@ -19,5 +19,5 @@ export async function acceptInvitation(
         : "No se pudo aceptar la invitación. Inténtalo de nuevo.",
     };
   }
-  redirect(`/${data.slug}/inicio`);
+  redirect(`/${data.slug}/contratos`);
 }

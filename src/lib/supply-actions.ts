@@ -8,7 +8,7 @@ import { cleanSearch } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
 
-export type SupplyState = { error?: string; ok?: boolean } | undefined;
+export type SupplyState = { error?: string; ok?: boolean; id?: string } | undefined;
 
 function friendly(error: DbError) {
   if (error.code === "42501" || error.message === "forbidden") return "No tienes permiso para hacer esto.";
@@ -34,6 +34,7 @@ export type SourceView = {
   invoice: string;
   itemName: string;
   itemSku: string | null;
+  partNumbers: string[];
   supplier: string;
   costCents: number | null;
   quantity: number;
@@ -42,11 +43,12 @@ export type SourceView = {
 // Lo reservado hasta ahora para una línea, con el producto y el lote de cada tramo.
 export async function getLineSupply(lineId: string): Promise<SourceView[]> {
   const supabase = await createClient();
-  const { data: rows } = await supabase
+  const { data: rows, error: sourceError } = await supabase
     .from("supply_sources")
     .select("id, kind, item_id, supplier_id, purchase_line_id, unit_cost_cents, quantity")
     .eq("contract_item_id", lineId)
     .order("created_at");
+  if (sourceError) throw new Error(friendly(sourceError));
   const sources = (rows ?? []) as {
     id: string;
     kind: "bodega" | "compra";
@@ -62,17 +64,21 @@ export async function getLineSupply(lineId: string): Promise<SourceView[]> {
   const supplierIds = [...new Set(sources.map((s) => s.supplier_id).filter((x): x is string => !!x))];
   const plIds = sources.map((s) => s.purchase_line_id).filter((x): x is string => !!x);
   const [items, suppliers, pls] = await Promise.all([
-    supabase.from("items").select("id, name, sku").in("id", itemIds),
-    supplierIds.length ? supabase.from("suppliers").select("id, name").in("id", supplierIds) : { data: [] },
-    plIds.length ? supabase.from("purchase_lines").select("id, purchase_id").in("id", plIds) : { data: [] },
+    supabase.from("items").select("id, name, sku, part_numbers").in("id", itemIds),
+    supplierIds.length ? supabase.from("suppliers").select("id, name").in("id", supplierIds) : { data: [], error: null },
+    plIds.length ? supabase.from("purchase_lines").select("id, purchase_id").in("id", plIds) : { data: [], error: null },
   ]);
+  for (const result of [items, suppliers, pls]) {
+    if (result.error) throw new Error(friendly(result.error));
+  }
   const plRows = (pls.data ?? []) as { id: string; purchase_id: string }[];
-  const { data: purchaseRows } = plRows.length
+  const { data: purchaseRows, error: purchaseError } = plRows.length
     ? await supabase.from("purchases").select("id, number").in("id", [...new Set(plRows.map((p) => p.purchase_id))])
-    : { data: [] };
+    : { data: [], error: null };
+  if (purchaseError) throw new Error(friendly(purchaseError));
   const numberByPurchase = new Map(((purchaseRows ?? []) as { id: string; number: string }[]).map((p) => [p.id, p.number]));
   const invoiceByLine = new Map(plRows.map((p) => [p.id, numberByPurchase.get(p.purchase_id) ?? ""]));
-  const itemById = new Map(((items.data ?? []) as { id: string; name: string; sku: string | null }[]).map((i) => [i.id, i]));
+  const itemById = new Map(((items.data ?? []) as { id: string; name: string; sku: string | null; part_numbers: string[] }[]).map((i) => [i.id, i]));
   const supplierById = new Map(((suppliers.data ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]));
 
   return sources.map((s) => ({
@@ -81,6 +87,7 @@ export async function getLineSupply(lineId: string): Promise<SourceView[]> {
     invoice: s.purchase_line_id ? (invoiceByLine.get(s.purchase_line_id) ?? "") : "",
     itemName: itemById.get(s.item_id)?.name ?? "Producto eliminado",
     itemSku: itemById.get(s.item_id)?.sku ?? null,
+    partNumbers: itemById.get(s.item_id)?.part_numbers ?? [],
     supplier: s.supplier_id ? (supplierById.get(s.supplier_id) ?? "") : "",
     costCents: s.unit_cost_cents === null ? null : Number(s.unit_cost_cents),
     quantity: Number(s.quantity),
@@ -97,23 +104,57 @@ export type StockResult = {
   lots: LotOption[];
 };
 
+const SEARCH_PAGE = 15;
+
 // Productos de la bodega que coinciden con la búsqueda (nombre, SKU o número de parte), con sus
-// lotes que aún tienen unidades. El lote más barato va primero.
-export async function searchStock(org: string, q: string): Promise<StockResult[]> {
+// lotes que aún tienen unidades. El lote más barato va primero. Sin texto no hay búsqueda: devuelve vacío.
+// `more` avisa que hay más resultados de los que se muestran (máx. SEARCH_PAGE).
+export async function searchStock(
+  org: string,
+  q: string,
+  invoiceId?: string,
+): Promise<{ rows: StockResult[]; more: boolean }> {
   const orgId = await getOrgId(org);
-  if (!orgId) return [];
   const term = cleanSearch(q);
+  if (!orgId || (!term && !invoiceId)) return { rows: [], more: false };
 
   const supabase = await createClient();
-  const rows = await findItems(supabase, orgId, term);
-  if (!rows.length) return [];
+  let more = false;
+  let rows: { id: string; sku: string | null; name: string; part_numbers: string[] }[];
+  let lotFilter: string[] | null = null; // con factura: solo los lotes que vienen de sus líneas
 
-  const { data: lotRows } = await supabase
+  if (invoiceId) {
+    const { data: pls } = await supabase.from("purchase_lines").select("id, item_id").eq("purchase_id", invoiceId).limit(1000);
+    const lines = (pls ?? []) as { id: string; item_id: string }[];
+    if (!lines.length) return { rows: [], more: false };
+    lotFilter = lines.map((l) => l.id);
+    const { data: itemRows } = await supabase
+      .from("items")
+      .select("id, sku, name, part_numbers")
+      .in("id", [...new Set(lines.map((l) => l.item_id))]);
+    rows = (itemRows ?? []) as typeof rows;
+    if (term) {
+      const t = term.toLowerCase();
+      rows = rows.filter((r) => [r.name, r.sku, ...(r.part_numbers ?? [])].some((v) => v && v.toLowerCase().includes(t)));
+    }
+    more = rows.length > SEARCH_PAGE;
+    rows = rows.slice(0, SEARCH_PAGE);
+  } else {
+    const found = await findItems(supabase, orgId, term, SEARCH_PAGE + 1);
+    more = found.length > SEARCH_PAGE;
+    rows = found.slice(0, SEARCH_PAGE);
+  }
+  if (!rows.length) return { rows: [], more: false };
+
+  let lotsQuery = supabase
     .from("stock_lots")
     .select("id, item_id, supplier_id, unit_cost_cents, remaining_qty, created_at")
     .in("item_id", rows.map((r) => r.id))
     .gt("remaining_qty", 0)
     .order("created_at");
+  if (lotFilter) lotsQuery = lotsQuery.in("purchase_line_id", lotFilter);
+  const { data: lotRows, error: lotError } = await lotsQuery;
+  if (lotError) throw new Error(friendly(lotError));
   const lots = (lotRows ?? []) as {
     id: string;
     item_id: string;
@@ -123,34 +164,49 @@ export async function searchStock(org: string, q: string): Promise<StockResult[]
   }[];
 
   const supplierIds = [...new Set(lots.map((l) => l.supplier_id).filter((x): x is string => !!x))];
-  const { data: sups } = supplierIds.length
+  const { data: sups, error: supplierError } = supplierIds.length
     ? await supabase.from("suppliers").select("id, name").in("id", supplierIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (supplierError) throw new Error(friendly(supplierError));
   const supplierById = new Map(((sups ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]));
 
-  return rows
-    .map((r) => {
-      const mine: LotOption[] = lots
-        .filter((l) => l.item_id === r.id)
-        .map((l) => ({
-          id: l.id,
-          supplier: l.supplier_id ? (supplierById.get(l.supplier_id) ?? "") : "",
-          costCents: l.unit_cost_cents === null ? null : Number(l.unit_cost_cents),
-          remaining: Number(l.remaining_qty),
-        }))
-        // Más barato primero; sin costo conocido, al final.
-        .sort((a, b) => (a.costCents ?? Infinity) - (b.costCents ?? Infinity));
-      return {
-        id: r.id,
-        name: r.name,
-        sku: r.sku,
-        partNumbers: r.part_numbers ?? [],
-        onHand: mine.reduce((s, l) => s + l.remaining, 0),
-        lots: mine,
-      };
-    })
-    // Con existencias primero.
-    .sort((a, b) => Number(b.onHand > 0) - Number(a.onHand > 0));
+  return {
+    more,
+    rows: rows
+      .map((r) => {
+        const mine: LotOption[] = lots
+          .filter((l) => l.item_id === r.id)
+          .map((l) => ({
+            id: l.id,
+            supplier: l.supplier_id ? (supplierById.get(l.supplier_id) ?? "") : "",
+            costCents: l.unit_cost_cents === null ? null : Number(l.unit_cost_cents),
+            remaining: Number(l.remaining_qty),
+          }))
+          // Más barato primero; sin costo conocido, al final.
+          .sort((a, b) => (a.costCents ?? Infinity) - (b.costCents ?? Infinity));
+        return {
+          id: r.id,
+          name: r.name,
+          sku: r.sku,
+          partNumbers: r.part_numbers ?? [],
+          onHand: mine.reduce((s, l) => s + l.remaining, 0),
+          lots: mine,
+        };
+      })
+      // Con existencias primero.
+      .sort((a, b) => Number(b.onHand > 0) - Number(a.onHand > 0)),
+  };
+}
+
+// Cuántos productos tienen existencias en la bodega y cuántas unidades hay en total.
+export async function getStockSummary(org: string): Promise<{ products: number; units: number } | null> {
+  const orgId = await getOrgId(org);
+  if (!orgId) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("stock_summary", { p_org: orgId });
+  if (error) throw new Error(friendly(error));
+  const r = data as { products: number; units: number } | null;
+  return r ? { products: Number(r.products), units: Number(r.units) } : null;
 }
 
 export async function reserveStock(
@@ -164,7 +220,7 @@ export async function reserveStock(
   if (qty === null || qty <= 0) return { error: "Escribe una cantidad mayor a 0, con máximo 2 decimales." };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("supply_reserve", {
+  const { data, error } = await supabase.rpc("supply_reserve", {
     p_line_id: lineId,
     p_lot_id: lotId,
     p_qty: qty,
@@ -172,7 +228,8 @@ export async function reserveStock(
   });
   if (error) return { error: friendly(error) };
   refresh(org, contractId);
-  return { ok: true };
+  // `id` es el tramo creado en la línea del contrato: sirve para deshacer.
+  return { ok: true, id: data as string };
 }
 
 export async function releaseSource(org: string, contractId: string, sourceId: string): Promise<SupplyState> {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,11 +23,13 @@ export function DeletePurchase({
   contractId,
   purchaseId,
   invoice,
+  draft = false,
 }: {
   org: string;
   contractId: string;
   purchaseId: string;
   invoice: string;
+  draft?: boolean; // un borrador se descarta: no tiene asignaciones ni productos creados
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -39,15 +42,17 @@ export function DeletePurchase({
         className="h-10 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
         onClick={() => setOpen(true)}
       >
-        Eliminar factura
+        {draft ? "Eliminar borrador" : "Eliminar factura"}
       </Button>
       {error && <FieldError>{error}</FieldError>}
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar la factura {invoice}?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar {draft ? "el borrador" : "la factura"} {invoice}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se quitan sus líneas y lo que se había asignado a líneas del contrato. Esta acción no se puede deshacer.
+              {draft
+                ? "Se descarta el borrador con todas sus líneas. No se crea ni se cambia ningún producto de la bodega. Esta acción no se puede deshacer."
+                : "Se quitan sus líneas y lo que se había reservado para líneas del contrato. Esta acción no se puede deshacer."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -57,10 +62,13 @@ export function DeletePurchase({
               onClick={async () => {
                 const res = await deletePurchase(org, contractId, purchaseId);
                 if (res?.error) setError(res.error);
-                else router.push(`/${org}/contratos/${contractId}/compras`);
+                else {
+                  toast.success(draft ? "Borrador eliminado." : "Factura eliminada.");
+                  router.push(`/${org}/contratos/${contractId}/compras`);
+                }
               }}
             >
-              Sí, eliminar factura
+              {draft ? "Sí, eliminar borrador" : "Sí, eliminar factura"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

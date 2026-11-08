@@ -64,7 +64,7 @@ const ReviewRow = memo(function ReviewRow({
 }) {
   const err = (f: string) => errors[`${i}.${f}`];
   return (
-    <tr className={cn("border-b align-top last:border-b-0", r.review && "bg-amber-500/10")}>
+    <tr className={cn("border-b align-top last:border-b-0", r.review && "bg-muted")}>
       <td className="num px-4 py-2 text-right text-muted-foreground">{i + 1}</td>
       <td className="px-2 py-1.5">
         <Input aria-label={`Número de parte, fila ${i + 1}`} aria-invalid={!!err("part_number") || undefined} className="h-8 font-mono" value={r.part} onChange={(e) => onPatch(r.id, { part: e.target.value })} />
@@ -150,7 +150,10 @@ export function BulkImport({
 
   async function start(file: Blob) {
     setError(undefined);
-    setImageUrl(URL.createObjectURL(file));
+    setImageUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
     setProgress(0);
     setStep("reading");
     try {
@@ -280,7 +283,7 @@ export function BulkImport({
           reset();
         }}
       >
-        <SheetContent side="bottom" className="h-[92svh] gap-0">
+        <SheetContent side="bottom" className="data-[side=bottom]:h-[92svh] gap-0">
           <SheetHeader>
             <SheetTitle>Carga masiva en «{listName}»</SheetTitle>
             <SheetDescription className="sr-only">
@@ -308,7 +311,7 @@ export function BulkImport({
                 }}
                 className={cn(
                   "flex flex-col items-center gap-4 border border-dashed px-6 py-16 text-center",
-                  dragging ? "border-brand bg-brand/5" : "bg-muted/40",
+                  dragging ? "border-primary bg-primary/5" : "bg-muted/40",
                 )}
               >
                 <HugeiconsIcon icon={ImageUploadIcon} className="size-10 text-muted-foreground" />
@@ -341,7 +344,7 @@ export function BulkImport({
             <div className="flex flex-col items-center gap-4 p-16 text-center">
               <p className="font-medium">Leyendo la imagen…</p>
               <div className="h-1.5 w-full max-w-sm bg-muted" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
-                <div className="h-full bg-brand transition-[width]" style={{ width: `${Math.max(4, progress * 100)}%` }} />
+                <div className="h-full bg-primary transition-[width]" style={{ width: `${Math.max(4, progress * 100)}%` }} />
               </div>
               <p className="text-sm text-muted-foreground">La primera vez tarda más: descarga el idioma de lectura.</p>
             </div>
@@ -360,19 +363,19 @@ export function BulkImport({
                 <div className="flex flex-col justify-center gap-3 p-6">
                   <dl className="grid grid-cols-4 gap-4 font-mono">
                     <div>
-                      <dt className="text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Leídas</dt>
+                      <dt className="caps text-muted-foreground">Leídas</dt>
                       <dd className="num text-2xl">{rows.length}</dd>
                     </div>
                     <div>
-                      <dt className="text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Por revisar</dt>
-                      <dd className={cn("num text-2xl", toReview > 0 && "text-amber-600 dark:text-amber-400")}>{toReview}</dd>
+                      <dt className="caps text-muted-foreground">Por revisar</dt>
+                      <dd className={cn("num text-2xl", toReview > 0 && "text-destructive")}>{toReview}</dd>
                     </div>
                     <div>
-                      <dt className="text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Duplicados</dt>
+                      <dt className="caps text-muted-foreground">Duplicados</dt>
                       <dd className={cn("num text-2xl", dupCount > 0 && "text-destructive")}>{dupCount}</dd>
                     </div>
                     <div>
-                      <dt className="text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">Descartados</dt>
+                      <dt className="caps text-muted-foreground">Descartados</dt>
                       <dd className="num text-2xl text-muted-foreground">{skipped}</dd>
                     </div>
                   </dl>
@@ -401,7 +404,7 @@ export function BulkImport({
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[40rem] text-sm">
                   <thead className="sticky top-0 z-10 bg-muted">
-                    <tr className="border-b text-left font-mono text-[0.6875rem] font-bold uppercase tracking-[0.1em]">
+                    <tr className="border-b text-left caps font-bold">
                       <th className="w-px px-4 py-2 text-right">N.º</th>
                       <th className="w-56 px-2 py-2">Part. num.</th>
                       <th className="px-2 py-2">Descripción</th>
@@ -438,7 +441,7 @@ export function BulkImport({
                 </table>
               </div>
               {reviewPages > 1 && (
-                <div className="flex items-center justify-between gap-4 border-t px-4 py-2 font-mono text-xs uppercase tracking-[0.08em]">
+                <div className="flex items-center justify-between gap-4 border-t px-4 py-2 caps-md">
                   <Button type="button" variant="outline" size="sm" disabled={safePage === 0} onClick={() => setReviewPage(safePage - 1)}>
                     ← Anteriores
                   </Button>

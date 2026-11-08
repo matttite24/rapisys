@@ -12,6 +12,7 @@ import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { CellGrid, PageSection } from "@/components/page-section";
 import { NativeSelect } from "@/components/ui/native-select";
+import { CLIENT_TYPES } from "@/lib/parties";
 import { VAT_RATE } from "@/lib/contracts";
 import { addDaysIso, formatIso } from "@/lib/dates";
 import { centsToInput, formatCents, parseCents, splitVat } from "@/lib/money";
@@ -26,6 +27,7 @@ export type ContractData = {
   clientId: string;
   managerId: string;
   totalCents: number;
+  vatRate?: number;
   startDate: string;
   termDays: number;
 };
@@ -72,10 +74,13 @@ function PartyPicker({
 
       {value === NEW && (
         <div className="flex flex-col gap-4 border bg-muted/50 p-4">
+          {prefix === "client" && <FormField name="client_type" label="Tipo de cliente" error={errors.client_type}>
+            {(props) => <NativeSelect {...props} className="w-full" required defaultValue=""><option value="" disabled>Selecciona…</option>{Object.entries(CLIENT_TYPES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</NativeSelect>}
+          </FormField>}
           <FormField name={`${prefix}_name`} label="Nombre" error={errors[`${prefix}_name`]}>
             {(a11y) => <Input {...a11y} required />}
           </FormField>
-          <FormField name={`${prefix}_ruc`} label="RUC (opcional)" hint="13 dígitos">
+          <FormField name={`${prefix}_ruc`} label="RUC o cédula (opcional)" hint="13 o 10 dígitos">
             {(a11y) => <NumericInput {...a11y} maxLength={13} className="font-mono" />}
           </FormField>
           <FormField name={`${prefix}_address`} label="Dirección (opcional)">
@@ -93,11 +98,14 @@ export function ContractForm({
   managers,
   contract,
   onDone,
+  defaultVatRate,
 }: {
   org: string;
   clients: Option[];
   managers: Option[];
   contract?: ContractData;
+  // IVA por defecto de la organización, para contratos nuevos.
+  defaultVatRate?: number;
   // Dentro de un panel: se llama al guardar o al cancelar, y reemplaza el regreso a la lista.
   onDone?: () => void;
 }) {
@@ -112,7 +120,8 @@ export function ContractForm({
 
   const errors: Errors = state?.fields ?? {};
   const parsed = parseCents(total);
-  const breakdown = parsed.ok ? splitVat(parsed.cents, VAT_RATE) : null;
+  const vat = contract?.vatRate ?? defaultVatRate ?? VAT_RATE;
+  const breakdown = parsed.ok ? splitVat(parsed.cents, vat) : null;
   const termDays = Number(days);
   // El plazo debe ser un entero mayor a 0; vacío o inválido no genera fecha.
   const end = days.trim() && Number.isInteger(termDays) && termDays > 0 ? addDaysIso(start, termDays) : null;
@@ -155,7 +164,7 @@ export function ContractForm({
 
       <PageSection index="02" label="Partes" className="p-0">
         <CellGrid className="border-0 md:grid-cols-2">
-          <PartyPicker prefix="client" label="Cliente (institución)" options={clients} errors={errors} initial={contract?.clientId} />
+          <PartyPicker prefix="client" label="Cliente" options={clients} errors={errors} initial={contract?.clientId} />
           <PartyPicker prefix="manager" label="Responsable de contrato" options={managers} errors={errors} initial={contract?.managerId} />
         </CellGrid>
       </PageSection>
@@ -168,8 +177,8 @@ export function ContractForm({
             error={errors.total}
             hint={
               breakdown
-                ? `Subtotal ${formatCents(breakdown.subtotal)} · IVA ${VAT_RATE}% ${formatCents(breakdown.vat)}`
-                : `Se desglosa el IVA ${VAT_RATE}% automáticamente`
+                ? `Subtotal ${formatCents(breakdown.subtotal)} · IVA ${vat}% ${formatCents(breakdown.vat)}`
+                : `Se desglosa el IVA ${vat}% automáticamente`
             }
           >
             {(a11y) => <MoneyInput {...a11y} name="total" required value={total} onChange={setTotal} />}
@@ -191,7 +200,7 @@ export function ContractForm({
           </FormField>
           {/* Se calcula sola: fecha de inicio + plazo */}
           <div className="flex flex-col gap-2" aria-live="polite">
-            <span className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+            <span className="caps font-medium text-muted-foreground">
               Fecha de entrega
             </span>
             <span className="num flex h-10 items-center text-lg">{end ? formatIso(end) : "—"}</span>
@@ -205,7 +214,7 @@ export function ContractForm({
       <div className="flex flex-col gap-4 p-6">
         {state?.error && <FieldError>{state.error}</FieldError>}
         {state?.saved && (
-          <p role="status" className="font-mono text-xs uppercase tracking-[0.08em]">
+          <p role="status" className="caps-md">
             Cambios guardados
           </p>
         )}

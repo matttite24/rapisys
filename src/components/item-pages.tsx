@@ -1,24 +1,15 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
-import { Add01Icon } from "@hugeicons/core-free-icons";
-import { HeaderAction } from "@/components/header-action";
 import { ItemForm, type AssetOption, type ItemData } from "@/components/item-form";
 import { StockPanel, type LotView } from "@/components/stock-panel";
-import { PageSection, TABLE_TH as TH, TABLE_TD as TD } from "@/components/page-section";
-import { Pager } from "@/components/pager";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import type { AssetKind } from "@/lib/items";
-import { centsToInput, formatCents, salePriceCents } from "@/lib/money";
-import { pageRange, readPage } from "@/lib/pagination";
-import { cleanSearch } from "@/lib/search";
+import { centsToInput } from "@/lib/money";
 import { getMyRole, getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
 
 type Params = Promise<{ org: string }>;
+type Search = Promise<Record<string, string | string[] | undefined>>;
 // Fecha de un lote, en la hora de Ecuador (se arma una vez, no en cada render).
 const LOT_DATE = new Intl.DateTimeFormat("es-EC", {
   day: "2-digit",
@@ -28,182 +19,7 @@ const LOT_DATE = new Intl.DateTimeFormat("es-EC", {
 });
 
 type IdParams = Promise<{ org: string; id: string }>;
-type Search = Promise<Record<string, string | string[] | undefined>>;
 
-
-type ItemRow = {
-  id: string;
-  sku: string | null;
-  name: string;
-  line: string | null;
-  category_id: string | null;
-  part_numbers: string[];
-  margin_percent: number;
-  is_active: boolean;
-};
-
-async function List({ params, searchParams }: { params: Params; searchParams: Search }) {
-  await connection();
-  const { org } = await params;
-  const search = await searchParams;
-  const raw = search.q;
-  const q = cleanSearch(typeof raw === "string" ? raw : "");
-  const page = readPage(search);
-  const orgId = await getOrgId(org);
-  if (!orgId) notFound();
-
-  const supabase = await createClient();
-  let query = supabase
-    .from("items")
-    .select("id, sku, name, line, category_id, part_numbers, margin_percent, is_active", {
-      count: "exact",
-    })
-    .eq("organization_id", orgId)
-    .order("name")
-    .range(...pageRange(page));
-  if (q) query = query.or(`name.ilike.%${q}%,sku.ilike.%${q}%,part_numbers.cs.{${q}}`);
-
-  const [itemsRes, catsRes] = await Promise.all([
-    query,
-    supabase.from("item_categories").select("id, name").eq("organization_id", orgId),
-  ]);
-
-  const rows = (itemsRes.data ?? []) as ItemRow[];
-  const total = itemsRes.count ?? 0;
-  const cats = new Map((catsRes.data ?? []).map((c) => [c.id as string, c.name as string]));
-
-  // Costo más bajo (sin IVA) solo de los items de esta página.
-  const best = new Map<string, number>();
-  if (rows.length) {
-    const { data: prices } = await supabase
-      .from("item_supplier_prices")
-      .select("item_id, unit_cost_cents")
-      .in("item_id", rows.map((r) => r.id));
-    for (const p of (prices ?? []) as { item_id: string; unit_cost_cents: number }[]) {
-      const cost = Number(p.unit_cost_cents);
-      if (!best.has(p.item_id) || cost < best.get(p.item_id)!) best.set(p.item_id, cost);
-    }
-  }
-  // Existencias de los items de esta página.
-  const stock = new Map<string, number>();
-  if (rows.length) {
-    const { data: onHand } = await supabase
-      .from("item_stock")
-      .select("item_id, on_hand")
-      .in("item_id", rows.map((r) => r.id));
-    for (const s of (onHand ?? []) as { item_id: string; on_hand: number }[]) {
-      stock.set(s.item_id, Number(s.on_hand));
-    }
-  }
-  const newHref = `/${org}/bodega/nuevo`;
-
-  return (
-    <>
-      <HeaderAction icon={Add01Icon} label="Nuevo item" href={newHref} />
-      <PageSection className="p-0">
-        <form method="get" className="flex gap-2 p-4" role="search">
-          <Input
-            name="q"
-            type="search"
-            defaultValue={q}
-            placeholder="Buscar por nombre, SKU o número de parte"
-            aria-label="Buscar items"
-            className="max-w-md"
-          />
-          <Button type="submit" variant="outline">Buscar</Button>
-          {q && (
-            <Link href={`/${org}/bodega`} className={buttonVariants({ variant: "ghost" })}>
-              Limpiar
-            </Link>
-          )}
-        </form>
-      </PageSection>
-      <PageSection
-        label={`${total} ${total === 1 ? "item" : "items"}${q ? ` para “${q}”` : ""}`}
-        className="p-0"
-      >
-        {rows.length === 0 ? (
-          <div className="flex flex-col items-start gap-4 p-6">
-            <p className="text-muted-foreground">
-              {q ? "Ningún item coincide con la búsqueda." : "Todavía no hay items en la bodega."}
-            </p>
-            {!q && (
-              <Link href={newHref} className={buttonVariants()}>
-                Crear el primero
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th scope="col" className={TH}>SKU</th>
-                  <th scope="col" className={TH}>Item</th>
-                  <th scope="col" className={TH}>Línea / categoría</th>
-                  <th scope="col" className={TH}>N.º de parte</th>
-                  <th scope="col" className={`${TH} text-right`}>Existencias</th>
-                  <th scope="col" className={`${TH} text-right`}>Costo s/IVA</th>
-                  <th scope="col" className={`${TH} text-right`}>Margen</th>
-                  <th scope="col" className={`${TH} text-right`}>Venta s/IVA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const cost = best.get(r.id);
-                  const cat = r.category_id ? cats.get(r.category_id) : undefined;
-                  return (
-                    <tr key={r.id} className="border-b last:border-b-0 hover:bg-accent/60">
-                      <td className={`${TD} num`}>{r.sku ?? "—"}</td>
-                      <td className={`${TD} p-0`}>
-                        <Link
-                          href={`/${org}/bodega/${r.id}`}
-                          className="block px-4 py-3 font-medium underline-offset-4 hover:underline"
-                        >
-                          {r.name}
-                          {!r.is_active && (
-                            <span className="ml-2 font-mono text-xs uppercase text-muted-foreground">inactivo</span>
-                          )}
-                        </Link>
-                      </td>
-                      <td className={TD}>{[r.line, cat].filter(Boolean).join(" / ") || "—"}</td>
-                      <td className={`${TD} num`}>
-                        {r.part_numbers[0] ?? "—"}
-                        {r.part_numbers.length > 1 && (
-                          <span className="ml-1 text-muted-foreground">+{r.part_numbers.length - 1}</span>
-                        )}
-                      </td>
-                      <td className={cn(TD, "num text-right", !stock.get(r.id) && "text-muted-foreground")}>
-                        {stock.get(r.id) ?? 0}
-                      </td>
-                      <td className={`${TD} num text-right`}>{cost !== undefined ? formatCents(cost) : "—"}</td>
-                      <td className={`${TD} num text-right`}>{Number(r.margin_percent)}%</td>
-                      <td className={`${TD} num text-right`}>
-                        {cost !== undefined ? formatCents(salePriceCents(cost, Number(r.margin_percent))) : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <Pager basePath={`/${org}/bodega`} page={page} total={total} params={q ? { q } : {}} />
-      </PageSection>
-    </>
-  );
-}
-
-export function ItemListPage({ params, searchParams }: { params: Params; searchParams: Search }) {
-  return (
-    <>
-      <h1 className="sr-only">Items de bodega</h1>
-      <Suspense fallback={<PageSection label="Cargando…" />}>
-        <List params={params} searchParams={searchParams} />
-      </Suspense>
-    </>
-  );
-}
 
 // Catálogos que necesita el formulario, siempre de la organización activa.
 async function formOptions(orgId: string) {
@@ -242,8 +58,7 @@ async function formOptions(orgId: string) {
 
 async function NewForm({ params, searchParams }: { params: Params; searchParams: Search }) {
   await connection();
-  const { org } = await params;
-  const sp = await searchParams;
+  const [{ org }, sp] = await Promise.all([params, searchParams]);
   const orgId = await getOrgId(org);
   if (!orgId) notFound();
   const one = (v: string | string[] | undefined) => (typeof v === "string" ? v.slice(0, 200) : undefined);
@@ -259,9 +74,7 @@ async function NewForm({ params, searchParams }: { params: Params; searchParams:
 export function ItemNewPage({ params, searchParams }: { params: Params; searchParams: Search }) {
   return (
     <>
-      <PageSection>
-        <h1 className="text-3xl font-semibold tracking-tight">Nuevo item</h1>
-      </PageSection>
+      <h1 className="sr-only">Nuevo item</h1>
       <Suspense>
         <NewForm params={params} searchParams={searchParams} />
       </Suspense>
@@ -276,7 +89,7 @@ async function EditForm({ params }: { params: IdParams }) {
   if (!orgId) notFound();
 
   const supabase = await createClient();
-  const [itemRes, pricesRes, linksRes, options, role, lotsRes] = await Promise.all([
+  const [itemRes, pricesRes, linksRes, options, role, lotsRes, stockRes] = await Promise.all([
     supabase.from("items").select("*").eq("id", id).eq("organization_id", orgId).maybeSingle(),
     supabase
       .from("item_supplier_prices")
@@ -292,6 +105,7 @@ async function EditForm({ params }: { params: IdParams }) {
       .eq("item_id", id)
       .order("created_at", { ascending: false })
       .limit(200),
+    supabase.from("item_stock").select("on_hand").eq("item_id", id).maybeSingle(),
   ]);
   const row = itemRes.data;
   if (!row) notFound();
@@ -346,7 +160,7 @@ async function EditForm({ params }: { params: IdParams }) {
 
   return (
     <>
-      <ItemForm org={org} item={item} canDelete={role === "admin"} {...options} />
+      <ItemForm org={org} item={item} canDelete={role === "admin"} onHand={Number(stockRes.data?.on_hand ?? 0)} {...options} />
       <StockPanel org={org} itemId={id} lots={lots} suppliers={options.suppliers} canEdit={role !== null} />
     </>
   );
@@ -355,9 +169,7 @@ async function EditForm({ params }: { params: IdParams }) {
 export function ItemEditPage({ params }: { params: IdParams }) {
   return (
     <>
-      <PageSection>
-        <h1 className="text-3xl font-semibold tracking-tight">Editar item</h1>
-      </PageSection>
+      <h1 className="sr-only">Editar item</h1>
       <Suspense>
         <EditForm params={params} />
       </Suspense>

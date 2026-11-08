@@ -1,14 +1,5 @@
-import { ContractListPage } from "@/components/contract-list";
+import { redirectContractFilter } from "@/lib/redirect-contract-filter";
 
-export default function Page({ params, searchParams }: PageProps<"/[org]/contratos/ejecucion">) {
-  return (
-    <ContractListPage
-      title="Contratos en ejecución"
-      params={params}
-      searchParams={searchParams}
-      basePath="/contratos/ejecucion"
-      statuses={["in_progress"]}
-      empty="No hay contratos en ejecución."
-    />
-  );
+export default async function Page({ params, searchParams }: PageProps<"/[org]/contratos/ejecucion">) {
+  return redirectContractFilter(params, searchParams, "ejecucion");
 }

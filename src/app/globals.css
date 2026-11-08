@@ -24,8 +24,38 @@
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-state-pending: var(--state-pending);
+  --color-state-partial: var(--state-partial);
+  --color-state-arriving: var(--state-arriving);
+  --color-state-stock: var(--state-stock);
+  --color-state-delivered: var(--state-delivered);
+  --color-state-running: var(--state-running);
+  --color-state-pending-ink: var(--state-pending-ink);
+  --color-state-partial-ink: var(--state-partial-ink);
+  --color-state-arriving-ink: var(--state-arriving-ink);
+  --color-state-stock-ink: var(--state-stock-ink);
+  --color-state-delivered-ink: var(--state-delivered-ink);
+  --color-state-running-ink: var(--state-running-ink);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-brand-mark: var(--brand-mark);
+  --color-brand-ink: var(--brand-ink);
+  --color-meter-track: var(--meter-track);
+  --color-state-pending-on: var(--state-pending-on);
+  --color-state-partial-on: var(--state-partial-on);
+  --color-state-arriving-on: var(--state-arriving-on);
+  --color-state-stock-on: var(--state-stock-on);
+  --color-state-delivered-on: var(--state-delivered-on);
+  --color-state-running-on: var(--state-running-on);
+  --color-state-pending-solid: var(--state-pending-solid);
+  --color-state-partial-solid: var(--state-partial-solid);
+  --color-state-arriving-solid: var(--state-arriving-solid);
+  --color-state-stock-solid: var(--state-stock-solid);
+  --color-state-delivered-solid: var(--state-delivered-solid);
+  --color-state-running-solid: var(--state-running-solid);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -58,96 +88,180 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Colores: los del kit de shadcn (neutro), sin paleta propia. Solo se añaden tres grises del marco
+ * (layer-1/2, surface-strong). Los estados se distinguen por su etiqueta y el tono de gris.
+ */
 :root {
-  /* Sombras teñidas con la tinta cálida del papel (no gris puro), en dos capas: contacto y difusa. */
-  /* Barras con borde propio (encabezado, panel de agregar): solo una sombra difusa y baja, sin filo
-     junto al borde, para que no se lea como una segunda línea. */
-  --elev-bar: 0 8px 10px -8px oklch(0.22 0.02 70 / 0.22);
-  --elev-1: 0 1px 2px oklch(0.22 0.02 70 / 0.12), 0 1px 1px oklch(0.22 0.02 70 / 0.07);
-  --elev-2: 0 8px 20px -4px oklch(0.22 0.02 70 / 0.20), 0 2px 5px -1px oklch(0.22 0.02 70 / 0.12);
-  --elev-3: 0 28px 56px -12px oklch(0.22 0.02 70 / 0.34), 0 10px 20px -8px oklch(0.22 0.02 70 / 0.20);
-  --background: oklch(0.965 0.006 85);
-  --foreground: oklch(0.16 0.01 85);
-  --card: oklch(0.965 0.006 85);
-  --card-foreground: oklch(0.16 0.01 85);
-  --popover: oklch(0.985 0.004 85);
-  --popover-foreground: oklch(0.16 0.01 85);
-  /* Botón principal: tinta. El color de marca (--brand) queda como acento. */
-  --primary: oklch(0.16 0.01 85);
-  --primary-foreground: oklch(0.985 0.004 85);
-  --secondary: oklch(0.94 0.006 85);
-  --secondary-foreground: oklch(0.16 0.01 85);
-  --muted: oklch(0.94 0.006 85);
-  /* Fondo de la zona de trabajo principal (agregar items): más marcado que muted. */
-  --surface-strong: oklch(0.885 0.012 85);
-  /* Tres capas del marco: 1 = barra principal (la más oscura), 2 = opciones cambiantes, 3 = contenido (--background). */
-  --layer-1: oklch(0.855 0.012 85);
-  --layer-2: oklch(0.91 0.009 85);
-  --muted-foreground: oklch(0.43 0.01 85);
-  --accent: oklch(0.925 0.006 85);
-  --accent-foreground: oklch(0.16 0.01 85);
-  --destructive: oklch(0.54 0.22 27);
-  --border: oklch(0.84 0.008 85);
-  --input: oklch(0.6 0.008 85);
-  --ring: oklch(0.57 0.19 50);
-  --brand: oklch(0.57 0.19 50);
-  --brand-foreground: oklch(0.99 0 0);
-  --chart-1: oklch(0.57 0.19 50);
-  --chart-2: oklch(0.75 0.15 75);
-  --chart-3: oklch(0.52 0.17 35);
-  --chart-4: oklch(0.82 0.11 85);
-  --chart-5: oklch(0.4 0.1 45);
-  --radius: 0;
-  --sidebar: oklch(0.965 0.006 85);
-  --sidebar-foreground: oklch(0.16 0.01 85);
-  --sidebar-primary: oklch(0.57 0.19 50);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.925 0.006 85);
-  --sidebar-accent-foreground: oklch(0.16 0.01 85);
-  --sidebar-border: oklch(0.84 0.008 85);
-  --sidebar-ring: oklch(0.57 0.19 50);
+  --footer-height: 4rem;
+  --elev-bar: 0 8px 10px -8px oklch(0 0 0 / 0.18);
+  --elev-1: 0 1px 2px oklch(0 0 0 / 0.10), 0 1px 1px oklch(0 0 0 / 0.06);
+  --elev-2: 0 8px 20px -4px oklch(0 0 0 / 0.16), 0 2px 5px -1px oklch(0 0 0 / 0.10);
+  --elev-3: 0 28px 56px -12px oklch(0 0 0 / 0.28), 0 10px 20px -8px oklch(0 0 0 / 0.16);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  /* Capas del marco: 1 = barra principal (la más oscura), 2 = opciones cambiantes, 3 = contenido (--background). */
+  --layer-1: oklch(0.93 0 0);
+  --layer-2: oklch(0.965 0 0);
+  --surface-strong: oklch(0.94 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  /* Semánticos de estado: verde = completo, amarillo = espera, azul = en curso. El texto siempre acompaña. */
+  --success: oklch(0.6 0.15 150);
+  --warning: oklch(0.8 0.16 80);
+  --info: oklch(0.6 0.16 255);
+  /* Estados de abastecimiento y de contrato: una marca (punto, barra) con al menos 3:1 sobre el fondo, y su tinte con
+     /20 (fondo del chip, con texto normal). Pendiente es neutro; Entregado, la tinta. */
+  --state-pending: oklch(0.556 0 0);
+  --state-partial: oklch(0.6 0.1 195);
+  --state-arriving: var(--info);
+  --state-stock: var(--success);
+  --state-delivered: var(--primary);
+  /* Acento: amarillo industrial y mostaza. El amarillo es SOLO relleno con texto negro (11:1; sobre blanco da 1,6:1, así
+     que nunca va como texto ni como línea fina). La mostaza es la marca fina (líneas, íconos grandes) y su variante oscura,
+     el texto. Los estados no usan amarillo: Parcial, Facturado y Por cobrar van en azul verdoso. */
+  --brand: oklch(0.84 0.17 90);
+  --brand-foreground: oklch(0.2 0 0);
+  --brand-mark: oklch(0.7 0.15 85);
+  --brand-ink: oklch(0.5 0.11 85);
+  --meter-track: oklch(0.28 0 0);
+  --state-running: oklch(0.67 0.17 50);
+  /* Texto de los chips de estado (sobre su tinte al 15 %): mismo tono que la marca pero oscuro, con 4,5:1 o más. */
+  --state-pending-ink: oklch(0.42 0 0);
+  --state-partial-ink: oklch(0.4 0.08 195);
+  --state-arriving-ink: oklch(0.4 0.13 255);
+  --state-stock-ink: oklch(0.4 0.1 150);
+  --state-delivered-ink: oklch(0.2 0 0);
+  --state-running-ink: oklch(0.45 0.12 50);
+  /* Texto sobre el relleno pleno del estado (badges sólidos de factura): sobre el relleno --state-*-solid: blanco en claro y tinta en oscuro (más de 4,5:1). */
+  --state-pending-on: oklch(0.99 0 0);
+  --state-partial-on: oklch(0.99 0 0);
+  --state-arriving-on: oklch(0.99 0 0);
+  --state-stock-on: oklch(0.99 0 0);
+  --state-delivered-on: oklch(0.99 0 0);
+  --state-running-on: oklch(0.99 0 0);
+  --state-pending-solid: oklch(0.45 0 0);
+  --state-partial-solid: oklch(0.5 0.09 195);
+  --state-arriving-solid: oklch(0.5 0.17 255);
+  --state-stock-solid: oklch(0.48 0.12 150);
+  --state-delivered-solid: oklch(0.205 0 0);
+  --state-running-solid: oklch(0.56 0.16 50);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
+/*
+ * Tema oscuro: no es el claro invertido. Las capas suben de claridad hacia el frente (riel < opciones < contenido <
+ * tarjetas < menús) y las zonas hundidas (--surface-strong, bandas de formulario) son MÁS oscuras que el contenido, igual
+ * que en el claro. El texto no es blanco puro (0,94) para no deslumbrar, y el botón principal es gris claro, no blanco.
+ */
 .dark {
-  /* En oscuro la sombra casi no se ve: pesa más y suma un filo de luz arriba que separa la capa. */
   --elev-bar: 0 8px 10px -8px oklch(0 0 0 / 0.55);
   --elev-1: 0 1px 2px oklch(0 0 0 / 0.45), inset 0 1px 0 oklch(1 0 0 / 0.04);
   --elev-2: 0 10px 24px -4px oklch(0 0 0 / 0.55), 0 2px 6px -1px oklch(0 0 0 / 0.40), inset 0 1px 0 oklch(1 0 0 / 0.05);
   --elev-3: 0 32px 64px -12px oklch(0 0 0 / 0.70), 0 10px 22px -8px oklch(0 0 0 / 0.50), inset 0 1px 0 oklch(1 0 0 / 0.06);
-  --background: oklch(0.15 0.004 85);
-  --foreground: oklch(0.96 0.005 85);
-  --card: oklch(0.15 0.004 85);
-  --card-foreground: oklch(0.96 0.005 85);
-  --popover: oklch(0.2 0.005 85);
-  --popover-foreground: oklch(0.96 0.005 85);
-  --primary: oklch(0.96 0.005 85);
-  --primary-foreground: oklch(0.15 0.004 85);
-  --secondary: oklch(0.24 0.005 85);
-  --secondary-foreground: oklch(0.96 0.005 85);
-  --muted: oklch(0.24 0.005 85);
-  --surface-strong: oklch(0.32 0.008 85);
-  --layer-1: oklch(0.11 0.004 85);
-  --layer-2: oklch(0.13 0.004 85);
-  --muted-foreground: oklch(0.72 0.01 85);
-  --accent: oklch(0.27 0.006 85);
-  --accent-foreground: oklch(0.96 0.005 85);
-  --destructive: oklch(0.7 0.19 22);
-  --border: oklch(1 0 0 / 14%);
-  --input: oklch(1 0 0 / 22%);
-  --ring: oklch(0.57 0.19 50);
-  --brand: oklch(0.57 0.19 50);
-  --brand-foreground: oklch(0.99 0 0);
-  --sidebar: oklch(0.15 0.004 85);
-  --sidebar-foreground: oklch(0.96 0.005 85);
-  --sidebar-primary: oklch(0.57 0.19 50);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.27 0.006 85);
-  --sidebar-accent-foreground: oklch(0.96 0.005 85);
-  --sidebar-border: oklch(1 0 0 / 14%);
-  --sidebar-ring: oklch(0.57 0.19 50);
+  --background: oklch(0.165 0 0);
+  --foreground: oklch(0.94 0 0);
+  --card: oklch(0.2 0 0);
+  --card-foreground: oklch(0.94 0 0);
+  --popover: oklch(0.24 0 0);
+  --popover-foreground: oklch(0.94 0 0);
+  --primary: oklch(0.88 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.26 0 0);
+  --secondary-foreground: oklch(0.94 0 0);
+  --muted: oklch(0.26 0 0);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.29 0 0);
+  --accent-foreground: oklch(0.94 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.556 0 0);
+  --layer-1: oklch(0.105 0 0);
+  --layer-2: oklch(0.135 0 0);
+  --surface-strong: oklch(0.12 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --success: oklch(0.72 0.16 150);
+  --warning: oklch(0.82 0.15 85);
+  --info: oklch(0.7 0.14 250);
+  --state-pending: oklch(0.708 0 0);
+  --state-partial: oklch(0.78 0.1 195);
+  --state-arriving: var(--info);
+  --state-stock: var(--success);
+  --state-delivered: var(--primary);
+  --brand: oklch(0.84 0.17 90);
+  --brand-foreground: oklch(0.2 0 0);
+  --brand-mark: oklch(0.78 0.15 88);
+  --brand-ink: oklch(0.8 0.14 88);
+  --meter-track: oklch(0.3 0 0);
+  --state-running: oklch(0.75 0.16 55);
+  --state-pending-ink: oklch(0.82 0 0);
+  --state-partial-ink: oklch(0.86 0.07 195);
+  --state-arriving-ink: oklch(0.86 0.08 250);
+  --state-stock-ink: oklch(0.86 0.1 150);
+  --state-delivered-ink: oklch(0.95 0 0);
+  --state-running-ink: oklch(0.87 0.1 55);
+  --state-pending-on: oklch(0.16 0 0);
+  --state-partial-on: oklch(0.16 0 0);
+  --state-arriving-on: oklch(0.16 0 0);
+  --state-stock-on: oklch(0.16 0 0);
+  --state-delivered-on: oklch(0.16 0 0);
+  --state-running-on: oklch(0.16 0 0);
+  --state-pending-solid: oklch(0.78 0 0);
+  --state-partial-solid: oklch(0.8 0.09 195);
+  --state-arriving-solid: oklch(0.78 0.11 250);
+  --state-stock-solid: oklch(0.8 0.13 150);
+  --state-delivered-solid: oklch(0.922 0 0);
+  --state-running-solid: oklch(0.8 0.13 55);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
+  /* El campo de búsqueda del navegador trae su propia "x" (a veces un emoji): se oculta y cada buscador usa el ícono del sistema. */
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
+  }
   * {
     @apply border-border outline-ring/50;
   }
@@ -158,87 +272,30 @@
     @apply font-sans;
   }
   ::selection {
-    background: color-mix(in oklch, var(--brand) 30%, transparent);
+    background: color-mix(in oklch, var(--brand) 55%, transparent);
+    color: var(--foreground);
   }
   /* Cantidades, montos y códigos en monoespaciada */
   .num {
     @apply font-mono tabular-nums;
   }
 }
-/*
- * Estilo del sistema. Va fuera de @layer para ganarle a las utilidades de
- * Tailwind de los componentes de shadcn: así sobrevive a `shadcn add --overwrite`
- * y no hay que editar los archivos de ui/.
- */
-[data-slot="button"] {
-  border-radius: 0;
-}
-
-/* Campos de formulario: caja completa y borde con contraste >= 3:1 (WCAG 1.4.11). */
-[data-slot="input"],
-[data-slot="native-select"] {
-  border: 1px solid var(--input);
-  padding-inline: 0.625rem;
-  background-color: transparent;
-}
-[data-slot="native-select"] {
-  padding-inline-end: 2rem;
-}
-[data-slot="native-select-icon"] {
-  right: 0.625rem;
-}
-[data-slot="input"]:focus-visible,
-[data-slot="native-select"]:focus-visible {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 30%, transparent);
-}
-[data-slot="input"][aria-invalid="true"],
-[data-slot="native-select"][aria-invalid="true"] {
-  border-color: var(--destructive);
-}
 
 /*
- * Estilo de cuadrícula (referencia: getartcraft.com): todo rectangular, líneas
- * de 1 px, etiquetas en mono mayúsculas. Va fuera de @layer para ganarle a las
- * utilidades de los componentes de shadcn y sobrevivir a regenerarlos.
+ * Reglas de la interfaz que antes se repetían a mano en los componentes.
+ * .caps / .caps-md: etiquetas en mono mayúsculas (encabezados de tabla, rótulos, atajos). Esquinas sutiles: --radius es 0.5rem.
  */
-[data-slot="button"] {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-/* Tamaño estándar más alto, como en la referencia. */
-[data-slot="button"].h-8 {
-  height: 2.5rem;
-  padding-inline: 1rem;
-}
-/* Los botones son planos: sin sombra y sin movimiento; al pulsar solo cambia el color. */
-[data-slot="button"] {
-  transition-property: background-color, color, border-color;
-  transition-duration: 120ms;
-  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-slot="button"] {
-    transition-duration: 0.01ms;
-  }
-}
-/* Botón principal (tinta): el hover aclara/oscurece el fondo sin tocar el texto. */
-[data-slot="button"].bg-primary:hover:not(:disabled) {
-  background-color: color-mix(in oklch, var(--primary) 82%, var(--background));
-}
-
-/* Etiquetas de campo en mono mayúsculas. */
-[data-slot="label"],
-[data-slot="field-label"] {
+.caps {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--muted-foreground);
+  letter-spacing: 0.1em;
+}
+.caps-md {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* Marca de cruce (+) en la intersección de dos líneas de la cuadrícula. */
@@ -260,47 +317,13 @@
     linear-gradient(var(--foreground), var(--foreground)) center / 100% 1px no-repeat;
 }
 
-/* Campos: caja completa y borde con contraste >= 3:1 (WCAG 1.4.11). */
-[data-slot="input"],
-[data-slot="native-select"] {
-  border: 1px solid var(--input);
-  padding-inline: 0.625rem;
-  background-color: transparent;
-}
-[data-slot="native-select"] {
-  padding-inline-end: 2rem;
-}
-[data-slot="native-select-icon"] {
-  right: 0.625rem;
-}
-[data-slot="input"]:focus-visible,
-[data-slot="native-select"]:focus-visible {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 30%, transparent);
-}
-[data-slot="input"][aria-invalid="true"],
-[data-slot="native-select"][aria-invalid="true"] {
-  border-color: var(--destructive);
-}
-
-/*
- * Botón de acento: texto blanco sobre el naranja de marca (4.8:1). El hover
- * oscurece el fondo; bajar su opacidad dejaría el texto blanco sin contraste.
- */
-[data-slot="button"].bg-primary:hover:not(:disabled) {
-  background-color: color-mix(in oklch, var(--primary) 86%, black);
-}
-[data-slot="button"].bg-primary:active:not(:disabled) {
-  background-color: color-mix(in oklch, var(--primary) 70%, black);
-}
-
-/* Quien pidió menos movimiento no recibe transiciones ni animaciones. */
+/* Quien pidió menos movimiento no recibe animaciones; los cambios de color (sin desplazamiento) se quedan. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

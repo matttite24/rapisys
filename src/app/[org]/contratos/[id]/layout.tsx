@@ -6,6 +6,7 @@ import { ContractStatusCell } from "@/components/contract-status-cell";
 import { HeaderSlot, HeaderTitle } from "@/components/header-action";
 import { EditContract } from "@/components/edit-contract";
 import { OnlyAtDetail } from "@/components/only-at-detail";
+import { NavBadges } from "@/components/nav-badges";
 import { PanelTop } from "@/components/panel-slots";
 import { getContract } from "@/lib/contract-data";
 import { finishBlocker } from "@/lib/contract-completion";
@@ -23,11 +24,18 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
   const { c } = found;
 
   const supabase = await createClient();
-  const { data: client } = await supabase.from("clients").select("name").eq("id", c.client_id).maybeSingle();
+  const count = (table: string) => supabase.from(table).select("id", { count: "exact", head: true }).eq("contract_id", id);
+  const [{ data: client }, lists, lines, purchases, deliveries, expenses, blocker] = await Promise.all([
+    supabase.from("clients").select("name").eq("id", c.client_id).maybeSingle(),
+    count("contract_lists"),
+    count("contract_items"),
+    count("purchases"),
+    count("deliveries"),
+    count("contract_expenses"),
+    c.status === "in_progress" ? finishBlocker(supabase, id) : Promise.resolve(null),
+  ]);
 
   const deliveryIso = addDaysIso(c.start_date, Number(c.term_days));
-  // Solo en ejecución se evalúa si ya se puede finalizar.
-  const blocker = c.status === "in_progress" ? await finishBlocker(supabase, id) : null;
   const summary = {
     code: c.code as string,
     total: formatCents(Number(c.total_cents)),
@@ -55,6 +63,16 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
         </OnlyAtDetail>
       </HeaderSlot>
       {/* En un contrato, la celda de la organización pasa a mostrar estado y fecha de entrega. */}
+      {/* Contadores a la derecha de cada sección en el menú de opciones: listas, líneas, facturas y entregas. */}
+      <NavBadges
+        badges={{
+          items: lists.count ?? 0,
+          abastecimiento: lines.count ?? 0,
+          compras: purchases.count ?? 0,
+          entregas: deliveries.count ?? 0,
+          gastos: expenses.count ?? 0,
+        }}
+      />
       <PanelTop>
         <ContractStatusCell status={c.status} delivery={summary.delivery} />
       </PanelTop>

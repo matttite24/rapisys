@@ -22,7 +22,7 @@ export async function createOrganization(
       p_name: name,
       p_slug: slug,
     });
-    if (!error) redirect(`/${data.slug}/inicio`);
+    if (!error) redirect(`/${data.slug}/contratos`);
     if (error.code !== "23505") {
       // Solo se muestran los mensajes que la base escribe para personas.
       const known = ["Necesitas una invitación", "Ese nombre está reservado"];

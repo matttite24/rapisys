@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import type { ListView } from "@/components/contract-lists";
 import { ItemsSkeleton, ReferenceList, type LineView } from "@/components/contract-lines";
 import { PageSection } from "@/components/page-section";
+import { assetExtras } from "@/lib/asset-extras";
 import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { findDuplicates } from "@/lib/duplicates";
 import { pageCount, pageRange, readPage } from "@/lib/pagination";
@@ -50,9 +51,7 @@ type View = {
 // demás solo su conteo. Todo llega en una sola llamada a la base (`contract_items_view`).
 async function Items({ params, searchParams }: { params: IdParams; searchParams: Search }) {
   await connection();
-  const { org, id } = await params;
-  const sp = await searchParams;
-  const supabase = await createClient();
+  const [{ org, id }, sp, supabase] = await Promise.all([params, searchParams, createClient()]);
 
   const q = cleanSearch(first(sp.q) ?? "");
   const page = readPage(sp);
@@ -107,6 +106,7 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
     cpc: l.cpc ?? "",
   }));
 
+  const extras = await assetExtras(supabase, view.lists.map((l) => l.asset_id));
   const lists: ListView[] = view.lists.map((l) => ({
     id: l.id,
     assetId: l.asset_id,
@@ -117,7 +117,10 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
     model: l.asset?.model ?? "",
     serial: l.asset?.serial ?? "",
     engine: l.asset?.engine ?? "",
+    year: (l.asset_id && extras.get(l.asset_id)?.year) || "",
     identifier: l.asset?.identifier ?? "",
+    other: (l.asset_id && extras.get(l.asset_id)?.other) || "",
+    plate: (l.asset_id && extras.get(l.asset_id)?.plate) || "",
   }));
 
   return (

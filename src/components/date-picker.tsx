@@ -28,6 +28,7 @@ const display = (d: Date) =>
   d.toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" });
 
 type Props = {
+  className?: string;
   id?: string;
   name: string;
   value: string;
@@ -40,6 +41,7 @@ type Props = {
 // Selector de fecha: calendario en español dentro de un popover. Envía el valor con
 // un campo oculto, así que funciona dentro de cualquier formulario.
 export function DatePicker({
+  className,
   name,
   value,
   onChange,
@@ -62,6 +64,7 @@ export function DatePicker({
               className={cn(
                 "h-10! w-full justify-start gap-2 border-input px-2.5 normal-case tracking-normal",
                 !date && "text-muted-foreground",
+                className,
               )}
             />
           }

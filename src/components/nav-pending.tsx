@@ -3,9 +3,8 @@
 import { useLinkStatus } from "next/link";
 import { cn } from "@/lib/utils";
 
-// Dentro de un <Link>: mientras la navegación está en curso, el contenido late. La persona ve que el clic
-// se registró al instante, aunque la pantalla nueva aún no haya llegado.
+// Señal inmediata del enlace en navegación; el menú la usa para resaltar el destino.
 export function Pending({ className, children }: { className?: string; children: React.ReactNode }) {
   const { pending } = useLinkStatus();
-  return <span className={cn(className, pending && "motion-safe:animate-pulse")}>{children}</span>;
+  return <span data-navigation-pending={pending ? "" : undefined} aria-busy={pending} className={cn(className)}>{children}</span>;
 }

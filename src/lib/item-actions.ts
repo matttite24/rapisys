@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseCents, parseDecimal } from "@/lib/money";
 import type { PriceRow, SpecRow } from "@/lib/items";
@@ -132,6 +133,7 @@ export async function saveItem(
     return { error: "No se pudo guardar el item. Revisa los datos e inténtalo de nuevo." };
   }
 
+  revalidatePath(`/${org}/bodega`);
   redirect(`/${org}/bodega`);
 }
 
@@ -156,5 +158,6 @@ export async function deleteItem(org: string, id: string): Promise<ItemState> {
     };
   }
   if (!data?.length) return { error: "Solo los administradores pueden eliminar items." };
+  revalidatePath(`/${org}/bodega`);
   redirect(`/${org}/bodega`);
 }

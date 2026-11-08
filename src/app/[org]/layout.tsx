@@ -18,8 +18,7 @@ async function OrgShell({
   children: React.ReactNode;
 }) {
   await connection();
-  const { org } = await params;
-  const supabase = await createClient();
+  const [{ org }, supabase] = await Promise.all([params, createClient()]);
   const { data } = await supabase
     .from("organizations")
     .select("id")

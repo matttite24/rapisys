@@ -16,7 +16,7 @@ async function Redirector() {
 
   const org = data?.organizations as { slug: string } | { slug: string }[] | null | undefined;
   const slug = Array.isArray(org) ? org[0]?.slug : org?.slug;
-  return redirect(slug ? `/${slug}/inicio` : "/onboarding");
+  return redirect(slug ? `/${slug}/contratos` : "/onboarding");
 }
 
 export default function Home() {

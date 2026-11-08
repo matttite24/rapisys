@@ -1,14 +1,5 @@
-import { ContractListPage } from "@/components/contract-list";
+import { redirectContractFilter } from "@/lib/redirect-contract-filter";
 
-export default function Page({ params, searchParams }: PageProps<"/[org]/contratos/cierre">) {
-  return (
-    <ContractListPage
-      title="Cierre y cobro"
-      params={params}
-      searchParams={searchParams}
-      basePath="/contratos/cierre"
-      statuses={["finished", "invoiced", "pending_payment", "paid"]}
-      empty="No hay contratos en cierre o cobro."
-    />
-  );
+export default async function Page({ params, searchParams }: PageProps<"/[org]/contratos/cierre">) {
+  return redirectContractFilter(params, searchParams, "cierre");
 }

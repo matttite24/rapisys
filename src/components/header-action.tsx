@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { PageNewActionContext } from "@/components/page-shortcuts";
 import { cn } from "@/lib/utils";
 
 // Elemento del encabezado donde las páginas colocan su acción principal.
@@ -26,11 +28,35 @@ type Props = {
 // como un cuadrado con solo el ícono; el texto sigue disponible para lectores de pantalla.
 export function HeaderAction({ icon, label, href, onClick, disabled, title }: Props) {
   const slot = useContext(HeaderSlotContext);
+  const router = useRouter();
+  const registerNew = useContext(PageNewActionContext);
+  const usable = !disabled && (Boolean(href) || Boolean(onClick));
+
+  // Atajo general para crear: Alt + N (y Ctrl/⌘ + N donde el navegador lo deje pasar; Chrome, Safari y Firefox lo
+  // reservan para "nueva ventana", así que Alt + N es el que siempre funciona).
+  useEffect(() => {
+    if (!usable) return;
+    registerNew(label);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "KeyN" || e.shiftKey) return;
+      const combo = e.altKey ? !e.ctrlKey && !e.metaKey : e.ctrlKey || e.metaKey;
+      if (!combo) return;
+      e.preventDefault();
+      if (href) router.push(href);
+      else onClick?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      registerNew(null);
+    };
+  }, [usable, label, href, onClick, router, registerNew]);
+
   if (!slot) return null;
 
   const className = cn(
-    buttonVariants({ variant: "default" }),
-    "-mr-4 h-full! border-0! bg-clip-border! px-5 max-sm:w-14 max-sm:px-0 sm:gap-2",
+    buttonVariants({ variant: "brand" }),
+    "-mr-4 h-full! rounded-none! border-0! bg-clip-border! px-5 max-sm:w-14 max-sm:px-0 sm:gap-2",
   );
   const content = (
     <>

@@ -24,6 +24,7 @@ export type AssetData = {
   serial: string | null;
   engine: string | null;
   identifier: string | null;
+  other: string | null;
 };
 
 export function AssetForm({
@@ -81,7 +82,7 @@ export function AssetForm({
           <FormField name="model" label="Modelo (opcional)">
             {(a11y) => <Input {...a11y} defaultValue={asset?.model ?? ""} />}
           </FormField>
-          <FormField name="year" label="Año (opcional)" error={errors.year}>
+          <FormField name="year" label="Año de fabricación (opcional)" error={errors.year}>
             {(a11y) => (
               <NumericInput {...a11y} maxLength={4} className="font-mono" defaultValue={asset?.year ?? ""} />
             )}
@@ -89,11 +90,14 @@ export function AssetForm({
           <FormField name="serial" label="Serie (opcional)" error={errors.serial}>
             {(a11y) => <Input {...a11y} className="font-mono" defaultValue={asset?.serial ?? ""} />}
           </FormField>
-          <FormField name="engine" label="Motor (opcional)" error={errors.engine}>
+          <FormField name="engine" label="Serie del motor (opcional)" error={errors.engine}>
             {(a11y) => <Input {...a11y} className="font-mono" defaultValue={asset?.engine ?? ""} />}
           </FormField>
-          <FormField name="identifier" label="Identificador (opcional)" error={errors.identifier}>
+          <FormField name="identifier" label="N.º de identificación (opcional)" error={errors.identifier}>
             {(a11y) => <Input {...a11y} className="font-mono" defaultValue={asset?.identifier ?? ""} />}
+          </FormField>
+          <FormField name="other" label="Otro (opcional)" error={errors.other}>
+            {(a11y) => <Input {...a11y} maxLength={200} defaultValue={asset?.other ?? ""} />}
           </FormField>
         </CellGrid>
       </PageSection>

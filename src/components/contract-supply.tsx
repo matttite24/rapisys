@@ -5,6 +5,8 @@ import { notFound, redirect } from "next/navigation";
 import type { ListView } from "@/components/contract-lists";
 import { PageSection } from "@/components/page-section";
 import { SupplyBoard, SupplySkeleton, type SupplyLine, type SupplyState } from "@/components/supply-board";
+import { getContract } from "@/lib/contract-data";
+import { assetExtras } from "@/lib/asset-extras";
 import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { pageCount, pageRange, readPage } from "@/lib/pagination";
 import { cleanSearch } from "@/lib/search";
@@ -14,7 +16,7 @@ type IdParams = Promise<{ org: string; id: string }>;
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-const STATES: SupplyState[] = ["pending", "partial", "purchased", "in_stock", "delivered"];
+const STATES: SupplyState[] = ["pending", "quoted", "partial", "purchased", "in_stock", "delivered"];
 
 type View = {
   status: string;
@@ -57,25 +59,29 @@ type View = {
 // en una sola llamada a la base (`contract_supply_view`), por páginas.
 async function Supply({ params, searchParams }: { params: IdParams; searchParams: Search }) {
   await connection();
-  const { org, id } = await params;
-  const sp = await searchParams;
-  const supabase = await createClient();
+  const [{ org, id }, sp, supabase] = await Promise.all([params, searchParams, createClient()]);
 
   const q = cleanSearch(first(sp.q) ?? "");
   const estado = STATES.find((s) => s === first(sp.estado)) ?? "";
   const page = readPage(sp);
   const [from] = pageRange(page, LINES_PAGE_SIZE);
 
-  const { data } = await supabase.rpc("contract_supply_view", {
-    p_contract_id: id,
-    p_list_id: first(sp.lista) ?? null,
-    p_q: q,
-    p_state: estado,
-    p_offset: from,
-    p_limit: LINES_PAGE_SIZE,
-  });
+  // La lista, el contrato y el resumen de costos no dependen unos de otros.
+  const [{ data }, contract, { data: costData }] = await Promise.all([
+    supabase.rpc("contract_supply_view", {
+      p_contract_id: id,
+      p_list_id: first(sp.lista) ?? null,
+      p_q: q,
+      p_state: estado,
+      p_offset: from,
+      p_limit: LINES_PAGE_SIZE,
+    }),
+    getContract(org, id),
+    supabase.rpc("contract_supply_cost", { p_contract_id: id }),
+  ]);
   const view = data as View | null;
   if (!view) notFound();
+  const cost = costData as { cost_cents: number; unknown: number } | null;
 
   if (view.status === "new") {
     return (
@@ -97,6 +103,15 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     redirect(`/${org}/contratos/${id}/abastecimiento?${back}`);
   }
 
+  const lineIds = view.lines.map((l) => l.id);
+  const [extras, { data: srcRows }] = await Promise.all([
+    assetExtras(supabase, view.lists.map((l) => l.asset_id)),
+    lineIds.length
+      ? supabase.from("supply_sources")
+          .select("contract_item_id, item_id, quantity, kind, unit_cost_cents")
+          .in("contract_item_id", lineIds).order("created_at")
+      : Promise.resolve({ data: [] }),
+  ]);
   const lists: ListView[] = view.lists.map((l) => ({
     id: l.id,
     assetId: l.asset_id,
@@ -107,8 +122,26 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     model: l.asset?.model ?? "",
     serial: l.asset?.serial ?? "",
     engine: l.asset?.engine ?? "",
+    year: (l.asset_id && extras.get(l.asset_id)?.year) || "",
     identifier: l.asset?.identifier ?? "",
+    other: (l.asset_id && extras.get(l.asset_id)?.other) || "",
+    plate: (l.asset_id && extras.get(l.asset_id)?.plate) || "",
   }));
+
+  // Lo asignado ya llegó junto con los datos adicionales de los activos.
+  const sources = (srcRows ?? []) as {
+    contract_item_id: string;
+    item_id: string;
+    quantity: number;
+    kind: "bodega" | "compra";
+    unit_cost_cents: number | null;
+  }[];
+  const { data: itemRows } = sources.length
+    ? await supabase.from("items").select("id, name, sku, part_numbers").in("id", [...new Set(sources.map((x) => x.item_id))])
+    : { data: [] };
+  const itemById = new Map(
+    ((itemRows ?? []) as { id: string; name: string; sku: string | null; part_numbers: string[] }[]).map((i) => [i.id, i]),
+  );
 
   const lines: SupplyLine[] = view.lines.map((l) => ({
     id: l.id,
@@ -124,6 +157,18 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     delivered: Number(l.delivered),
     costCents: l.cost_cents === null ? null : Number(l.cost_cents),
     state: l.state,
+    assigned: sources
+      .filter((x) => x.contract_item_id === l.id)
+      .map((x) => {
+        const item = itemById.get(x.item_id);
+        return {
+          name: item?.name ?? "Producto eliminado",
+          code: item?.part_numbers?.[0] ?? item?.sku ?? "",
+          quantity: Number(x.quantity),
+          kind: x.kind,
+          costCents: x.unit_cost_cents === null ? null : Number(x.unit_cost_cents),
+        };
+      }),
   }));
 
   return (
@@ -134,6 +179,7 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
       lines={lines}
       counts={{
         pending: view.counts.pending ?? 0,
+        quoted: view.counts.quoted ?? 0,
         partial: view.counts.partial ?? 0,
         purchased: view.counts.purchased ?? 0,
         in_stock: view.counts.in_stock ?? 0,
@@ -147,6 +193,16 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
       basePath={`/${org}/contratos/${id}/abastecimiento`}
       canAct={view.status === "in_progress"}
       deliveries={Number(view.deliveries)}
+      money={
+        contract
+          ? {
+              totalCents: Number(contract.c.total_cents),
+              vatRate: Number(contract.c.vat_rate),
+              coveredCents: Number(cost?.cost_cents ?? 0),
+              unknown: Number(cost?.unknown ?? 0),
+            }
+          : null
+      }
     />
   );
 }

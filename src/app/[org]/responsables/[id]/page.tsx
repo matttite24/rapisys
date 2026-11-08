@@ -1,5 +1,4 @@
-import { PartyEditPage } from "@/components/party-pages";
-
-export default function Page({ params }: PageProps<"/[org]/responsables/[id]">) {
-  return <PartyEditPage kind="managers" params={params} />;
+import { redirectLegacyParty } from "@/lib/redirect-party";
+export default async function Page({ params, searchParams }: PageProps<"/[org]/responsables/[id]">) {
+  return redirectLegacyParty("managers", params, searchParams, "edit");
 }

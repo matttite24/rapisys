@@ -60,7 +60,7 @@ export async function createList(org: string, contractId: string, formData: Form
 }
 
 // Corrige una lista ya creada. Si es de un activo del catálogo, los datos de la máquina
-// (tipo, marca, modelo, serie, motor, identificador) son del activo y se corrigen ahí.
+// (tipo, marca, modelo, serie, serie del motor, año, identificación y otro) son del activo y se corrigen ahí.
 export async function updateList(
   org: string,
   contractId: string,
@@ -80,10 +80,15 @@ export async function updateList(
     engine: text(formData, "engine"),
     identifier: text(formData, "identifier"),
   };
+  const other = text(formData, "other");
+  const yearRaw = text(formData, "year");
+  const year = yearRaw ? Number(yearRaw) : null;
   const kind = text(formData, "kind");
   for (const [key, value] of Object.entries(asset)) {
     if (value.length > 100) fields[key] = "Máximo 100 caracteres.";
   }
+  if (other.length > 200) fields.other = "Máximo 200 caracteres.";
+  if (year !== null && (!Number.isInteger(year) || year < 1950 || year > 2100)) fields.year = "Escribe un año entre 1950 y 2100.";
   if (Object.keys(fields).length) return { fields };
 
   const supabase = await createClient();
@@ -106,7 +111,9 @@ export async function updateList(
         model: asset.model || null,
         serial: asset.serial || null,
         engine: asset.engine || null,
+        year,
         identifier: asset.identifier || null,
+        other: other || null,
       })
       .eq("id", list.asset_id)
       .select("id");
@@ -149,6 +156,32 @@ export type AssetResult = {
   serial: string | null;
 };
 
+// Los últimos activos usados en listas de la organización (los 5 más recientes), para no buscar nada al abrir el modal.
+// Si aún no hay listas con activo, los 5 activos creados más recientemente.
+export async function recentAssets(org: string): Promise<AssetResult[]> {
+  const orgId = await getOrgId(org);
+  if (!orgId) return [];
+  const supabase = await createClient();
+  const cols = "id, name, brand, model, serial";
+
+  const { data: lists } = await supabase
+    .from("contract_lists")
+    .select("asset_id")
+    .eq("organization_id", orgId)
+    .not("asset_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  const ids = [...new Set(((lists ?? []) as { asset_id: string }[]).map((l) => l.asset_id))].slice(0, 5);
+
+  if (ids.length > 0) {
+    const { data } = await supabase.from("assets").select(cols).eq("organization_id", orgId).in("id", ids);
+    const byId = new Map(((data ?? []) as AssetResult[]).map((a) => [a.id, a]));
+    return ids.map((id) => byId.get(id)).filter((a): a is AssetResult => Boolean(a));
+  }
+  const { data } = await supabase.from("assets").select(cols).eq("organization_id", orgId).order("created_at", { ascending: false }).limit(5);
+  return (data ?? []) as AssetResult[];
+}
+
 // Busca activos del catálogo por nombre, marca, modelo o placa.
 export async function searchAssets(org: string, q: string): Promise<AssetResult[]> {
   const orgId = await getOrgId(org);
@@ -161,7 +194,7 @@ export async function searchAssets(org: string, q: string): Promise<AssetResult[
     .select("id, name, brand, model, serial")
     .eq("organization_id", orgId)
     .order("name")
-    .limit(30); // el selector avisa cuando llega a este tope
+    .limit(12); // el selector avisa cuando llega a este tope
   if (term) query = query.or(`name.ilike.%${term}%,brand.ilike.%${term}%,model.ilike.%${term}%,serial.ilike.%${term}%,identifier.ilike.%${term}%,plate.ilike.%${term}%`);
   const { data } = await query;
   return (data ?? []) as AssetResult[];
@@ -177,7 +210,9 @@ export type NewAsset = {
   model: string;
   serial: string;
   engine: string;
+  year: string;
   identifier: string;
+  other: string;
 };
 
 // Alta de un activo en el catálogo. Si ya existe el mismo (mismo nombre y misma serie, sin
@@ -192,6 +227,9 @@ export async function quickCreateAsset(org: string, input: NewAsset): Promise<Qu
   for (const key of ["brand", "model", "serial", "engine", "identifier"] as const) {
     if (v[key].length > 100) fields[key] = "Máximo 100 caracteres.";
   }
+  if (v.other.length > 200) fields.other = "Máximo 200 caracteres.";
+  const year = v.year ? Number(v.year) : null;
+  if (year !== null && (!Number.isInteger(year) || year < 1950 || year > 2100)) fields.year = "Escribe un año entre 1950 y 2100.";
   if (Object.keys(fields).length) return { fields };
 
   const orgId = await getOrgId(org);
@@ -219,7 +257,9 @@ export async function quickCreateAsset(org: string, input: NewAsset): Promise<Qu
       model: v.model || null,
       serial: v.serial || null,
       engine: v.engine || null,
+      year,
       identifier: v.identifier || null,
+      other: v.other || null,
     })
     .select("id, name, brand, model, serial")
     .single();

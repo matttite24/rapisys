@@ -31,7 +31,7 @@ export function EditContract({ org, contractId }: { org: string; contractId: str
     <>
       <HeaderSlot>
         <span className="flex self-stretch">
-          <Button variant="ghost" className="h-auto! gap-2 px-4" onClick={openEditor}>
+          <Button variant="ghost" className="h-auto! gap-2 rounded-none! px-4" onClick={openEditor}>
             <HugeiconsIcon icon={Edit02Icon} className="size-4" />
             Editar
           </Button>

@@ -3,12 +3,13 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import {
   InvitationsTable,
-  InviteForm,
   MembersTable,
   type InvitationView,
   type MemberView,
 } from "@/components/members-manager";
+import { InviteDialog } from "@/components/invite-dialog";
 import { PageSection } from "@/components/page-section";
+import { PageFigures } from "@/components/page-shortcuts";
 import { getUser } from "@/lib/auth";
 import { getMyRole, getOrgId } from "@/lib/orgs";
 import type { Role } from "@/lib/roles";
@@ -23,7 +24,8 @@ async function Members({ params }: { params: PageProps<"/[org]/ajustes/miembros"
   const [supabase, user, role] = await Promise.all([createClient(), getUser(), getMyRole(orgId)]);
   const isAdmin = role === "admin";
 
-  const [membersRes, invitesRes] = await Promise.all([
+  const [settingsRes, membersRes, invitesRes] = await Promise.all([
+    supabase.from("organizations").select("invitation_days").eq("id", orgId).maybeSingle(),
     supabase
       .from("memberships")
       .select("user_id, role, created_at, profiles(email, full_name)")
@@ -46,6 +48,7 @@ async function Members({ params }: { params: PageProps<"/[org]/ajustes/miembros"
     created_at: string;
     profiles: { email: string; full_name: string | null } | null;
   };
+  const inviteDays = Number(settingsRes.data?.invitation_days ?? 7);
   const members: MemberView[] = ((membersRes.data ?? []) as unknown as MRow[]).map((r) => ({
     userId: r.user_id,
     name: r.profiles?.full_name ?? null,
@@ -59,18 +62,16 @@ async function Members({ params }: { params: PageProps<"/[org]/ajustes/miembros"
 
   return (
     <>
-      <PageSection
-        label={`${members.length} ${members.length === 1 ? "miembro" : "miembros"}`}
-        className="p-0"
-      >
+      {/* El conteo va en la barra inferior; la tabla no necesita su propio título. */}
+      <PageFigures figures={[{ label: "", value: String(members.length), note: members.length === 1 ? "miembro" : "miembros" }]} />
+      <PageSection className="p-0">
         <MembersTable org={org} members={members} meId={user?.id ?? ""} canManage={isAdmin} />
       </PageSection>
 
       {isAdmin && (
         <>
-          <PageSection label="Invitar a alguien">
-            <InviteForm org={org} />
-          </PageSection>
+          {/* Invitar va en el encabezado y abre un modal; las invitaciones pendientes quedan debajo. */}
+          <InviteDialog org={org} days={inviteDays} />
           {invitations.length > 0 && (
             <PageSection
               label={`${invitations.length} ${invitations.length === 1 ? "invitación pendiente" : "invitaciones pendientes"}`}

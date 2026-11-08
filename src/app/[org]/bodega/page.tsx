@@ -1,5 +1,5 @@
-import { ItemListPage } from "@/components/item-pages";
+import { WarehouseListPage } from "@/components/warehouse-page";
 
 export default function Page({ params, searchParams }: PageProps<"/[org]/bodega">) {
-  return <ItemListPage params={params} searchParams={searchParams} />;
+  return <WarehouseListPage params={params} searchParams={searchParams} />;
 }

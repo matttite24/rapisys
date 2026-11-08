@@ -16,10 +16,11 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { setContractStatus } from "@/lib/contract-actions";
-import { STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
+import { StatusChip } from "@/components/status-chip";
+import { STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
 
 const SUMMARY_LABEL =
-  "mb-1 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground";
+  "mb-1 caps font-medium text-muted-foreground";
 
 // Estado del contrato: un paso adelante o atrás por vez.
 export function StatusControl({
@@ -63,10 +64,7 @@ export function StatusControl({
       <div className={inHeader ? "flex items-stretch gap-2" : "flex flex-wrap items-center gap-2"}>
         {/* En el encabezado el estado ya está en la columna de opciones y no se retrocede: solo el paso siguiente. */}
         {!inHeader && (
-        <span className="inline-flex items-center gap-2 bg-muted px-2.5 py-1.5 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-foreground select-none">
-          <span aria-hidden className={`size-2 ${STATUS_DOT[status] ?? "bg-muted-foreground"}`} />
-          {STATUS_LABEL[status] ?? status}
-        </span>
+        <StatusChip status={status} className="select-none" />
         )}
         {prev && !inHeader && (
           <Button variant="outline" disabled={pending} onClick={() => go(prev)}>
@@ -78,8 +76,9 @@ export function StatusControl({
           // Con motivo pendiente queda inactivo y el motivo se ve al pasar el cursor (el botón inactivo no recibe eventos).
           <span className={cn(inHeader && "flex")} title={blocker ?? undefined}>
             <Button
+              variant="brand"
               disabled={pending || Boolean(blocker)}
-              className={cn(inHeader && "-mr-4 h-auto! gap-2 border-0! bg-clip-border! px-5")}
+              className={cn(inHeader && "-mr-4 h-auto! gap-2 rounded-none! border-0! bg-clip-border! px-5")}
               onClick={() => (next === "in_progress" ? setConfirmOpen(true) : go(next))}
             >
               {STATUS_LABEL[next]}

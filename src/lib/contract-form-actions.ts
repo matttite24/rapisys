@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { isClientType } from "@/lib/parties";
 import { VAT_RATE } from "@/lib/contracts";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
 import { parseCents } from "@/lib/money";
@@ -41,6 +42,7 @@ function parseForm(fd: FormData): { fields: Record<string, string> } | { values:
   if (!name) fields.name = "Escribe el nombre del contrato.";
   if (!code) fields.code = "Escribe el código del contrato.";
   if (!clientChoice) fields.client_id = "Selecciona un cliente o crea uno nuevo.";
+  if (clientChoice === NEW && !isClientType(text(fd, "client_type"))) fields.client_type = "Selecciona el tipo de cliente.";
   if (clientChoice === NEW && !text(fd, "client_name")) {
     fields.client_name = "Escribe el nombre del cliente.";
   }
@@ -79,6 +81,7 @@ async function resolveParties(
       .from(table)
       .insert({
         organization_id: organizationId,
+        ...(table === "clients" ? { client_type: text(fd, "client_type") } : {}),
         name: text(fd, `${prefix}_name`),
         ruc: text(fd, `${prefix}_ruc`) || null,
         address: text(fd, `${prefix}_address`) || null,
@@ -134,12 +137,13 @@ export async function createContract(_: ContractState, formData: FormData): Prom
     client_id: parties.clientId,
     manager_id: parties.managerId,
     total_cents: v.totalCents,
-    vat_rate: VAT_RATE,
+    vat_rate: await orgVatRate(organizationId),
     term_days: v.termDays,
     start_date: v.startDate,
   });
   if (error) return saveError("createContract", error);
 
+  revalidatePath(`/${org}/contratos`);
   redirect(`/${org}/contratos`);
 }
 
@@ -159,8 +163,7 @@ export async function updateContract(
   const organizationId = await getOrgId(org);
   if (!organizationId) return { error: "No encontramos la organización." };
 
-  const supabase = await createClient();
-  const parties = await resolveParties(organizationId, formData, v);
+  const [supabase, parties] = await Promise.all([createClient(), resolveParties(organizationId, formData, v)]);
   if ("error" in parties) return { error: parties.error };
 
   const { data, error } = await supabase
@@ -185,6 +188,13 @@ export async function updateContract(
   return { saved: true };
 }
 
+// IVA por defecto de la organización (Ajustes); si no se puede leer, el de siempre.
+export async function orgVatRate(organizationId: string): Promise<number> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("organizations").select("vat_rate").eq("id", organizationId).maybeSingle();
+  return data?.vat_rate != null ? Number(data.vat_rate) : VAT_RATE;
+}
+
 // Datos para el formulario de edición del contrato (se piden al abrirlo, no en cada pantalla).
 export async function loadContractEdit(org: string, contractId: string) {
   await requireUser();
@@ -194,7 +204,7 @@ export async function loadContractEdit(org: string, contractId: string) {
   const [contract, clients, managers] = await Promise.all([
     supabase
       .from("contracts")
-      .select("id, name, code, client_id, manager_id, total_cents, start_date, term_days")
+      .select("id, name, code, client_id, manager_id, total_cents, start_date, term_days, vat_rate")
       .eq("id", contractId)
       .eq("organization_id", organizationId)
       .maybeSingle(),
@@ -213,6 +223,7 @@ export async function loadContractEdit(org: string, contractId: string) {
       clientId: c.client_id as string,
       managerId: c.manager_id as string,
       totalCents: Number(c.total_cents),
+      vatRate: Number(c.vat_rate),
       startDate: c.start_date as string,
       termDays: Number(c.term_days),
     },

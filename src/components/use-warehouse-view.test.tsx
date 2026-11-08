@@ -1,0 +1,69 @@
+// @vitest-environment jsdom
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { useWarehouseView } from "./use-warehouse-view";
+import { loadWarehouse } from "@/lib/warehouse-data";
+import type { WarehouseView } from "@/lib/warehouse";
+vi.mock("@/lib/warehouse-data", () => ({ loadWarehouse: vi.fn() }));
+const items: WarehouseView = { kind: "items", q: "", page: 1, total: 1, rows: [{ id: "i", name: "Correa", sku: "SKU-A", line: null, category: null, part_numbers: ["377-9087"], margin_percent: 40, is_active: true, costCents: 100, stock: 2 }] };
+const assets: WarehouseView = { kind: "activos", q: "", page: 1, total: 1, rows: [{ id: "a", name: "Excavadora", kind: "machinery", brand: "CAT", model: "320", serial: "SERIE-1", identifier: "ID-1", plate: "P-1", year: 2020 }] };
+beforeEach(() => { vi.clearAllMocks(); window.history.replaceState(null, "", "/org/bodega"); });
+afterEach(() => { cleanup(); vi.useRealTimers(); });
+it("carga cada catálogo por separado y reutiliza ambos al volver", async () => {
+  vi.mocked(loadWarehouse).mockResolvedValue({ view: assets });
+  const { result } = renderHook(() => useWarehouseView("org", items));
+  await act(async () => { await result.current.select("activos"); });
+  expect(result.current.view.kind).toBe("activos");
+  expect(result.current.view.rows[0].id).toBe("a");
+  await act(async () => { await result.current.select("items"); });
+  expect(result.current.view.rows[0].id).toBe("i");
+  await act(async () => { await result.current.select("activos"); });
+  expect(loadWarehouse).toHaveBeenCalledOnce();
+});
+it("filtra búsquedas del catálogo completo sin llamadas y no deduce Activos de Items", async () => {
+  vi.mocked(loadWarehouse).mockResolvedValue({ view: { ...assets, q: "Correa", rows: [], total: 0 } });
+  const { result } = renderHook(() => useWarehouseView("org", items));
+  await act(async () => { await result.current.select("items", 1, "Correa"); });
+  expect(result.current.view.total).toBe(1);
+  expect(loadWarehouse).not.toHaveBeenCalled();
+  await act(async () => { await result.current.select("activos"); });
+  expect(loadWarehouse).toHaveBeenCalledWith("org", "activos", "Correa", 1);
+  expect(window.location.search).toBe("?q=Correa&vista=activos");
+  expect(result.current.view.total).toBe(0);
+});
+it("busca serie e identificación en Activos cargados y descarta consulta antigua", async () => {
+  let resolve!: (v: Awaited<ReturnType<typeof loadWarehouse>>) => void;
+  vi.mocked(loadWarehouse).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+  const { result } = renderHook(() => useWarehouseView("org", assets));
+  await act(async () => { await result.current.select("activos", 1, "SERIE-1"); });
+  expect(result.current.view.total).toBe(1);
+  act(() => { void result.current.select("items"); });
+  expect(result.current.loading).toBe(true);
+  expect(result.current.view.rows).toEqual([]);
+  await act(async () => { await result.current.select("activos", 1, "ID-1"); });
+  await act(async () => { resolve({ view: items }); });
+  expect(result.current.view.kind).toBe("activos");
+  expect(result.current.view.q).toBe("ID-1");
+  expect(result.current.loading).toBe(false);
+});
+it("muestra error recuperable y corta consultas sin respuesta", async () => {
+  vi.useFakeTimers();
+  vi.mocked(loadWarehouse).mockReturnValueOnce(new Promise(() => {})).mockResolvedValueOnce({ view: assets });
+  const { result } = renderHook(() => useWarehouseView("org", items));
+  act(() => { void result.current.select("activos"); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+  expect(result.current.loading).toBe(false);
+  expect(result.current.error).toContain("tardando demasiado");
+  await act(async () => { await result.current.retry(); });
+  expect(result.current.error).toBe("");
+  expect(result.current.view.kind).toBe("activos");
+});
+it("restaura Atrás y descarta caché al recibir datos actualizados", async () => {
+  const { result, rerender } = renderHook((initial) => useWarehouseView("org", initial), { initialProps: items });
+  await act(async () => { await result.current.select("items", 1, "no existe"); });
+  expect(result.current.view.total).toBe(0);
+  act(() => { window.history.replaceState(null, "", "/org/bodega"); window.dispatchEvent(new PopStateEvent("popstate")); });
+  expect(result.current.view.total).toBe(1);
+  rerender({ ...items, rows: [], total: 0 });
+  expect(result.current.view.total).toBe(0);
+});

@@ -1,3 +1,5 @@
+import type { Tone } from "@/lib/state-tone";
+
 export const VAT_RATE = 15;
 
 export const STATUS_LABEL: Record<string, string> = {
@@ -33,7 +35,7 @@ export type Phase = (typeof PHASE_ORDER)[number];
 
 export const PHASE_LABEL: Record<Phase, string> = {
   pending: "Pendiente",
-  quoted: "Proformado",
+  quoted: "Cotizando",
   purchased: "Comprado",
   received: "Recibido",
   in_stock: "En stock",
@@ -46,14 +48,24 @@ export const NEEDS_FULL_RECEIPT: Phase[] = ["in_stock", "ready", "delivered"];
 
 // Punto de color por fase; el texto siempre acompaña, el color no va solo.
 export const STATUS_DOT: Record<string, string> = {
-  new: "bg-muted-foreground",
-  in_progress: "bg-brand",
-  finished: "bg-sky-600",
-  invoiced: "bg-violet-600",
-  pending_payment: "bg-amber-500",
-  paid: "bg-emerald-600",
+  new: "bg-state-pending",
+  in_progress: "bg-state-running",
+  finished: "bg-state-stock",
+  invoiced: "bg-state-partial",
+  pending_payment: "bg-state-partial",
+  paid: "bg-state-stock",
+};
+
+// Tono de cada fase del contrato: naranja en ejecución, amarillo en espera de cobro, verde completo.
+export const STATUS_TONE: Record<string, Tone> = {
+  new: "pending",
+  in_progress: "running",
+  finished: "stock",
+  invoiced: "partial",
+  pending_payment: "partial",
+  paid: "stock",
 };
 
 // Tope de líneas de una lista del contrato, y tamaño de página de la tabla.
 export const MAX_LINES_PER_LIST = 1000;
-export const LINES_PAGE_SIZE = 100;
+export const LINES_PAGE_SIZE = 25;

@@ -55,7 +55,7 @@ export function StockPanel({
       >
         <div className="flex items-baseline gap-3 border-b px-6 py-4">
           <span className="num text-3xl font-medium">{total}</span>
-          <span className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+          <span className="caps-md text-muted-foreground">
             {total === 0 ? "sin existencias" : total === 1 ? "unidad disponible" : "unidades disponibles"}
           </span>
         </div>

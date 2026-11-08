@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+import { ConfirmTap } from "@/components/confirm-tap";
 import { TABLE_TD, TABLE_TH as TH } from "@/components/page-section";
 import { startTransition, useActionState, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
@@ -76,7 +78,6 @@ function MemberRow({
 }) {
   const router = useRouter();
   const [error, setError] = useState<string>();
-  const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
 
   async function run(fn: () => Promise<MemberState>, after?: () => void) {
@@ -90,7 +91,6 @@ function MemberRow({
     }
     if (res?.error) {
       setError(res.error);
-      setConfirming(false);
     } else after?.();
   }
 
@@ -121,41 +121,34 @@ function MemberRow({
             <option value="operator">{ROLE_LABEL.operator}</option>
           </NativeSelect>
         ) : (
-          <span className="font-mono text-xs uppercase tracking-[0.06em]">{ROLE_LABEL[m.role]}</span>
+          <span className="caps-md">{ROLE_LABEL[m.role]}</span>
         )}
       </td>
       <td className={`${TD} num`}>{day(m.since)}</td>
       <td className={`${TD} whitespace-nowrap`}>
-        {canRemove &&
-          (confirming ? (
-            <span className="flex gap-2">
-              <Button
-                variant="destructive"
-                disabled={pending}
-                onClick={() =>
-                  void run(
-                    () => removeMember(org, m.userId),
-                    () => (isMe ? router.replace("/") : undefined),
-                  )
-                }
-              >
-                Confirmar
-              </Button>
-              <Button variant="outline" onClick={() => setConfirming(false)}>
-                Cancelar
-              </Button>
-            </span>
-          ) : (
-            <Button variant="outline" onClick={() => setConfirming(true)}>
-              {isMe ? "Salir" : "Quitar"}
-            </Button>
-          ))}
+        {canRemove && (
+          <ConfirmTap
+            variant="outline"
+            disabled={pending}
+            hint={isMe ? "Toca otra vez para salir" : "Toca otra vez para quitar"}
+            hintSide="left"
+            onConfirm={() =>
+              void run(
+                () => removeMember(org, m.userId),
+                () => (isMe ? router.replace("/") : undefined),
+              )
+            }
+          >
+            {isMe ? "Salir" : "Quitar"}
+          </ConfirmTap>
+        )}
       </td>
     </tr>
   );
 }
 
-export function InviteForm({ org }: { org: string }) {
+// Formulario de invitación. En el modal (`dialog`) va en columna, con el botón a todo el ancho abajo; en la página, en fila.
+export function InviteForm({ org, days = 7, dialog = false }: { org: string; days?: number; dialog?: boolean }) {
   const [state, action, pending] = useActionState(inviteMember.bind(null, org), undefined);
   const [copied, setCopied] = useState(false);
   // El origen solo existe en el navegador: así no difiere entre el servidor y la hidratación.
@@ -167,7 +160,7 @@ export function InviteForm({ org }: { org: string }) {
   const link = state?.token && origin ? `${origin}/invitacion/${state.token}` : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={cn("flex flex-col gap-4", dialog && "p-6")}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -177,7 +170,9 @@ export function InviteForm({ org }: { org: string }) {
           startTransition(() => action(data));
         }}
         noValidate
-        className="grid gap-4 md:grid-cols-[1fr_14rem_auto] md:items-start"
+        className={cn(
+          dialog ? "flex flex-col gap-5" : "grid gap-4 md:grid-cols-[1fr_14rem_auto] md:items-start",
+        )}
       >
         <FormField name="email" label="Correo">
           {(a11y) => <Input {...a11y} type="email" required className="font-mono" autoComplete="off" />}
@@ -190,7 +185,7 @@ export function InviteForm({ org }: { org: string }) {
             </NativeSelect>
           )}
         </FormField>
-        <Button type="submit" disabled={pending} className="md:mt-[1.35rem]">
+        <Button type="submit" disabled={pending} className={dialog ? "h-10 w-full" : "md:mt-[1.35rem]"}>
           {pending ? "Creando…" : "Crear invitación"}
         </Button>
       </form>
@@ -200,7 +195,7 @@ export function InviteForm({ org }: { org: string }) {
       {link && (
         <div className="flex flex-col gap-2 border bg-muted/50 p-4">
           <p className="text-sm">
-            Comparte este enlace con <strong>{state?.email}</strong>. Solo funciona con ese correo y vence en 7 días.
+            Comparte este enlace con <strong>{state?.email}</strong>. Solo funciona con ese correo y vence en {days} {days === 1 ? "día" : "días"}.
           </p>
           <div className="flex gap-2">
             <Input readOnly value={link} aria-label="Enlace de invitación" className="font-mono text-xs" />
@@ -241,7 +236,7 @@ export function InvitationsTable({ org, invitations }: { org: string; invitation
             <tr key={i.id} className="border-b last:border-b-0">
               <td className={`${TD} font-mono text-xs`}>{i.email}</td>
               <td className={TD}>
-                <span className="font-mono text-xs uppercase tracking-[0.06em]">{ROLE_LABEL[i.role]}</span>
+                <span className="caps-md">{ROLE_LABEL[i.role]}</span>
               </td>
               <td className={`${TD} num`}>{day(i.expires)}</td>
               <td className={`${TD} whitespace-nowrap`}>

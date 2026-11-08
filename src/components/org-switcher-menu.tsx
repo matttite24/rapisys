@@ -42,7 +42,7 @@ export function OrgSwitcherMenu({ orgs, org }: { orgs: OrgOption[]; org: string 
       </DropdownMenuTrigger>
       <DropdownMenuContent side="bottom" align="start" className="min-w-56">
         {orgs.map((o) => (
-          <DropdownMenuItem key={o.slug} render={<Link href={`/${o.slug}/inicio`} />}>
+          <DropdownMenuItem key={o.slug} render={<Link href={`/${o.slug}/contratos`} />}>
             <span className="flex-1 truncate">{o.name}</span>
             {o.slug === org && (
               <span className="text-xs text-muted-foreground">Actual</span>

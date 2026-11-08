@@ -1,38 +1,29 @@
 "use client";
 
+import { ConfirmTap } from "@/components/confirm-tap";
+import { CELL_ROW } from "@/components/cell-header";
+import { TabCount } from "@/components/count-tabs";
 import { startTransition, useEffect, useRef, useState } from "react";
 import {
   Add01Icon,
-  BarCode01Icon,
-  Building03Icon,
-  Car01Icon,
+  Cancel01Icon,
   Delete02Icon,
   Edit02Icon,
-  EngineIcon,
-  IdentityCardIcon,
+  ArrowDown01Icon,
   LeftToRightListBulletIcon,
-  Search01Icon,
-  Tag01Icon,
   Tick02Icon,
 } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { SearchInput } from "@/components/search-input";
+import { AssetFactsLine, AssetFactsWrap, assetFactList } from "@/components/asset-facts";
 import { FormField } from "@/components/form-field";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -49,13 +40,14 @@ import {
   createList,
   deleteList,
   quickCreateAsset,
+  recentAssets,
   searchAssets,
   updateList,
   type AssetResult,
   type ListState,
   type QuickAssetState,
 } from "@/lib/contract-list-actions";
-import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
+import { ASSET_KIND_LABEL } from "@/lib/items";
 import { cn } from "@/lib/utils";
 
 // Una lista de referencia del contrato: los datos del activo al que sirve.
@@ -71,7 +63,10 @@ export type ListView = {
   model: string;
   serial: string;
   engine: string;
+  year: string;
   identifier: string;
+  other: string;
+  plate: string;
 };
 
 // Botón inicial de la fila: abre un cajón con todas las listas y un buscador (sirve con muchas).
@@ -108,32 +103,27 @@ function AllLists({
         aria-label={`Ver todas las listas (${lists.length})`}
         title="Todas las listas"
         onClick={() => setOpen(true)}
-        className="flex h-12 shrink-0 items-center text-muted-foreground transition-colors hover:text-foreground"
+        className="mr-2 mb-px flex h-full shrink-0 items-center px-2 text-muted-foreground transition-colors hover:text-foreground"
       >
         <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-5" />
       </button>
-      <SheetContent side="left" className="gap-0 sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>Listas del contrato</SheetTitle>
+      <SheetContent side="left" showCloseButton={false} className="gap-0 bg-background data-[side=left]:w-full data-[side=left]:sm:max-w-md">
+        <SheetHeader className={cn(CELL_ROW, "flex-row justify-between gap-3 px-4 pr-4 shadow-bar")}>
+          <SheetTitle className="caps-md min-w-0 truncate font-medium">Listas del contrato</SheetTitle>
           <SheetDescription className="sr-only">
             {lists.length} {lists.length === 1 ? "lista" : "listas"}. Elige una para abrirla.
           </SheetDescription>
+          <SheetClose render={<Button variant="ghost" size="icon" aria-label="Cerrar listas" />}>
+            <HugeiconsIcon icon={Cancel01Icon} className="size-5" />
+          </SheetClose>
         </SheetHeader>
-        <div className="relative border-b">
-          <HugeiconsIcon
-            icon={Search01Icon}
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            type="search"
-            autoFocus
-            autoComplete="off"
-            aria-label="Buscar lista"
+        <div className="flex h-12 border-b">
+          <SearchInput
+            label="Buscar lista"
             placeholder="Buscar por nombre, marca, modelo o serie"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="h-12 w-full bg-transparent pr-4 pl-12 text-sm outline-none placeholder:text-muted-foreground focus-visible:bg-background"
+            onChange={setQ}
+            autoFocus
           />
         </div>
         <ul aria-label="Listas" className="min-h-0 flex-1 divide-y overflow-y-auto">
@@ -159,7 +149,7 @@ function AllLists({
                     <span className={cn("break-words", active && "font-bold")}>{l.name}</span>
                     {detail && <span className="truncate font-mono text-xs text-muted-foreground">{detail}</span>}
                   </span>
-                  <span className="num pt-0.5 text-xs text-muted-foreground">{counts[l.id] ?? 0}</span>
+                  <TabCount n={counts[l.id] ?? 0} active={active} />
                 </button>
               </li>
             );
@@ -183,7 +173,14 @@ export function ListTabs({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div role="tablist" aria-label="Listas del contrato" className="flex gap-6 overflow-x-auto border-b px-6">
+    // Pestañas tipo carpeta: sobre una franja gris, la activa sube al color del contenido y se une a él; las demás quedan
+    // hundidas. La línea de abajo pasa por debajo de las inactivas y la activa la tapa.
+    <div
+      role="tablist"
+      aria-label="Listas del contrato"
+      className="sticky top-0 z-20 flex h-12 items-end gap-1 overflow-x-auto overflow-y-hidden bg-layer-2 px-4 pt-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-border" />
       <AllLists lists={lists} counts={counts} activeId={activeId} onSelect={onSelect} />
       {lists.map((l) => {
         const active = l.id === activeId;
@@ -195,21 +192,14 @@ export function ListTabs({
             aria-selected={active}
             onClick={() => onSelect(l.id)}
             className={cn(
-              "-mb-px flex h-12 max-w-64 shrink-0 items-center gap-2 border-b-2 font-mono text-xs uppercase tracking-[0.08em] transition-colors",
+              "relative flex h-full max-w-64 shrink-0 items-center gap-2 rounded-t-lg px-4 text-sm transition-colors",
               active
-                ? "border-b-brand font-bold text-foreground"
-                : "border-b-transparent text-muted-foreground hover:text-foreground",
+                ? "z-10 bg-background font-semibold text-foreground"
+                : "mb-px font-medium text-muted-foreground hover:bg-foreground/[0.09] hover:text-foreground",
             )}
           >
             <span className="truncate">{l.name}</span>
-            <span
-              className={cn(
-                "num rounded-full px-1.5 py-0.5 text-[0.6875rem] leading-none",
-                active ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground",
-              )}
-            >
-              {counts[l.id] ?? 0}
-            </span>
+            <TabCount n={counts[l.id] ?? 0} active={active} />
           </button>
         );
       })}
@@ -218,17 +208,6 @@ export function ListTabs({
 }
 
 // Dato del activo con su ícono: etiqueta pequeña arriba y valor abajo. El nombre ya está en la pestaña.
-function Datum({ icon, label, value }: { icon: IconSvgElement; label: string; value: string }) {
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      <HugeiconsIcon icon={icon} className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-      <div className="flex min-w-0 flex-col">
-        <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">{label}</span>
-        <span className="break-all font-mono text-sm">{value || "—"}</span>
-      </div>
-    </div>
-  );
-}
 
 // Datos del activo de la lista abierta, con editar y eliminar.
 export function ListInfo({
@@ -248,9 +227,11 @@ export function ListInfo({
   editing: boolean;
   onEdit: () => void;
 }) {
-  const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  const [expanded, setExpanded] = useState(false);
+  const [hidden, setHidden] = useState(0);
+  const facts = assetFactList(list);
 
   async function remove() {
     setPending(true);
@@ -268,20 +249,52 @@ export function ListInfo({
 
   return (
     <div className={cn("border-b", editing && "bg-muted")}>
-      <div className={cn("flex items-center justify-between gap-4 px-6", general ? "py-2" : "py-4")}>
+      {/* Mismo alto que la fila de la factura elegida en el panel de asignar (5 rem con su línea). */}
+      <div className="flex h-14 items-center justify-between gap-4 pr-6">
         {general ? (
-          <p className="text-sm text-muted-foreground">
-            Lista general: sin un activo en particular.
-          </p>
-        ) : (
-          <div className="flex min-w-0 flex-wrap gap-x-12 gap-y-4">
-            <Datum icon={Tag01Icon} label="Tipo" value={ASSET_KIND_LABEL[list.kind as AssetKind] ?? ""} />
-            <Datum icon={Building03Icon} label="Marca" value={list.brand} />
-            <Datum icon={Car01Icon} label="Modelo" value={list.model} />
-            <Datum icon={BarCode01Icon} label="Serie" value={list.serial} />
-            <Datum icon={EngineIcon} label="Motor" value={list.engine} />
-            <Datum icon={IdentityCardIcon} label="Identificador" value={list.identifier} />
+          // Lista general: solo lleva nombre, sin datos de activo (serie, motor, etc.). No hay nada que abrir.
+          <div className="flex min-w-0 flex-1 items-center gap-3 pl-6">
+            <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+              <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-[1.125rem]" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Lista general</p>
+              <p className="truncate text-xs text-muted-foreground">Sin activo: no lleva datos como serie o motor.</p>
+            </div>
           </div>
+        ) : (
+          // Una sola línea con los datos que caben; si quedan otros, "+N" y un toque los despliega debajo (solo esos, sin repetir).
+          facts.length === 0 ? (
+            <p className="pl-6 text-sm text-muted-foreground">
+              Este activo aún no tiene datos.{canEdit ? " Usa el lápiz para completarlos." : ""}
+            </p>
+          ) : (
+            <div className="flex h-full min-w-0 flex-1 items-center gap-3 pl-6">
+              <div className="min-w-0 flex-1 cursor-text select-text">
+                <AssetFactsLine facts={facts} onHiddenChange={setHidden} />
+              </div>
+              {/* Solo el control expande los datos; el texto queda libre para seleccionar y copiar. */}
+              <div className="flex w-14 shrink-0 items-center justify-end">
+                {hidden > 0 && (
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-controls={`datos-${list.id}`}
+                    aria-label={expanded ? "Ocultar los demás datos del activo" : `Ver ${hidden} ${hidden === 1 ? "dato más" : "datos más"} del activo`}
+                    onClick={() => setExpanded((v) => !v)}
+                    className="flex h-9 items-center justify-end gap-1 px-1 text-xs text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="num">+{hidden}</span>
+                    <HugeiconsIcon
+                      icon={ArrowDown01Icon}
+                      aria-hidden
+                      className={cn("size-4 transition-transform duration-200 motion-reduce:transition-none", expanded && "rotate-180")}
+                    />
+                  </button>
+                )}
+              </div>
+            </div>
+          )
         )}
         <div className="-mr-2 flex shrink-0 items-center gap-1">
           {canEdit && (
@@ -296,41 +309,31 @@ export function ListInfo({
               >
                 <HugeiconsIcon icon={Edit02Icon} className="size-4" />
               </Button>
-              <Button
+              <ConfirmTap
                 variant="ghost"
                 size="icon"
                 className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
                 aria-label="Eliminar la lista"
                 disabled={pending}
-                onClick={() => setConfirming(true)}
+                hint={
+                  lineCount === 0
+                    ? "Toca otra vez para eliminar la lista"
+                    : `Toca otra vez: se eliminan también sus ${lineCount} ${lineCount === 1 ? "línea" : "líneas"}`
+                }
+                onConfirm={() => void remove()}
               >
                 <HugeiconsIcon icon={Delete02Icon} className="size-4" />
-              </Button>
+              </ConfirmTap>
             </>
           )}
         </div>
       </div>
+      {!general && expanded && hidden > 0 && (
+        <div id={`datos-${list.id}`} className="border-t px-6 py-4 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 motion-safe:duration-200">
+          <AssetFactsWrap facts={facts.slice(facts.length - hidden)} />
+        </div>
+      )}
       {error && <p role="alert" className="border-t p-3 text-sm text-destructive">{error}</p>}
-
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar la lista de {list.name}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {lineCount === 0
-                ? "La lista no tiene items."
-                : `Se eliminan también sus ${lineCount} ${lineCount === 1 ? "línea" : "líneas"}.`}{" "}
-              Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => void remove()}>
-              Sí, eliminar lista
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
@@ -370,25 +373,51 @@ export function NewListDialog({
   onCreated: (id: string) => void;
 }) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const latest = useRef("");
   const [step, setStep] = useState<Step>("search");
   const [q, setQ] = useState("");
   const [results, setResults] = useState<AssetResult[] | null>(null);
+  // Al abrir solo se piden los 5 recientes; la búsqueda empieza al escribir (2 letras o más).
+  const [recents, setRecents] = useState<AssetResult[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [state, setState] = useState<QuickAssetState>();
   const errors = state?.fields ?? {};
 
+  // El padre abre el modal (botón del encabezado o Alt+N): al abrirse se piden los recientes. Si se cierra y se vuelve a
+  // abrir, se piden de nuevo (puede haber activos nuevos).
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    void recentAssets(org).then((r) => alive && setRecents(r));
+    return () => {
+      alive = false;
+    };
+  }, [open, org]);
+
   function reset() {
     setStep("search");
     setQ("");
+    latest.current = "";
     setResults(null);
+    setRecents(null);
     setState(undefined);
     setSaving(false);
   }
 
+  const searching = q.trim().length >= 2;
+  const shown = searching ? results : recents;
+
   function search(value: string) {
     setQ(value);
+    latest.current = value;
     clearTimeout(timer.current);
-    timer.current = setTimeout(async () => setResults(await searchAssets(org, value)), 250);
+    if (value.trim().length < 2) return setResults(null);
+    setResults(null);
+    timer.current = setTimeout(async () => {
+      const found = await searchAssets(org, value);
+      // Si mientras tanto se siguió escribiendo, esta respuesta ya no vale.
+      if (latest.current === value) setResults(found);
+    }, 300);
   }
 
   // Crea la lista (con o sin activo) y la abre.
@@ -423,7 +452,9 @@ export function NewListDialog({
         model: get("asset_model"),
         serial: get("asset_serial"),
         engine: get("asset_engine"),
+        year: get("asset_year"),
         identifier: get("asset_identifier"),
+        other: get("asset_other"),
       });
       if (res?.asset) {
         setSaving(false);
@@ -448,8 +479,7 @@ export function NewListDialog({
       open={open}
       onOpenChange={(next) => {
         onOpenChange(next);
-        if (next) void searchAssets(org, "").then(setResults);
-        else reset();
+        if (!next) reset();
       }}
     >
       <DialogContent className="max-h-[90svh] gap-0 overflow-y-auto p-0 sm:max-w-xl">
@@ -457,25 +487,29 @@ export function NewListDialog({
           <>
             <DialogHeader className="border-b p-6">
               <DialogTitle>Nueva lista</DialogTitle>
-              <DialogDescription>Busca el activo al que pertenece la lista.</DialogDescription>
+              <DialogDescription>Elige un activo reciente o busca el que corresponde a la lista.</DialogDescription>
             </DialogHeader>
-            <div className="border-b p-4">
-              <Input
-                type="search"
-                autoFocus
-                autoComplete="off"
-                aria-label="Buscar activo"
-                placeholder="Nombre, marca, modelo, serie o placa"
+            <div className="flex h-12 border-b">
+              <SearchInput
+                label="Buscar activo"
+                placeholder="Escribe 2 letras para buscar"
                 value={q}
-                onChange={(e) => search(e.target.value)}
+                onChange={search}
+                autoFocus
               />
             </div>
-            <ul aria-label="Activos del catálogo" className="max-h-72 min-h-24 divide-y overflow-y-auto">
-              {results === null && <li className="p-4 text-sm text-muted-foreground">Buscando…</li>}
-              {results?.length === 0 && (
-                <li className="p-4 text-sm text-muted-foreground">Ningún activo coincide con la búsqueda.</li>
+            {/* Sin texto: solo los recientes (no se busca nada). Con 2 letras o más: los resultados de la búsqueda. */}
+            <p className="border-b px-4 py-2 text-xs font-medium text-muted-foreground">
+              {searching ? "Resultados" : "Recientes"}
+            </p>
+            <ul aria-label={searching ? "Resultados de la búsqueda" : "Activos recientes"} className="max-h-72 min-h-24 divide-y overflow-y-auto">
+              {shown === null && <li className="p-4 text-sm text-muted-foreground">{searching ? "Buscando…" : "Cargando…"}</li>}
+              {shown?.length === 0 && (
+                <li className="p-4 text-sm text-muted-foreground">
+                  {searching ? "Ningún activo coincide con la búsqueda." : "Aún no hay activos recientes. Escribe para buscar o crea uno."}
+                </li>
               )}
-              {results?.map((a) => (
+              {shown?.map((a) => (
                 <li key={a.id}>
                   <button
                     type="button"
@@ -492,8 +526,8 @@ export function NewListDialog({
                   </button>
                 </li>
               ))}
-              {results && results.length >= 30 && (
-                <li className="p-4 text-xs text-muted-foreground">Se muestran los primeros 30. Afina la búsqueda.</li>
+              {searching && results && results.length >= 12 && (
+                <li className="p-4 text-xs text-muted-foreground">Se muestran los primeros 12. Afina la búsqueda.</li>
               )}
             </ul>
             {state?.error && <div className="border-t p-4"><FieldError>{state.error}</FieldError></div>}
@@ -503,7 +537,7 @@ export function NewListDialog({
                 {q.trim() ? `Crear activo “${q.trim()}”` : "Crear activo nuevo"}
               </Button>
               <Button type="button" variant="outline" className="h-10" onClick={() => setStep("name")}>
-                Solo un nombre
+                Lista sin activo
               </Button>
             </div>
           </>
@@ -542,11 +576,17 @@ export function NewListDialog({
               <FormField name="asset_serial" label="Serie" error={errors.serial}>
                 {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" />}
               </FormField>
-              <FormField name="asset_engine" label="Motor" error={errors.engine}>
+              <FormField name="asset_engine" label="Serie del motor" error={errors.engine}>
                 {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" />}
               </FormField>
-              <FormField name="asset_identifier" label="Identificador" error={errors.identifier}>
+              <FormField name="asset_year" label="Año de fabricación" error={errors.year}>
+                {(a11y) => <Input {...a11y} autoComplete="off" inputMode="numeric" maxLength={4} className="font-mono" />}
+              </FormField>
+              <FormField name="asset_identifier" label="N.º de identificación" error={errors.identifier}>
                 {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" />}
+              </FormField>
+              <FormField name="asset_other" label="Otro" error={errors.other}>
+                {(a11y) => <Input {...a11y} autoComplete="off" maxLength={200} />}
               </FormField>
               {state?.error && (
                 <div className="sm:col-span-2">
@@ -659,11 +699,17 @@ export function ListDetailsForm({
           <FormField name="serial" label="Serie" error={errors.serial}>
             {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" defaultValue={list.serial} />}
           </FormField>
-          <FormField name="engine" label="Motor" error={errors.engine}>
+          <FormField name="engine" label="Serie del motor" error={errors.engine}>
             {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" defaultValue={list.engine} />}
           </FormField>
-          <FormField name="identifier" label="Identificador" error={errors.identifier}>
+          <FormField name="year" label="Año de fabricación" error={errors.year}>
+            {(a11y) => <Input {...a11y} autoComplete="off" inputMode="numeric" maxLength={4} className="font-mono" defaultValue={list.year} />}
+          </FormField>
+          <FormField name="identifier" label="N.º de identificación" error={errors.identifier}>
             {(a11y) => <Input {...a11y} autoComplete="off" maxLength={100} className="font-mono" defaultValue={list.identifier} />}
+          </FormField>
+          <FormField name="other" label="Otro" error={errors.other}>
+            {(a11y) => <Input {...a11y} autoComplete="off" maxLength={200} defaultValue={list.other} />}
           </FormField>
         </>
       )}

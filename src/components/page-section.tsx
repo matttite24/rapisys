@@ -11,10 +11,10 @@ export function SectionBar({
   index?: string;
 }) {
   return (
-    <div className="flex h-11 items-center justify-between gap-4 border-b px-6 font-mono text-xs font-bold uppercase tracking-[0.12em]">
+    <div className="flex h-11 items-center justify-between gap-4 border-b px-6 caps-md font-bold">
       <span className="flex min-w-0 items-center gap-3 truncate text-foreground">
         {index && (
-          <span className="bg-brand px-1.5 py-0.5 text-brand-foreground">{index}</span>
+          <span className="bg-primary px-1.5 py-0.5 text-primary-foreground">{index}</span>
         )}
         {label}
       </span>
@@ -41,7 +41,7 @@ export function PageSection({
   // la pantalla ya la nombra el panel, así que no se repiten aquí.
   const showBar = Boolean(label || meta || index);
   return (
-    <section className="border-b">
+    <section className="border-b last:border-b-0">
       {showBar && <SectionBar label={label} meta={meta} index={index} />}
       {children !== undefined && <div className={cn("p-6", className)}>{children}</div>}
     </section>
@@ -64,6 +64,5 @@ export function CellGrid({
 }
 
 // Clases de las tablas: una sola definición para todas las pantallas.
-export const TABLE_TH =
-  "border-r bg-surface-strong/60 px-4 py-3 text-left font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground last:border-r-0";
-export const TABLE_TD = "border-r px-4 py-3 last:border-r-0";
+export const TABLE_TH = "h-10 px-4 text-left align-middle text-xs font-medium whitespace-nowrap text-muted-foreground";
+export const TABLE_TD = "px-4 py-3 align-middle";

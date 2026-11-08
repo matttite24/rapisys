@@ -2,24 +2,14 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { ContractForm } from "@/components/contract-form";
-import { CellGrid, PageSection } from "@/components/page-section";
+import { ContractDashboard } from "@/components/contract-dashboard";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageSection } from "@/components/page-section";
 import { getContract } from "@/lib/contract-data";
-import { addDaysIso, formatIso } from "@/lib/dates";
-import { formatCents } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 
 type IdParams = Promise<{ org: string; id: string }>;
-
-function Cell({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
-        {label}
-      </span>
-      <div className="break-words">{children}</div>
-    </div>
-  );
-}
 
 // Detalle del contrato. El cliente y el estado ya están en el encabezado (layout).
 async function Detail({ params }: { params: IdParams }) {
@@ -59,47 +49,102 @@ async function Detail({ params }: { params: IdParams }) {
             totalCents: Number(c.total_cents),
             startDate: c.start_date,
             termDays: Number(c.term_days),
+            vatRate: Number(c.vat_rate),
           }}
         />
       </>
     );
   }
 
-  const { data: manager } = await supabase
-    .from("contract_managers")
-    .select("name, ruc")
-    .eq("id", c.manager_id)
-    .maybeSingle();
-  const end = addDaysIso(c.start_date, Number(c.term_days));
+  return <ContractDashboard org={org} id={id} c={c} />;
+}
 
+// Esqueleto del detalle: la misma estructura que el dashboard (banda con tres cifras, abastecimiento y compras, tablas y
+// listas), así lo que llega después no mueve nada.
+function TableCardSkeleton() {
   return (
-    <PageSection className="p-0">
-      <CellGrid className="border-0 md:grid-cols-[2fr_1.2fr_1fr_1.2fr]">
-        <Cell label="Contrato">
-          <h1 className="text-lg leading-snug font-semibold">{c.name}</h1>
-          <span className="block font-mono text-xs text-muted-foreground">{c.code}</span>
-        </Cell>
-        <Cell label="Responsable">
-          {manager?.name}
-          {manager?.ruc && <span className="block font-mono text-xs text-muted-foreground">{manager.ruc}</span>}
-        </Cell>
-        <Cell label="Monto del contrato (IVA incl.)">
-          <span className="num">{formatCents(Number(c.total_cents))}</span>
-        </Cell>
-        <Cell label="Plazo">
-          <span className="num">{c.term_days} {Number(c.term_days) === 1 ? "día" : "días"}</span>
-          <span className="block font-mono text-xs text-muted-foreground">
-            {formatIso(c.start_date)} → {end ? formatIso(end) : "—"}
-          </span>
-        </Cell>
-      </CellGrid>
-    </PageSection>
+    <Card size="sm" className="rounded-lg">
+      <CardHeader>
+        <Skeleton className="h-5 w-40" />
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center gap-4">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 flex-1" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ContractDetailSkeleton() {
+  return (
+    <div role="status" aria-label="Cargando el contrato" className="flex flex-col">
+      <section className="border-b bg-surface-strong">
+        <div className="flex items-end justify-between gap-8 pl-6 lg:pr-10">
+          <div className="flex min-w-0 flex-1 flex-col gap-8 py-8">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-6 w-28 bg-foreground/10" />
+                <Skeleton className="h-4 w-32 bg-foreground/10" />
+              </div>
+              <Skeleton className="h-10 w-3/5 max-w-xl bg-foreground/10" />
+              <Skeleton className="h-4 w-80 max-w-full bg-foreground/10" />
+            </div>
+            <div className="grid max-w-4xl gap-6 sm:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex flex-col gap-2">
+                  <Skeleton className="h-3 w-32 bg-foreground/10" />
+                  <Skeleton className="h-8 w-40 bg-foreground/10" />
+                  <Skeleton className="h-2 w-full bg-foreground/10" />
+                  <Skeleton className="h-3 w-36 bg-foreground/10" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <Skeleton className="hidden size-64 shrink-0 translate-y-4 bg-foreground/10 md:block lg:size-72" />
+        </div>
+      </section>
+      <div className="flex flex-col gap-4 p-4">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card size="sm" className="rounded-lg lg:col-span-2">
+            <CardHeader>
+              <Skeleton className="h-5 w-36" />
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <Skeleton className="h-3 w-full" />
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-4 w-full" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card size="sm" className="rounded-lg">
+            <CardHeader>
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-7 w-24" />
+            </CardHeader>
+            <CardContent className="mt-auto">
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <TableCardSkeleton />
+          <TableCardSkeleton />
+        </div>
+      </div>
+    </div>
   );
 }
 
 export function ContractDetailPage({ params }: { params: IdParams }) {
   return (
-    <Suspense fallback={<PageSection label="Cargando…" />}>
+    <Suspense fallback={<ContractDetailSkeleton />}>
       <Detail params={params} />
     </Suspense>
   );

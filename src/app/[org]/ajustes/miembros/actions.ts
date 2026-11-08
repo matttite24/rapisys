@@ -38,9 +38,12 @@ export async function inviteMember(
   if (!orgId) return { error: "No encontramos la organización." };
 
   const supabase = await createClient();
+  const { data: settings } = await supabase.from("organizations").select("invitation_days").eq("id", orgId).maybeSingle();
+  const days = Number(settings?.invitation_days ?? 7);
+  const expires = new Date(Date.now() + days * 86_400_000).toISOString();
   const { data, error } = await supabase
     .from("invitations")
-    .insert({ organization_id: orgId, email, role })
+    .insert({ organization_id: orgId, email, role, expires_at: expires })
     .select("token")
     .single();
   if (error) return { error: friendly(error) };

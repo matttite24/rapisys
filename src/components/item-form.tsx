@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
-import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
+import { startTransition, useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Add01Icon, Delete02Icon, FloppyDiskIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { FormField } from "@/components/form-field";
+import { HeaderSlot, HeaderTitle } from "@/components/header-action";
+import { PageFigures, PageFooterActions } from "@/components/page-shortcuts";
 import { MoneyInput } from "@/components/money-input";
 import { NumericInput } from "@/components/numeric-input";
 import { CellGrid, PageSection } from "@/components/page-section";
@@ -44,6 +46,7 @@ export type ItemData = {
 
 const NEW = "__new__";
 const ROW_BTN = "size-10 shrink-0 text-muted-foreground";
+const ROW_LABEL = "caps text-muted-foreground";
 
 export function ItemForm({
   org,
@@ -52,6 +55,7 @@ export function ItemForm({
   suppliers,
   assets,
   canDelete,
+  onHand = 0,
   defaults,
 }: {
   org: string;
@@ -62,12 +66,14 @@ export function ItemForm({
   suppliers: Option[];
   assets: AssetOption[];
   canDelete?: boolean;
+  onHand?: number;
 }) {
   const [state, action, pending] = useActionState(
     saveItem.bind(null, org, item?.id ?? null),
     undefined,
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const formId = useId();
   const errors = state?.fields ?? {};
 
   const [category, setCategory] = useState(item?.category_id ?? "");
@@ -107,6 +113,7 @@ export function ItemForm({
 
   return (
     <form
+      id={formId}
       ref={formRef}
       noValidate
       onSubmit={(e) => {
@@ -116,13 +123,27 @@ export function ItemForm({
         startTransition(() => action(data));
       }}
     >
+      <HeaderTitle>{item ? "Editar item" : "Nuevo item"}</HeaderTitle>
+      <PageFigures figures={[{ label: "Existencias", value: String(onHand) }]} />
+      <HeaderSlot>
+        <div className="flex h-full items-stretch">
+          <Link href={`/${org}/bodega`} className={buttonVariants({ variant: "ghost" }) + " h-auto! self-stretch px-4"}>
+            Cancelar
+          </Link>
+          <Button type="submit" form={formId} disabled={pending} className="-mr-4 h-auto! gap-2 border-0! bg-clip-border! px-5">
+            <HugeiconsIcon icon={FloppyDiskIcon} className="size-4" />
+            {pending ? "Guardando…" : "Guardar"}
+          </Button>
+        </div>
+      </HeaderSlot>
+      {state?.error && <div role="alert" className="border-b border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{state.error}</div>}
       <input type="hidden" name="specs" value={JSON.stringify(specs)} />
       <input type="hidden" name="prices" value={JSON.stringify(prices)} />
       <input type="hidden" name="asset_ids" value={JSON.stringify(assetIds)} />
 
       <PageSection index="01" label="Identificación" className="p-0">
-        <CellGrid className="border-0 md:grid-cols-3">
-          <FormField name="name" label="Nombre" error={errors.name}>
+        <CellGrid className="border-0 sm:grid-cols-2 xl:grid-cols-4">
+          <FormField name="name" label="Nombre" error={errors.name} className="sm:col-span-2">
             {(a11y) => <Input {...a11y} required autoFocus defaultValue={item?.name ?? defaults?.name} />}
           </FormField>
           <FormField name="sku" label="SKU (opcional)" error={errors.sku}>
@@ -131,7 +152,7 @@ export function ItemForm({
           <FormField name="line" label="Línea de producto (opcional)">
             {(a11y) => <Input {...a11y} defaultValue={item?.line ?? ""} />}
           </FormField>
-          <div className="flex flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-4 xl:col-span-2">
             <FormField name="category_id" label="Categoría">
               {(a11y) => (
                 <NativeSelect
@@ -156,7 +177,7 @@ export function ItemForm({
               </FormField>
             )}
           </div>
-          <FormField name="is_active" label="Estado">
+          <FormField name="is_active" label="Estado" className="xl:col-span-2">
             {(a11y) => (
               <NativeSelect {...a11y} className="w-full" defaultValue={item?.is_active === false ? "inactive" : "active"}>
                 <option value="active">Activo</option>
@@ -244,7 +265,9 @@ export function ItemForm({
               const cost = parseCents(row.unit_cost);
               const vat = parseDecimal(row.vat_rate);
               return (
-                <div key={i} className="grid gap-2 md:grid-cols-[1.4fr_1fr_6rem_1fr_9rem_auto] md:items-center">
+                <div key={i} className="grid grid-cols-2 items-end gap-3 border-b pb-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_5rem_minmax(0,1fr)_8rem_auto]">
+                  <label className="col-span-2 flex min-w-0 flex-col gap-1 xl:col-span-1">
+                    <span className={ROW_LABEL}>Proveedor</span>
                   <NativeSelect
                     aria-label={`Proveedor ${i + 1}`}
                     className="w-full"
@@ -258,6 +281,9 @@ export function ItemForm({
                       </option>
                     ))}
                   </NativeSelect>
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-1">
+                    <span className={ROW_LABEL}>Costo sin IVA</span>
                   <MoneyInput
                     name={`unit_cost_${i}`}
                     aria-label={`Costo sin IVA ${i + 1}`}
@@ -265,6 +291,9 @@ export function ItemForm({
                     value={row.unit_cost}
                     onChange={(v) => setPrice(i, { unit_cost: v })}
                   />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-1">
+                    <span className={ROW_LABEL}>IVA %</span>
                   <NumericInput
                     kind="decimal"
                     aria-label={`IVA % ${i + 1}`}
@@ -273,6 +302,9 @@ export function ItemForm({
                     value={row.vat_rate}
                     onChange={(e) => setPrice(i, { vat_rate: e.target.value })}
                   />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-1">
+                    <span className={ROW_LABEL}>Cód. proveedor</span>
                   <Input
                     aria-label={`Código del proveedor ${i + 1}`}
                     placeholder="Cód. proveedor"
@@ -280,14 +312,18 @@ export function ItemForm({
                     value={row.supplier_sku}
                     onChange={(e) => setPrice(i, { supplier_sku: e.target.value })}
                   />
-                  <span className="num text-sm text-muted-foreground" aria-label="Costo con IVA">
-                    {cost.ok && vat !== null ? `${formatCents(withVatCents(cost.cents, vat))} c/IVA` : "—"}
-                  </span>
+                  </label>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className={ROW_LABEL}>Costo con IVA</span>
+                    <output className="num flex h-10 items-center justify-end border border-input px-2 text-sm" aria-label={`Costo con IVA ${i + 1}`}>
+                      {cost.ok && vat !== null ? formatCents(withVatCents(cost.cents, vat)) : "—"}
+                    </output>
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className={ROW_BTN}
+                    className={ROW_BTN + " col-span-2 justify-self-end xl:col-span-1"}
                     aria-label={`Quitar costo ${i + 1}`}
                     onClick={() => setPrices((rows) => rows.filter((_, j) => j !== i))}
                   >
@@ -342,13 +378,13 @@ export function ItemForm({
             )}
           </div>
           <div className="flex flex-col gap-1">
-            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
+            <span className="caps text-muted-foreground">
               Costo más bajo (sin IVA)
             </span>
             <span className="num text-lg">{bestCost !== null ? formatCents(bestCost) : "—"}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
+            <span className="caps text-muted-foreground">
               Venta sin IVA
             </span>
             <span className="num text-lg">
@@ -370,7 +406,7 @@ export function ItemForm({
         ) : (
           byKind.map((g) => (
             <fieldset key={g.kind} className="flex flex-col gap-2">
-              <legend className="mb-1 font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-muted-foreground">
+              <legend className="mb-1 caps text-muted-foreground">
                 {ASSET_KIND_LABEL[g.kind]}
               </legend>
               <div className="grid gap-x-6 gap-y-1 md:grid-cols-2">
@@ -378,7 +414,7 @@ export function ItemForm({
                   <label key={a.id} className="flex min-h-10 cursor-pointer items-center gap-3 text-sm">
                     <input
                       type="checkbox"
-                      className="size-4 accent-[var(--brand)]"
+                      className="size-4 accent-[var(--primary)]"
                       checked={assetSet.has(a.id)}
                       onChange={(e) =>
                         setAssetIds((ids) => (e.target.checked ? [...ids, a.id] : ids.filter((x) => x !== a.id)))
@@ -396,18 +432,7 @@ export function ItemForm({
         )}
       </PageSection>
 
-      <div className="flex flex-col gap-4 p-6">
-        {state?.error && <FieldError>{state.error}</FieldError>}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" disabled={pending} className="min-h-11 sm:min-h-10">
-            {pending ? "Guardando…" : item ? "Guardar cambios" : "Crear item"}
-          </Button>
-          <Link href={`/${org}/bodega`} className={buttonVariants({ variant: "outline" }) + " min-h-11 sm:min-h-10"}>
-            Cancelar
-          </Link>
-          {item && canDelete && <ConfirmDelete onConfirm={() => deleteItem(org, item.id)} />}
-        </div>
-      </div>
+      {item && canDelete && <PageFooterActions><ConfirmDelete label="Eliminar item" onConfirm={() => deleteItem(org, item.id)} /></PageFooterActions>}
     </form>
   );
 }

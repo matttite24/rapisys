@@ -11,6 +11,7 @@ export function useDebouncedSearch<T>(fetcher: (q: string) => Promise<T>, delay 
   const latest = useRef(fetcher);
   const [results, setResults] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     latest.current = fetcher;
@@ -21,10 +22,13 @@ export function useDebouncedSearch<T>(fetcher: (q: string) => Promise<T>, delay 
       clearTimeout(timer.current);
       const id = ++seq.current;
       setLoading(true);
+      setError(null);
       timer.current = setTimeout(async () => {
         try {
           const r = await latest.current(q);
           if (id === seq.current) setResults(r);
+        } catch {
+          if (id === seq.current) { setResults(null); setError("No se pudo completar la búsqueda. Inténtalo de nuevo."); }
         } finally {
           if (id === seq.current) setLoading(false);
         }
@@ -38,6 +42,7 @@ export function useDebouncedSearch<T>(fetcher: (q: string) => Promise<T>, delay 
     clearTimeout(timer.current);
     seq.current++;
     setResults(null);
+    setError(null);
     setLoading(false);
   }, []);
 
@@ -49,5 +54,5 @@ export function useDebouncedSearch<T>(fetcher: (q: string) => Promise<T>, delay 
     [],
   );
 
-  return { results, loading, run, clear };
+  return { results, loading, error, run, clear };
 }

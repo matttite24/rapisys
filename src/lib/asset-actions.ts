@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
 import { getOrgId } from "@/lib/orgs";
@@ -34,6 +35,7 @@ export async function saveAsset(
   for (const key of ["serial", "engine", "identifier"]) {
     if (text(formData, key).length > 100) fields[key] = "Máximo 100 caracteres.";
   }
+  if (text(formData, "other").length > 200) fields.other = "Máximo 200 caracteres.";
   if (Object.keys(fields).length) return { fields };
 
   const orgId = await getOrgId(org);
@@ -49,6 +51,7 @@ export async function saveAsset(
     serial: text(formData, "serial") || null,
     engine: text(formData, "engine") || null,
     identifier: text(formData, "identifier") || null,
+    other: text(formData, "other") || null,
   };
 
   const supabase = await createClient();
@@ -78,7 +81,8 @@ export async function saveAsset(
       };
     }
   }
-  redirect(`/${org}/bodega/activos`);
+  revalidatePath(`/${org}/bodega`);
+  redirect(`/${org}/bodega?vista=activos`);
 }
 
 export async function deleteAsset(org: string, id: string): Promise<AssetState> {
@@ -95,5 +99,6 @@ export async function deleteAsset(org: string, id: string): Promise<AssetState> 
     .select("id");
   if (error) return { error: "No se pudo eliminar. Inténtalo de nuevo." };
   if (!data?.length) return { error: "Solo los administradores pueden eliminar activos." };
-  redirect(`/${org}/bodega/activos`);
+  revalidatePath(`/${org}/bodega`);
+  redirect(`/${org}/bodega?vista=activos`);
 }
