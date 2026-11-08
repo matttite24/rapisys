@@ -147,6 +147,42 @@ export function ReconcilePanel({
         </div>
       </div>
 
+      {/* Presupuesto de la línea: el precio referencial contra el costo de lo asignado, para no pasarse de lo que paga el contrato. */}
+      {focus && (
+        <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 border-b bg-surface-strong px-4 py-2 text-xs" aria-live="polite">
+          {focus.referenceCents === null ? (
+            <span className="text-muted-foreground">Sin precio referencial: agrégalo en Listas para controlar el costo.</span>
+          ) : (
+            (() => {
+              const ref = focus.referenceCents;
+              const assigned = (sources ?? []).reduce((sum, x) => sum + (x.costCents === null ? 0 : Math.round(x.costCents * x.quantity)), 0);
+              const unknown = (sources ?? []).filter((x) => x.costCents === null).length;
+              const left = ref - assigned;
+              return (
+                <>
+                  <span className="text-muted-foreground">
+                    Precio ref. <span className="num font-medium text-foreground">{formatCents(ref)}</span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    Asignado <span className="num font-medium text-foreground">{formatCents(assigned)}</span>
+                    {unknown > 0 && ` (+${unknown} sin costo)`}
+                  </span>
+                  {left >= 0 ? (
+                    <span className="text-muted-foreground">
+                      Disponible <span className="num font-medium text-foreground">{formatCents(left)}</span>
+                    </span>
+                  ) : (
+                    <span role="alert" className="font-medium text-destructive">
+                      Excede <span className="num">{formatCents(-left)}</span>
+                    </span>
+                  )}
+                </>
+              );
+            })()
+          )}
+        </div>
+      )}
+
       <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b px-4">
         <div role="tablist" aria-label="Qué mostrar" className="flex h-full min-w-0 gap-3 overflow-x-auto [scrollbar-width:none]">
           {(

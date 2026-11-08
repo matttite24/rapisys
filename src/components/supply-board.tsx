@@ -37,6 +37,8 @@ export type SupplyLine = {
   purchased: number;
   delivered: number;
   costCents: number | null;
+  // Precio referencial TOTAL de la línea (sin IVA): lo que paga el contrato por ella.
+  referenceCents: number | null;
   state: SupplyState;
   // Lo asignado a esta línea (productos de la bodega o reservados por llegar), en el orden en que se asignó.
   assigned: { name: string; code: string; quantity: number; kind: "bodega" | "compra"; costCents: number | null }[];
@@ -279,8 +281,9 @@ export function SupplyBoard({
                       <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
                       <th scope="col" className={TH}>Descripción</th>
                       <th scope="col" className={`${TH} w-24 text-right`}>Cantidad</th>
+                      <th scope="col" className={`${TH} w-28 text-right`}>Precio ref.</th>
                       <th scope="col" className={`${TH} w-24 text-right`}>Costo unit.</th>
-                      <th scope="col" className={`${TH} w-24 text-right`}>Total</th>
+                      <th scope="col" className={`${TH} w-28 text-right`}>Costo total</th>
                       <th scope="col" className={`${TH} w-72`}>Estado y avance</th>
                     </tr>
                   </thead>
@@ -328,9 +331,27 @@ export function SupplyBoard({
                           <td className={cn(TD, "num whitespace-nowrap text-right")}>
                             {l.quantity} <span className="font-sans text-xs text-muted-foreground">{unitLabel(l.unit)}</span>
                           </td>
+                          <td className={cn(TD, "num whitespace-nowrap text-right")}>
+                            {l.referenceCents === null ? (
+                              <span className="text-muted-foreground">—</span>
+                            ) : (
+                              <>
+                                <span className="font-medium">{formatCents(l.referenceCents)}</span>
+                                <span className="block text-xs text-muted-foreground">{formatCents(Math.round(l.referenceCents / l.quantity))} c/u</span>
+                              </>
+                            )}
+                          </td>
                           <td className={cn(TD, "whitespace-nowrap text-right text-muted-foreground")}>—</td>
                           <td className={cn(TD, "num whitespace-nowrap text-right font-medium")}>
                             {hasCost ? formatCents(lineTotal) : <span className="font-normal text-muted-foreground">—</span>}
+                            {/* Lo que queda del precio referencial, o cuánto se pasó: así no se compra más caro de lo que paga el contrato. */}
+                            {l.referenceCents !== null && hasCost && (
+                              <span className={cn("block text-xs font-normal", lineTotal > l.referenceCents ? "font-medium text-destructive" : "text-muted-foreground")}>
+                                {lineTotal > l.referenceCents
+                                  ? `Excede ${formatCents(lineTotal - l.referenceCents)}`
+                                  : `Disponible ${formatCents(l.referenceCents - lineTotal)}`}
+                              </span>
+                            )}
                           </td>
                           <td className={TD}>
                             <div className="flex items-center justify-between gap-3">
@@ -368,6 +389,7 @@ export function SupplyBoard({
                                 </span>
                               </td>
                               <td className={cn(TD, "num py-1.5 text-right")}>{a.quantity}</td>
+                              <td className={TD} />
                               <td className={cn(TD, "num py-1.5 text-right")}>
                                 {a.costCents === null ? <span className="text-muted-foreground">Sin costo</span> : formatCents(a.costCents)}
                               </td>
@@ -434,8 +456,9 @@ function SupplyTableSkeleton({ rows = 6 }: { rows?: number }) {
             <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
             <th scope="col" className={TH}>Descripción</th>
             <th scope="col" className={`${TH} w-24 text-right`}>Cantidad</th>
+            <th scope="col" className={`${TH} w-28 text-right`}>Precio ref.</th>
             <th scope="col" className={`${TH} w-24 text-right`}>Costo unit.</th>
-            <th scope="col" className={`${TH} w-24 text-right`}>Total</th>
+            <th scope="col" className={`${TH} w-28 text-right`}>Costo total</th>
             <th scope="col" className={`${TH} w-72`}>Estado y avance</th>
           </tr>
         </thead>
@@ -452,6 +475,9 @@ function SupplyTableSkeleton({ rows = 6 }: { rows?: number }) {
               </td>
               <td className={TD}>
                 <Skeleton className="ml-auto h-4 w-12" />
+              </td>
+              <td className={TD}>
+                <Skeleton className="ml-auto h-4 w-14" />
               </td>
               <td className={TD}>
                 <Skeleton className="ml-auto h-4 w-12" />

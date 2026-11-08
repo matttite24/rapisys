@@ -103,8 +103,12 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
   }
 
   const lineIds = view.lines.map((l) => l.id);
-  const [extras, { data: srcRows }] = await Promise.all([
+  const [extras, { data: priceRows }, { data: srcRows }] = await Promise.all([
     assetExtras(supabase, view.lists.map((l) => l.asset_id)),
+    // Precio referencial (total de la fila) de las líneas de esta página.
+    lineIds.length
+      ? supabase.from("contract_items").select("id, reference_price_cents").in("id", lineIds)
+      : Promise.resolve({ data: [] }),
     lineIds.length
       ? supabase.from("supply_sources")
           .select("contract_item_id, item_id, quantity, kind, unit_cost_cents")
@@ -142,8 +146,16 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     ((itemRows ?? []) as { id: string; name: string; sku: string | null; part_numbers: string[] }[]).map((i) => [i.id, i]),
   );
 
+  const refById = new Map(
+    ((priceRows ?? []) as { id: string; reference_price_cents: number | null }[]).map((r) => [
+      r.id,
+      r.reference_price_cents === null ? null : Number(r.reference_price_cents),
+    ]),
+  );
+
   const lines: SupplyLine[] = view.lines.map((l) => ({
     id: l.id,
+    referenceCents: refById.get(l.id) ?? null,
     listId: l.list_id,
     n: Number(l.n),
     partNumber: l.part_number ?? "",
