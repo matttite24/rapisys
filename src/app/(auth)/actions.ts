@@ -38,7 +38,11 @@ export async function login(_: AuthState, formData: FormData): Promise<AuthState
 
 export async function signup(_: AuthState, formData: FormData): Promise<AuthState> {
   const next = safeNext(formData.get("next"));
-  const origin = (await headers()).get("origin");
+  // El enlace del correo vuelve a la dirección propia del sitio (NEXT_PUBLIC_SITE_URL), nunca a una que mande el
+  // navegador: en producción, sin esa variable, Supabase usa el "Site URL" configurado. En desarrollo sí se usa el origen.
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
+    (process.env.NODE_ENV !== "production" ? (await headers()).get("origin") : null);
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
