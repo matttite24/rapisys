@@ -580,8 +580,12 @@ function LineRow({ rc, line: l, target }: { rc: Reconcile; line: InvoiceLine; ta
           </span>
           <StockBadge line={l} />
         </span>
-        <span className="truncate text-xs text-muted-foreground" title={l.name}>
-          {l.name}
+        <span className="flex items-baseline justify-between gap-3">
+          <span className="truncate text-xs text-muted-foreground" title={l.name}>
+            {l.name}
+          </span>
+          {/* Precio unitario de la factura (sin IVA), para compararlo con lo que paga el contrato. */}
+          <span className="num shrink-0 text-xs text-muted-foreground">{formatCents(l.unitCostCents)} c/u</span>
         </span>
       </button>
       {selected && <AssignTo rc={rc} target={target} />}
@@ -703,8 +707,19 @@ function StockRow({ rc, row: r, target }: { rc: Reconcile; row: StockResult; tar
             {r.onHand}
           </span>
         </span>
-        <span className="truncate text-xs text-muted-foreground" title={r.name}>
-          {r.name}
+        <span className="flex items-baseline justify-between gap-3">
+          <span className="truncate text-xs text-muted-foreground" title={r.name}>
+            {r.name}
+          </span>
+          {/* Costo unitario: el del lote más barato; con lotes de distinto costo se dice "desde". */}
+          <span className="num shrink-0 text-xs text-muted-foreground">
+            {(() => {
+              const costs = r.lots.filter((l) => l.costCents !== null).map((l) => l.costCents as number);
+              if (costs.length === 0) return "Sin costo";
+              const min = Math.min(...costs);
+              return `${new Set(costs).size > 1 ? "desde " : ""}${formatCents(min)} c/u`;
+            })()}
+          </span>
         </span>
       </button>
       {selected && <AssignTo rc={rc} target={target} />}
