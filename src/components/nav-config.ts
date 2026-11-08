@@ -8,6 +8,7 @@ import {
   ContractsIcon,
   DeliveryTruck01Icon,
   File01Icon,
+  Analytics01Icon,
   Folder01Icon,
   LeftToRightListBulletIcon,
   Package01Icon,
@@ -110,5 +111,6 @@ export const CONTRACT_SECTIONS = [
   { slug: "abastecimiento", title: "Abastecimiento", icon: PackageProcessIcon },
   { slug: "entregas", title: "Entregas", icon: DeliveryTruck01Icon },
   { slug: "gastos", title: "Gastos", icon: Wallet01Icon },
+  { slug: "revision", title: "Revisión", icon: Analytics01Icon },
   { slug: "archivos", title: "Archivos", icon: Folder01Icon },
 ] as const;

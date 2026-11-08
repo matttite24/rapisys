@@ -6,6 +6,7 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageSection, TABLE_TD as TD, TABLE_TH as TH } from "@/components/page-section";
+import { AttachFiles } from "@/components/attach-files";
 import { DeletePurchase } from "@/components/purchase-actions-ui";
 import { PurchaseForm, type DraftData } from "@/components/purchase-form";
 import { XmlInfoList } from "@/components/xml-info";
@@ -202,7 +203,7 @@ async function Detail({ params }: { params: PurchaseParams }) {
   const p = purchase as { id: string; number: string; supplier_id: string; purchased_on: string; notes: string | null; status: string; xml_info: Record<string, unknown> | null };
   if (p.status === "draft") redirect(`/${org}/contratos/${id}/compras/${purchaseId}/editar`);
 
-  const [linesRes, supRes] = await Promise.all([
+  const [linesRes, supRes, filesRes] = await Promise.all([
     supabase
       .from("purchase_lines")
       .select("id, item_id, quantity, unit_cost_cents, line_total_cents, vat_rate, received_qty, xml_code, new_part_number")
@@ -210,6 +211,7 @@ async function Detail({ params }: { params: PurchaseParams }) {
       .order("position")
       .order("id"),
     supabase.from("suppliers").select("name").eq("id", p.supplier_id).maybeSingle(),
+    supabase.from("contract_files").select("id", { count: "exact", head: true }).eq("contract_id", id).eq("source", "purchase").eq("source_id", purchaseId),
   ]);
   const lines = (linesRes.data ?? []) as {
     id: string;
@@ -336,11 +338,10 @@ async function Detail({ params }: { params: PurchaseParams }) {
         <div className="grid items-start gap-4 border-t p-4 lg:grid-cols-[1fr_auto]">
           <div className="flex min-w-0 flex-col gap-4">
             {xml && <XmlInfoList info={xml} subtotalCents={subtotal} totalCents={subtotal + vat} />}
-            {canAct && !received && (
-              <div>
-                <DeletePurchase org={org} contractId={id} purchaseId={purchaseId} invoice={p.number} />
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <AttachFiles org={org} contractId={id} source="purchase" sourceId={purchaseId} label={`Factura ${p.number}`} count={filesRes.count ?? 0} />
+              {canAct && !received && <DeletePurchase org={org} contractId={id} purchaseId={purchaseId} invoice={p.number} />}
+            </div>
           </div>
           <dl className="grid w-full min-w-64 grid-cols-[1fr_auto] gap-x-8 gap-y-1 font-mono text-sm lg:w-auto">
             <dt className="text-muted-foreground">Subtotal</dt>

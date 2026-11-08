@@ -21,3 +21,8 @@ export function formatIso(iso: string): string {
     year: "numeric",
   });
 }
+
+// Hoy (AAAA-MM-DD) en la hora de Ecuador, sin importar dónde corra el servidor.
+export function todayEcuador(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(new Date());
+}

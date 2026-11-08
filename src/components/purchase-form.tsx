@@ -9,6 +9,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { DatePicker, toIsoDate } from "@/components/date-picker";
 import { HeaderSlot } from "@/components/header-action";
 import { FormField } from "@/components/form-field";
+import { NativeSelect } from "@/components/ui/native-select";
 import { MoneyInput } from "@/components/money-input";
 import { NumericInput } from "@/components/numeric-input";
 import { PageSection } from "@/components/page-section";
@@ -89,6 +90,8 @@ const rowSubtotal = (r: Row): number | null => {
 const ROW_GRID = "grid items-center gap-2 max-sm:grid-cols-2 sm:max-lg:grid-cols-7 lg:grid-cols-[1.5rem_11rem_minmax(0,1fr)_4rem_6rem_3.5rem_6.5rem_10.5rem_2rem]";
 
 // Clave única por fila (no un contador del módulo: con la recarga en caliente el contador vuelve a 0 y repite claves).
+// IVA que se puede elegir en cada línea de la factura.
+const IVA_OPTIONS = ["15", "5", "0"];
 const blank = (): Row => ({ key: crypto.randomUUID(), item: null, quantity: "1", cost: "", vat: "15", code: "", name: "", create: false, verified: false });
 
 // Factura de compra de un contrato: proveedor, número, fecha y líneas. Primero se guarda como borrador (se puede
@@ -686,14 +689,17 @@ function PurchaseRow({
         </label>
         <label className="flex min-w-0 flex-col gap-1">
           <span className={hint}>IVA %</span>
-          <NumericInput
-            kind="decimal"
+          <NativeSelect
             data-col="vat"
             aria-label={`IVA de la línea ${n}`}
             className="h-9 font-mono lg:h-8"
             value={row.vat}
             onChange={(e) => onPatch({ vat: e.target.value })}
-          />
+          >
+            {(IVA_OPTIONS.includes(row.vat) ? IVA_OPTIONS : [row.vat, ...IVA_OPTIONS]).map((v) => (
+              <option key={v} value={v}>{v}%</option>
+            ))}
+          </NativeSelect>
         </label>
         <label className="flex min-w-0 flex-col gap-1">
           <span className={hint}>Subtotal</span>

@@ -22,7 +22,7 @@ import { PurchasesChart, type PurchasePoint } from "@/components/purchases-chart
 import { PageFigures } from "@/components/page-shortcuts";
 import { PageRefresh } from "@/components/page-refresh";
 import { StatusChip } from "@/components/status-chip";
-import { addDaysIso, formatIso } from "@/lib/dates";
+import { addDaysIso, formatIso, todayEcuador } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -104,7 +104,7 @@ export async function ContractDashboard({
 
   // Plazo
   const end = addDaysIso(c.start_date, Number(c.term_days));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayEcuador();
   const termDays = Number(c.term_days);
   const elapsed = Math.round((isoMs(today) - isoMs(c.start_date)) / DAY);
   const remaining = end ? Math.round((isoMs(end) - isoMs(today)) / DAY) : null;

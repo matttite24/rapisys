@@ -5,12 +5,10 @@ import { toast } from "sonner";
 import { FloppyDiskIcon } from "@hugeicons/core-free-icons";
 import { HeaderAction } from "@/components/header-action";
 import { FormField } from "@/components/form-field";
-import { NativeSelect } from "@/components/ui/native-select";
 import { NumericInput } from "@/components/numeric-input";
 import { FieldDescription, FieldError, FieldGroup, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { updateOrganization, type OrgSettingsState } from "@/lib/org-settings-actions";
-import { TIMEZONES } from "@/lib/timezones";
 
 export type OrgSettingsValues = {
   name: string;
@@ -19,18 +17,6 @@ export type OrgSettingsValues = {
   phone: string;
   vatRate: string;
   invitationDays: number;
-  timezone: string;
-};
-
-const TZ_LABEL: Record<string, string> = {
-  "America/Guayaquil": "Ecuador (Guayaquil)",
-  "America/Bogota": "Colombia (Bogotá)",
-  "America/Lima": "Perú (Lima)",
-  "America/Mexico_City": "México (Ciudad de México)",
-  "America/Santiago": "Chile (Santiago)",
-  "America/Argentina/Buenos_Aires": "Argentina (Buenos Aires)",
-  "Europe/Madrid": "España (Madrid)",
-  UTC: "UTC",
 };
 
 const FORM_ID = "org-settings-form";
@@ -86,17 +72,6 @@ export function OrgSettingsForm({ org, values, canEdit }: { org: string; values:
             hint="Se aplica a los contratos nuevos. Cada contrato guarda el suyo."
           >
             {(a11y) => <Input {...a11y} inputMode="decimal" className="font-mono" defaultValue={values.vatRate} disabled={disabled} />}
-          </FormField>
-          <FormField name="timezone" label="Zona horaria" error={errors.timezone} hint="Para calcular los plazos y los atrasos.">
-            {(a11y) => (
-              <NativeSelect {...a11y} className="w-full" defaultValue={values.timezone} disabled={disabled}>
-                {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {TZ_LABEL[tz] ?? tz}
-                  </option>
-                ))}
-              </NativeSelect>
-            )}
           </FormField>
         </FieldGroup>
       </FieldSet>

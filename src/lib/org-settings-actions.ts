@@ -5,7 +5,6 @@ import { requireUser } from "@/lib/auth";
 import { getMyRole, getOrgId } from "@/lib/orgs";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError } from "@/lib/db-error";
 import { createClient } from "@/lib/supabase/server";
-import { TIMEZONES } from "@/lib/timezones";
 
 export type OrgSettingsState = { error?: string; fields?: Record<string, string>; saved?: boolean } | undefined;
 
@@ -19,7 +18,6 @@ export async function updateOrganization(org: string, _: OrgSettingsState, formD
   const phone = get("phone");
   const vatRaw = get("vat_rate").replace(",", ".");
   const days = Number(get("invitation_days"));
-  const timezone = get("timezone");
 
   const fields: Record<string, string> = {};
   if (!name) fields.name = "Escribe el nombre de la organización.";
@@ -30,7 +28,6 @@ export async function updateOrganization(org: string, _: OrgSettingsState, formD
   const vat = Number(vatRaw);
   if (vatRaw === "" || !Number.isFinite(vat) || vat < 0 || vat > 100) fields.vat_rate = "Escribe un IVA entre 0 y 100.";
   if (!Number.isInteger(days) || days < 1 || days > 30) fields.invitation_days = "Escribe entre 1 y 30 días.";
-  if (!(TIMEZONES as readonly string[]).includes(timezone)) fields.timezone = "Elige una zona horaria de la lista.";
   if (Object.keys(fields).length) return { fields };
 
   const orgId = await getOrgId(org);
@@ -47,7 +44,6 @@ export async function updateOrganization(org: string, _: OrgSettingsState, formD
       phone: phone || null,
       vat_rate: vat,
       invitation_days: days,
-      timezone,
     })
     .eq("id", orgId);
   if (error) {

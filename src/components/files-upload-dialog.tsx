@@ -20,22 +20,27 @@ import { cn } from "@/lib/utils";
 export function FilesUploadDialog({
   org,
   contractId,
-  purchases,
-  expenses,
+  purchases = [],
+  expenses = [],
+  fixed,
+  onUploaded,
   open,
   onOpenChange,
 }: {
   org: string;
   contractId: string;
-  purchases: SourceOption[];
-  expenses: SourceOption[];
+  purchases?: SourceOption[];
+  expenses?: SourceOption[];
+  // Si se abre desde una compra o un gasto, el archivo pertenece a ese y no se elige.
+  fixed?: { source: "purchase" | "expense"; id: string; label: string };
+  onUploaded?: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [picked, setPicked] = useState<File[]>([]);
-  const [source, setSource] = useState<FileSource>("contract");
-  const [sourceId, setSourceId] = useState("");
+  const [source, setSource] = useState<FileSource>(fixed?.source ?? "contract");
+  const [sourceId, setSourceId] = useState(fixed?.id ?? "");
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -43,8 +48,8 @@ export function FilesUploadDialog({
 
   function reset() {
     setPicked([]);
-    setSource("contract");
-    setSourceId("");
+    setSource(fixed?.source ?? "contract");
+    setSourceId(fixed?.id ?? "");
     setError(undefined);
     setProgress(null);
   }
@@ -81,12 +86,16 @@ export function FilesUploadDialog({
       } catch (e) {
         setProgress(null);
         setPicked((prev) => prev.slice(ok)); // quedan solo los que faltan
-        if (ok > 0) toast.success(`${ok} ${ok === 1 ? "archivo cargado" : "archivos cargados"}.`);
+        if (ok > 0) {
+          toast.success(`${ok} ${ok === 1 ? "archivo cargado" : "archivos cargados"}.`);
+          onUploaded?.();
+        }
         return setError(`«${f.name}»: ${e instanceof Error ? e.message : "no se pudo cargar."}`);
       }
     }
     toast.success(`${ok} ${ok === 1 ? "archivo cargado" : "archivos cargados"}.`);
     reset();
+    onUploaded?.();
     onOpenChange(false);
   }
 
@@ -159,6 +168,9 @@ export function FilesUploadDialog({
             </ul>
           )}
 
+          {fixed ? (
+            <p className="text-sm text-muted-foreground">Se adjunta a: <span className="text-foreground">{fixed.label}</span></p>
+          ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField name="file_source" label="Pertenece a">
               {(a11y) => (
@@ -184,7 +196,8 @@ export function FilesUploadDialog({
               </FormField>
             )}
           </div>
-          {source !== "contract" && options.length === 0 && (
+          )}
+          {!fixed && source !== "contract" && options.length === 0 && (
             <p className="text-xs text-muted-foreground">{source === "purchase" ? "Este contrato aún no tiene compras." : "Este contrato aún no tiene gastos."}</p>
           )}
           {error && <FieldError>{error}</FieldError>}

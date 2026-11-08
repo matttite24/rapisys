@@ -17,15 +17,16 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Pager } from "@/components/pager";
 import { PageLoading } from "@/components/page-loading";
 import { ConfirmTap } from "@/components/confirm-tap";
+import { AttachFiles } from "@/components/attach-files";
 import { ExpenseForm } from "@/components/expense-form";
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS, EXPENSE_PAGE_SIZE, type Expense } from "@/lib/expenses";
 import { deleteExpense } from "@/lib/expense-actions";
 import { formatIso } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 
-export function ExpenseBoard({ org, contractId, rows: serverRows, count: serverCount, totalCents: serverTotal, allCount: serverAllCount, allTotalCents: serverAllTotal, q, category: serverCategory, page: serverPage }: {
+export function ExpenseBoard({ org, contractId, rows: serverRows, count: serverCount, totalCents: serverTotal, allCount: serverAllCount, allTotalCents: serverAllTotal, q, category: serverCategory, page: serverPage, fileCounts = {} }: {
   org: string; contractId: string; rows: Expense[]; count: number; totalCents: number; allCount: number; allTotalCents: number;
-  q: string; category: string; page: number;
+  q: string; category: string; page: number; fileCounts?: Record<string, number>;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Expense | null | undefined>(undefined);
@@ -85,6 +86,7 @@ export function ExpenseBoard({ org, contractId, rows: serverRows, count: serverC
             <td className={TABLE_TD}><p>{PAYMENT_METHODS[row.payment_method]}</p>{row.document_ref && <p className="font-mono text-xs text-muted-foreground">{row.document_ref}</p>}{/^https?:\/\//.test(row.document_url) && <a href={row.document_url} target="_blank" rel="noopener noreferrer" className="text-xs underline underline-offset-4">Ver comprobante ↗</a>}</td>
             <td className={`${TABLE_TD} num whitespace-nowrap text-right font-medium`}>{formatCents(row.amount_cents)}</td>
             <td className={`${TABLE_TD} w-px`}><div className="flex items-center gap-1">
+              <AttachFiles iconOnly org={org} contractId={contractId} source="expense" sourceId={row.id} label={row.lines[0]?.concept ?? "Gasto"} count={fileCounts[row.id] ?? 0} />
               <Button variant="ghost" size="icon" aria-label={`Editar gasto: ${row.concept}`} onClick={() => setEditing(row)}><HugeiconsIcon icon={Edit02Icon} className="size-4" /></Button>
               <ConfirmTap variant="ghost" size="icon" disabled={!!deleting} aria-label={`Eliminar gasto: ${row.concept}`} hint="Toca otra vez: se elimina el documento y todas sus líneas" onConfirm={() => void remove(row.id)}><HugeiconsIcon icon={Delete02Icon} className="size-4" /></ConfirmTap>
             </div></td>
