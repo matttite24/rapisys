@@ -182,7 +182,7 @@ function Rail({ onOpenPanel, preview }: { onOpenPanel?: (m: NavModule) => void; 
           <span
             aria-hidden
             className={cn(
-              "pointer-events-none absolute top-0 left-0 z-10 w-[3px] bg-meter-track dark:bg-[oklch(0.72_0_0)]",
+              "pointer-events-none absolute top-0 left-0 z-10 w-[3px] bg-nav-marker",
               animate && "transition-[transform,height] duration-300 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
             )}
             style={{ transform: `translateY(${bar.top}px)`, height: bar.height }}

@@ -44,6 +44,7 @@
   --color-brand-mark: var(--brand-mark);
   --color-brand-ink: var(--brand-ink);
   --color-meter-track: var(--meter-track);
+  --color-nav-marker: var(--nav-marker);
   --color-state-pending-on: var(--state-pending-on);
   --color-state-partial-on: var(--state-partial-on);
   --color-state-arriving-on: var(--state-arriving-on);
@@ -109,13 +110,14 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.5 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Contorno de los campos y anillo de foco: 3:1 o más sobre el fondo (WCAG 1.4.11). El borde de las tablas y tarjetas sigue siendo --border, más suave. */
+  --input: oklch(0.64 0 0);
+  --ring: oklch(0.62 0 0);
   /* Capas del marco: 1 = barra principal (la más oscura), 2 = opciones cambiantes, 3 = contenido (--background). */
   --layer-1: oklch(0.93 0 0);
   --layer-2: oklch(0.965 0 0);
@@ -144,6 +146,7 @@
   --brand-mark: oklch(0.7 0.15 85);
   --brand-ink: oklch(0.5 0.11 85);
   --meter-track: oklch(0.28 0 0);
+  --nav-marker: oklch(0.28 0 0);
   --state-running: oklch(0.67 0.17 50);
   /* Texto de los chips de estado (sobre su tinte al 15 %): mismo tono que la marca pero oscuro, con 4,5:1 o más. */
   --state-pending-ink: oklch(0.42 0 0);
@@ -224,7 +227,8 @@
   --brand-foreground: oklch(0.2 0 0);
   --brand-mark: oklch(0.78 0.15 88);
   --brand-ink: oklch(0.8 0.14 88);
-  --meter-track: oklch(0.3 0 0);
+  --meter-track: oklch(0.5 0 0);
+  --nav-marker: oklch(0.72 0 0);
   --state-running: oklch(0.75 0.16 55);
   --state-pending-ink: oklch(0.82 0 0);
   --state-partial-ink: oklch(0.86 0.07 195);
