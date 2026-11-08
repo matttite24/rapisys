@@ -236,7 +236,7 @@ export async function ContractDashboard({
       <div className="flex flex-col gap-4 p-4">
       <div className="grid gap-4 xl:grid-cols-3">
         {/* Abastecimiento */}
-        <Card size="sm" className="rounded-lg xl:col-span-2">
+        <Card size="sm" className="xl:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Ico icon={PackageProcessIcon} />Abastecimiento</CardTitle>
             <CardDescription>{totalLines} {totalLines === 1 ? "línea" : "líneas"} en el contrato</CardDescription>
@@ -263,7 +263,7 @@ export async function ContractDashboard({
           </CardContent>
         </Card>
 
-        <Card size="sm" className="rounded-lg">
+        <Card size="sm">
           <CardHeader>
             <CardDescription className="flex items-center gap-2">
               <Ico icon={ShoppingCart01Icon} />
@@ -286,7 +286,7 @@ export async function ContractDashboard({
 
       <div className="grid gap-4 xl:grid-cols-2">
         {/* Compras recientes */}
-        <Card size="sm" className="rounded-lg">
+        <Card size="sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Ico icon={ShoppingCart01Icon} />Compras recientes</CardTitle>
             <CardAction>
@@ -333,7 +333,7 @@ export async function ContractDashboard({
         </Card>
 
         {/* Entregas recientes */}
-        <Card size="sm" className="rounded-lg">
+        <Card size="sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Ico icon={DeliveryTruck01Icon} />Entregas recientes</CardTitle>
             <CardAction>
@@ -375,7 +375,7 @@ export async function ContractDashboard({
 
       {/* Avance por lista */}
       {lists.length > 0 && (
-        <Card size="sm" className="rounded-lg">
+        <Card size="sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Ico icon={LeftToRightListBulletIcon} />Listas</CardTitle>
             <CardDescription>Líneas entregadas por lista de referencia</CardDescription>

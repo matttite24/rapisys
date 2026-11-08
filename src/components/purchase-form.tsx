@@ -704,7 +704,7 @@ function PurchaseRow({
         <label className="flex min-w-0 flex-col gap-1">
           <span className={hint}>Subtotal</span>
           <span
-            className="num flex h-9 items-center justify-end rounded-md border border-input bg-muted/40 px-2 font-mono text-sm lg:h-8"
+            className="num flex h-9 items-center justify-end rounded-lg border border-input bg-muted/40 px-2 font-mono text-sm lg:h-8"
             aria-label={`Subtotal sin IVA de la línea ${n}`}
             aria-readonly="true"
           >

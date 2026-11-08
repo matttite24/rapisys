@@ -171,6 +171,9 @@
   --state-stock-solid: oklch(0.48 0.12 150);
   --state-delivered-solid: oklch(0.205 0 0);
   --state-running-solid: oklch(0.56 0.16 50);
+  /* Esquinas, una escala corta: botones, tablas, barras y celdas del marco, cuadrados; etiquetas, contadores y teclas
+     rounded-sm; miniaturas rounded-md; campos y tarjetas rounded-lg; lo que flota (diálogos, menús) rounded-xl.
+     No se redondea lo que toca una línea recta del marco (la pestaña activa solo arriba). */
   --radius: 0.5rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);

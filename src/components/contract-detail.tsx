@@ -63,7 +63,7 @@ async function Detail({ params }: { params: IdParams }) {
 // listas), así lo que llega después no mueve nada.
 function TableCardSkeleton() {
   return (
-    <Card size="sm" className="rounded-lg">
+    <Card size="sm">
       <CardHeader>
         <Skeleton className="h-5 w-40" />
       </CardHeader>
@@ -110,7 +110,7 @@ export function ContractDetailSkeleton() {
       </section>
       <div className="flex flex-col gap-4 p-4">
         <div className="grid gap-4 xl:grid-cols-3">
-          <Card size="sm" className="rounded-lg xl:col-span-2">
+          <Card size="sm" className="xl:col-span-2">
             <CardHeader>
               <Skeleton className="h-5 w-36" />
             </CardHeader>
@@ -123,7 +123,7 @@ export function ContractDetailSkeleton() {
               </div>
             </CardContent>
           </Card>
-          <Card size="sm" className="rounded-lg">
+          <Card size="sm">
             <CardHeader>
               <Skeleton className="h-4 w-20" />
               <Skeleton className="h-7 w-24" />
