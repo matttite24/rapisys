@@ -15,6 +15,17 @@ type Props = {
   action: (state: AuthState, formData: FormData) => Promise<AuthState>;
 };
 
+// Cruz de 11 px: su trazo central es el píxel 5 (desde 0), así que una caja a -5 px de una línea de 1 px que empieza en 0 queda
+// centrada sobre ella.
+function Cross({ className }: { className: string }) {
+  return (
+    <span aria-hidden className={`pointer-events-none absolute size-[11px] text-foreground ${className}`}>
+      <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-current" />
+      <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-current" />
+    </span>
+  );
+}
+
 const LINE = "pointer-events-none absolute bg-foreground/20";
 
 // Marca de Google (los cuatro colores oficiales de la "G").
@@ -42,11 +53,11 @@ export function AuthForm({ mode, action, next }: Props) {
       <span aria-hidden className={`${LINE} -inset-x-[100vw] top-0 h-px`} />
       <span aria-hidden className={`${LINE} -inset-x-[100vw] bottom-0 h-px`} />
 
-      {/* Un nodo en cada esquina, donde se cruzan las líneas. */}
-      <span aria-hidden className="absolute -top-[3px] -left-[3px] size-[7px] bg-foreground" />
-      <span aria-hidden className="absolute -top-[3px] -right-[3px] size-[7px] bg-foreground" />
-      <span aria-hidden className="absolute -bottom-[3px] -left-[3px] size-[7px] bg-foreground" />
-      <span aria-hidden className="absolute -right-[3px] -bottom-[3px] size-[7px] bg-foreground" />
+      {/* Una cruz en cada esquina, centrada sobre el cruce de las líneas de 1 px (cada caja de 11 px sale 5 px de la esquina). */}
+      <Cross className="-top-[5px] -left-[5px]" />
+      <Cross className="-top-[5px] -right-[5px]" />
+      <Cross className="-bottom-[5px] -left-[5px]" />
+      <Cross className="-right-[5px] -bottom-[5px]" />
 
       <div className="relative flex flex-col gap-8 px-8 py-10">
         <div className="flex flex-col items-center gap-5">
