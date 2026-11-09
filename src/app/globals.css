@@ -315,7 +315,10 @@
 .crosshair-start::after {
   content: "";
   position: absolute;
-  left: -3px;
+  /* Centrado en el cruce de dos líneas de 1 px: la vertical es el borde derecho de la columna de al lado (x de -1 a 0) y la
+     horizontal el borde inferior de esta celda (y de H-1 a H). Un cuadrado de 7 px centrado ahí empieza 4 px a la
+     izquierda y termina 3 px por debajo. */
+  left: -4px;
   bottom: -3px;
   z-index: 20;
   width: 7px;
