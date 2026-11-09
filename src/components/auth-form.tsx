@@ -42,11 +42,11 @@ export function AuthForm({ mode, action, next }: Props) {
       <span aria-hidden className={`${LINE} -inset-x-[100vw] top-0 h-px`} />
       <span aria-hidden className={`${LINE} -inset-x-[100vw] bottom-0 h-px`} />
 
-      {/* Cruces en las cuatro esquinas, donde se cruzan las líneas. */}
-      <span aria-hidden className="cross-mark absolute -top-[6px] -left-[6px] text-foreground/60" />
-      <span aria-hidden className="cross-mark absolute -top-[6px] -right-[6px] text-foreground/60" />
-      <span aria-hidden className="cross-mark absolute -bottom-[6px] -left-[6px] text-foreground/60" />
-      <span aria-hidden className="cross-mark absolute -right-[6px] -bottom-[6px] text-foreground/60" />
+      {/* Un nodo en cada esquina, donde se cruzan las líneas. */}
+      <span aria-hidden className="absolute -top-[3px] -left-[3px] size-[7px] bg-foreground" />
+      <span aria-hidden className="absolute -top-[3px] -right-[3px] size-[7px] bg-foreground" />
+      <span aria-hidden className="absolute -bottom-[3px] -left-[3px] size-[7px] bg-foreground" />
+      <span aria-hidden className="absolute -right-[3px] -bottom-[3px] size-[7px] bg-foreground" />
 
       <div className="relative flex flex-col gap-8 px-8 py-10">
         <div className="flex flex-col items-center gap-5">
