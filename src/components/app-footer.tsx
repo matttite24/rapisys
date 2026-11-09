@@ -93,10 +93,7 @@ export function Footer({
         </button>
       </div>
       <div className="relative flex min-w-0 flex-1">
-        <span aria-hidden className="pointer-events-none absolute -top-[6px] -left-[6px] z-30 size-[11px]">
-          <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-foreground" />
-          <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-foreground" />
-        </span>
+        <span aria-hidden className="pointer-events-none absolute -top-[3px] -left-[3px] z-30 size-[7px] bg-foreground" />
         <ShortcutBar pageShortcuts={pageShortcuts} pageFigures={pageFigures} pagePagination={pagePagination} setActionsSlot={setActionsSlot} setContextSlot={setContextSlot} newLabel={newLabel} leading={panelOpen ? null : (
           <button
             type="button"

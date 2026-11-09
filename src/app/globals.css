@@ -308,23 +308,20 @@
   letter-spacing: 0.08em;
 }
 
-/* Marca de cruce (+) en la intersección de dos líneas de la cuadrícula. */
+/* Nodo (cuadrado de 7 px) en la intersección de dos líneas de la cuadrícula: el mismo del formulario de entrada. */
 .crosshair-start {
   position: relative;
 }
 .crosshair-start::after {
   content: "";
   position: absolute;
-  left: -6px;
-  bottom: -6px;
+  left: -3px;
+  bottom: -3px;
   z-index: 20;
-  width: 11px;
-  height: 11px;
+  width: 7px;
+  height: 7px;
   pointer-events: none;
-  opacity: 0.9;
-  background:
-    linear-gradient(var(--foreground), var(--foreground)) center / 1px 100% no-repeat,
-    linear-gradient(var(--foreground), var(--foreground)) center / 100% 1px no-repeat;
+  background: var(--foreground);
 }
 
 /* Quien pidió menos movimiento (ajuste del sistema): lo que entra o sale sigue apareciendo y desapareciendo con un
