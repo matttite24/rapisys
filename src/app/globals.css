@@ -308,6 +308,16 @@
   letter-spacing: 0.08em;
 }
 
+/* Cruz (+) de 13 px centrada en un punto: marca de las esquinas del formulario de entrada. */
+.cross-mark {
+  width: 13px;
+  height: 13px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) center / 1px 100% no-repeat,
+    linear-gradient(currentColor, currentColor) center / 100% 1px no-repeat;
+}
+
 /* Marca de cruce (+) en la intersección de dos líneas de la cuadrícula. */
 .crosshair-start {
   position: relative;
