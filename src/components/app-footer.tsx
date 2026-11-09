@@ -93,7 +93,11 @@ export function Footer({
         </button>
       </div>
       <div className="relative flex min-w-0 flex-1">
-        <span aria-hidden className="pointer-events-none absolute -top-[3px] -left-[4px] z-30 size-[7px] bg-foreground" />
+        {/* Cruz sobre el cruce de la línea del pie (y de 0 a 1) y la vertical de la columna anterior (x de -1 a 0). */}
+        <span aria-hidden className="pointer-events-none absolute -top-[5px] -left-[6px] z-30 size-[11px]">
+          <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-foreground" />
+          <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-foreground" />
+        </span>
         <ShortcutBar pageShortcuts={pageShortcuts} pageFigures={pageFigures} pagePagination={pagePagination} setActionsSlot={setActionsSlot} setContextSlot={setContextSlot} newLabel={newLabel} leading={panelOpen ? null : (
           <button
             type="button"
