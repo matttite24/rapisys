@@ -13,10 +13,13 @@ import {
   type InvoiceLine,
   type Proposal,
 } from "@/lib/reconcile-actions";
-import { getStockSummary, reserveStock, searchStock, type StockResult } from "@/lib/supply-actions";
+import { removeLine } from "@/lib/contract-actions";
+import { addLineForProduct, getStockSummary, renameLine, reserveStock, searchStock, type StockResult } from "@/lib/supply-actions";
 import { useDebouncedSearch } from "@/lib/use-debounced-search";
 
 // Qué muestra el panel: lo ya asignado a la línea, las líneas de una factura o los productos con existencias en la bodega.
+// Clave del borrador de nombre cuando todavía no existe la línea.
+export const NEW_LINE = "__new__";
 export type Source = "asignados" | "cotizaciones" | "facturas" | "bodega";
 // Cómo se cubre: «bodega» asigna unidades que ya están en la bodega; «llegar» reserva lo que aún viene en una factura.
 export type How = "bodega" | "llegar";
@@ -24,6 +27,8 @@ export type How = "bodega" | "llegar";
 // Lo que está elegido en la lista de la derecha (línea de factura o producto de la bodega), listo para asignar.
 export type Current = {
   label: string;
+  productName: string; // Nombre del producto en la bodega
+  tdrName?: string; // Nombre TDR del producto, si tiene
   codes: string[]; // números de parte para cruzar con las líneas del contrato
   lots: { id: string; remaining: number }[]; // unidades en la bodega, el lote más barato primero
   inStock: number;
@@ -49,6 +54,8 @@ export function useReconcile(org: string, contractId: string) {
   const [stockQ, setStockQ] = useState("");
   const [stockPickedId, setStockPickedId] = useState<string | null>(null);
   const [qty, setQty] = useState("");
+  // Nombre con el que queda la línea de la lista al asignar: el Nombre TDR del producto o el que ya tenía; se puede editar.
+  const [nameDraft, setNameDraft] = useState<{ key: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   // Cuántos productos y unidades hay en la bodega (se pide al entrar a la pestaña y tras asignar).
   const [stockSummary, setStockSummary] = useState<{ products: number; units: number } | null>(null);
@@ -69,6 +76,8 @@ export function useReconcile(org: string, contractId: string) {
     source === "facturas"
       ? picked && {
           label: picked.code || picked.name,
+          productName: picked.name,
+          tdrName: picked.tdrName ?? undefined,
           codes: [picked.code, picked.sku ?? "", ...picked.partNumbers].filter(Boolean),
           lots: picked.lots,
           inStock: picked.inStock,
@@ -77,11 +86,19 @@ export function useReconcile(org: string, contractId: string) {
         }
       : source === "bodega" && stockPicked ? {
           label: stockPicked.sku || stockPicked.partNumbers[0] || stockPicked.name,
+          productName: stockPicked.name,
+          tdrName: stockPicked.tdrName ?? undefined,
           codes: [stockPicked.sku ?? "", ...stockPicked.partNumbers].filter(Boolean),
           lots: stockPicked.lots.map((l) => ({ id: l.id, remaining: l.remaining })),
           inStock: stockPicked.onHand,
           available: 0,
         } : null;
+
+  // El borrador vale solo para este producto y esta línea; al cambiar de uno u otra vuelve a su valor inicial.
+  const nameKey = (target: { id: string }) => `${current?.purchaseLineId ?? current?.label ?? ""}|${target.id}`;
+  const listNameFor = (target: { id: string; description?: string }) =>
+    nameDraft?.key === nameKey(target) ? nameDraft.text : (current?.tdrName ?? target.description ?? current?.productName ?? "");
+  const setListName = (target: { id: string }, text: string) => setNameDraft({ key: nameKey(target), text });
 
   // Abre el panel para una línea de la tabla: lo primero que se ve es lo que ya tiene asignado.
   function show() {
@@ -189,19 +206,19 @@ export function useReconcile(org: string, contractId: string) {
   // Asigna lo elegido a una línea del contrato. Sin cantidad escrita toma lo que falte o lo que haya, el menor.
   // «bodega» usa unidades que ya están en la bodega (lote más barato primero); «llegar» reserva lo que viene en la
   // factura. Si algo falla a medias se deshace lo ya hecho.
-  async function assignImpl(target: { id: string; open: number }, how?: How) {
-    if (!current || busy) return;
+  async function assignImpl(target: { id: string; open: number; description?: string }, how?: How, rename = true): Promise<boolean> {
+    if (!current || busy) return false;
     const h: How = how ?? (current.inStock > 0 ? "bodega" : "llegar");
     const room = h === "bodega" ? current.inStock : current.available;
     const asked = qty.trim() ? parseDecimal(qty) : null;
     const n = asked ?? Math.min(room, target.open);
     if (!n || n <= 0) {
       toast.error(room <= 0 ? "No quedan unidades por cubrir de esta forma." : "Escribe una cantidad válida, con máximo 2 decimales.");
-      return;
+      return false;
     }
     if (n > room) {
       toast.error(`Solo quedan ${room} ${h === "bodega" ? "en la bodega" : "por llegar"}.`);
-      return;
+      return false;
     }
     setBusy(true);
     const ids: string[] = [];
@@ -209,6 +226,7 @@ export function useReconcile(org: string, contractId: string) {
       if (ids.length) await undoMatches(org, contractId, ids);
       toast.error(message);
       setBusy(false);
+      return false as const;
     };
     if (h === "bodega") {
       let left = n;
@@ -224,6 +242,12 @@ export function useReconcile(org: string, contractId: string) {
       const r = await assignPurchase(org, contractId, current.purchaseLineId!, target.id, String(n));
       if (r?.error || !r?.id) return fail(r?.error ?? "No se pudo reservar.");
       ids.push(r.id);
+    }
+    // Si el nombre de la línea cambió (Nombre TDR o editado a mano), la línea de la lista se actualiza.
+    const newName = listNameFor(target).trim();
+    if (rename && newName && target.description !== undefined && newName !== target.description.trim()) {
+      const renamed = await renameLine(org, contractId, target.id, newName);
+      if (renamed?.error) toast.error(`Se asignó, pero no se pudo cambiar el nombre: ${renamed.error}`);
     }
     toast.success(`${h === "bodega" ? "Asignadas" : "Reservadas"} ${n} · ${current.label}`, {
       action: {
@@ -241,6 +265,7 @@ export function useReconcile(org: string, contractId: string) {
     unpick();
     await refresh();
     setBusy(false);
+    return true;
   }
 
   async function propose() {
@@ -302,8 +327,46 @@ export function useReconcile(org: string, contractId: string) {
     setBusy(false);
   }
 
+  // Proceso a crédito: crea la línea en la lista con el producto elegido (nombre TDR o el editado) y le asigna lo elegido.
+  // Si la asignación falla, la línea recién creada se quita para no dejar filas vacías.
+  const adding = useRef(false);
+  async function addImpl(listId: string, how?: How) {
+    if (!current || busy || adding.current) return;
+    const h: How = how ?? (current.inStock > 0 ? "bodega" : "llegar");
+    const room = h === "bodega" ? current.inStock : current.available;
+    const asked = qty.trim() ? parseDecimal(qty) : null;
+    const n = asked ?? room;
+    if (!n || n <= 0) {
+      toast.error(room <= 0 ? "No hay unidades disponibles de esta forma." : "Escribe una cantidad válida, con máximo 2 decimales.");
+      return;
+    }
+    if (n > room) {
+      toast.error(`Solo quedan ${room} ${h === "bodega" ? "en la bodega" : "por llegar"}.`);
+      return;
+    }
+    const description = listNameFor({ id: NEW_LINE, description: current.productName }).trim();
+    adding.current = true;
+    try {
+      const created = await addLineForProduct(org, contractId, listId, { partNumber: current.codes[0] ?? "", description, quantity: n });
+      if (created.error || !created.id) {
+        toast.error(created.error ?? "No se pudo crear la línea.");
+        return;
+      }
+      const ok = await assignImpl({ id: created.id, open: n, description }, h, false);
+      if (!ok) {
+        await removeLine(org, contractId, created.id);
+        await refresh();
+        return;
+      }
+      setNameDraft(null);
+    } finally {
+      adding.current = false;
+      setBusy(false);
+    }
+  }
+
   // Si una petición falla (red, servidor), el panel no queda bloqueado en "ocupado". No actúan si ya hay una en curso.
-  async function assign(target: { id: string; open: number }, how?: How) {
+  async function assign(target: { id: string; open: number; description?: string }, how?: How) {
     if (busy) return;
     try {
       await assignImpl(target, how);
@@ -352,6 +415,9 @@ export function useReconcile(org: string, contractId: string) {
     setQty,
     busy,
     assign,
+    addToList: addImpl,
+    listNameFor,
+    setListName,
     review,
     proposing,
     propose,

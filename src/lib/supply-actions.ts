@@ -98,6 +98,7 @@ export type LotOption = { id: string; supplier: string; costCents: number | null
 export type StockResult = {
   id: string;
   name: string;
+  tdrName?: string | null;
   sku: string | null;
   partNumbers: string[];
   onHand: number;
@@ -146,6 +147,10 @@ export async function searchStock(
   }
   if (!rows.length) return { rows: [], more: false };
 
+  // Nombre TDR de cada producto (la búsqueda no lo trae).
+  const { data: tdrRows } = await supabase.from("items").select("id, tdr_name").in("id", rows.map((r) => r.id));
+  const tdrById = new Map(((tdrRows ?? []) as { id: string; tdr_name: string | null }[]).map((r) => [r.id, r.tdr_name]));
+
   let lotsQuery = supabase
     .from("stock_lots")
     .select("id, item_id, supplier_id, unit_cost_cents, remaining_qty, created_at")
@@ -187,6 +192,7 @@ export async function searchStock(
         return {
           id: r.id,
           name: r.name,
+          tdrName: tdrById.get(r.id) ?? null,
           sku: r.sku,
           partNumbers: r.part_numbers ?? [],
           onHand: mine.reduce((s, l) => s + l.remaining, 0),
@@ -238,4 +244,54 @@ export async function releaseSource(org: string, contractId: string, sourceId: s
   if (error) return { error: friendly(error) };
   refresh(org, contractId);
   return { ok: true };
+}
+
+// Cambia la descripción de una línea de la lista (al asignarle un producto con otro nombre, p. ej. su Nombre TDR).
+export async function renameLine(org: string, contractId: string, lineId: string, rawDescription: string): Promise<SupplyState> {
+  const description = rawDescription.trim();
+  if (!description) return { error: "Escribe el nombre de la línea." };
+  if (description.length > 500) return { error: "Máximo 500 caracteres." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contract_items")
+    .update({ description })
+    .eq("id", lineId)
+    .eq("contract_id", contractId)
+    .select("id");
+  if (error) return { error: friendly(error) };
+  if (!data?.length) return { error: "No tienes permiso para cambiar esta línea." };
+  refresh(org, contractId);
+  return { ok: true };
+}
+
+// Crea la línea de la lista para un producto (proceso a crédito: la línea nace del producto, con su Nombre TDR).
+export async function addLineForProduct(
+  org: string,
+  contractId: string,
+  listId: string,
+  input: { partNumber: string; description: string; quantity: number },
+): Promise<{ error?: string; id?: string }> {
+  const description = input.description.trim();
+  const partNumber = input.partNumber.trim();
+  if (!description) return { error: "Escribe el nombre de la línea." };
+  if (description.length > 500) return { error: "El nombre pasa de 500 caracteres." };
+  if (partNumber.length > 60) return { error: "El número de parte pasa de 60 caracteres." };
+  if (!(input.quantity > 0) || input.quantity > 10_000_000) return { error: "La cantidad no es válida." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("add_contract_line", {
+    p_list_id: listId,
+    p_part_number: partNumber,
+    p_description: description,
+    p_quantity: input.quantity,
+    p_unit: "unit",
+    p_reference_price_cents: null,
+  });
+  if (error) {
+    if (error.message === "list_not_found") return { error: "No encontramos la lista." };
+    if (error.message === "not_in_progress") return { error: "Los items se cargan cuando el contrato está en ejecución." };
+    if (error.message === "list_full") return { error: "La lista llegó a su tope de líneas." };
+    return { error: friendly(error) };
+  }
+  refresh(org, contractId);
+  return { id: data as string };
 }

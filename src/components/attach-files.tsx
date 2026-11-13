@@ -16,6 +16,7 @@ export function AttachFiles({
   label,
   count = 0,
   iconOnly,
+  variant = "outline",
 }: {
   org: string;
   contractId: string;
@@ -24,6 +25,7 @@ export function AttachFiles({
   label: string;
   count?: number;
   iconOnly?: boolean;
+  variant?: "outline" | "ghost";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -36,7 +38,7 @@ export function AttachFiles({
           {count > 0 && <span className="num text-xs">{count}</span>}
         </Button>
       ) : (
-        <Button variant="outline" onClick={() => setOpen(true)}>
+        <Button variant={variant} onClick={() => setOpen(true)}>
           <HugeiconsIcon icon={Attachment01Icon} aria-hidden className="size-4" />
           {text}
         </Button>

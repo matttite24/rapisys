@@ -38,9 +38,10 @@ type Contract = {
   code: string;
   client_id: string;
   manager_id: string;
-  total_cents: number | string;
+  kind?: string;
+  total_cents: number | string | null;
   start_date: string;
-  term_days: number | string;
+  term_days: number | string | null;
   status: string;
 };
 
@@ -103,7 +104,8 @@ export async function ContractDashboard({
   ]);
 
   // Plazo
-  const end = addDaysIso(c.start_date, Number(c.term_days));
+  const credit = c.kind === "credit";
+  const end = credit ? null : addDaysIso(c.start_date, Number(c.term_days));
   const today = todayEcuador();
   const termDays = Number(c.term_days);
   const elapsed = Math.round((isoMs(today) - isoMs(c.start_date)) / DAY);
@@ -156,7 +158,7 @@ export async function ContractDashboard({
   const lists = (listsRes.data ?? []) as { id: string; name: string }[];
   const listName = new Map(lists.map((l) => [l.id, l.name]));
 
-  const late = remaining !== null && remaining < 0 && c.status === "in_progress";
+  const late = !credit && remaining !== null && remaining < 0 && c.status === "in_progress";
 
   const spentPct = contractTotal > 0 ? Math.round((spent / contractTotal) * 100) : 0;
 
@@ -168,8 +170,10 @@ export async function ContractDashboard({
       {/* Barra inferior: las cifras que importan a primera vista y el atajo para actualizar. */}
       <PageFigures
         figures={[
-          { label: "Monto", value: formatCents(contractTotal), note: `comprado ${spentPct} %` },
-          { label: "Plazo", value: plazoText, ...(late ? { tone: "warn" as const } : {}) },
+          credit
+            ? { label: "Comprado", value: formatCents(spent) }
+            : { label: "Monto", value: formatCents(contractTotal), note: `comprado ${spentPct} %` },
+          ...(credit ? [] : [{ label: "Plazo restante", value: plazoText, ...(late ? { tone: "warn" as const } : {}) }]),
           { label: "Entregadas", value: `${counts.delivered} de ${totalLines}` },
         ]}
       />
@@ -180,7 +184,7 @@ export async function ContractDashboard({
           <div className="flex min-w-0 flex-1 flex-col gap-8 py-8">
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-3">
-                <StatusChip status={c.status} />
+                <StatusChip status={c.status} kind={c.kind} deliveries={deliveries.length} />
                 <span className="num text-sm text-muted-foreground">{c.code}</span>
               </div>
               <h2 className="font-heading text-3xl leading-tight font-semibold text-balance xl:text-4xl">{c.name}</h2>
@@ -198,6 +202,14 @@ export async function ContractDashboard({
             </div>
 
             <dl className="grid max-w-4xl gap-6 md:grid-cols-3 md:divide-x [&>div]:flex [&>div]:min-w-0 [&>div]:flex-col [&>div]:gap-2 md:[&>div]:px-4 xl:[&>div]:px-6 md:[&>div:first-child]:pl-0">
+              {credit ? (
+              <div>
+                <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Wallet01Icon} className="size-3.5" />Comprado (IVA incl.)</dt>
+                <dd className="text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl">{formatCents(spent)}</dd>
+                <span className="text-xs text-muted-foreground">Proceso a crédito: sin monto ni plazo</span>
+              </div>
+              ) : (
+                <>
               <div>
                 <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Wallet01Icon} className="size-3.5" />Monto del contrato (IVA incl.)</dt>
                 <dd className="text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl">{formatCents(contractTotal)}</dd>
@@ -205,15 +217,17 @@ export async function ContractDashboard({
                 <span className="text-xs text-muted-foreground">Comprado {formatCents(spent)} · {spentPct} %</span>
               </div>
               <div>
-                <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Calendar03Icon} className="size-3.5" />Plazo</dt>
+                <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Calendar03Icon} className="size-3.5" />Plazo restante</dt>
                 <dd className={cn("text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl", late && "text-destructive")}>
                   {remaining === null ? "—" : remaining >= 0 ? `${remaining} ${remaining === 1 ? "día" : "días"}` : `${-remaining} ${remaining === -1 ? "día" : "días"} de atraso`}
                 </dd>
                 <Meter value={timePct} label="Plazo transcurrido" />
                 <span className="text-xs text-muted-foreground">
-                  {formatIso(c.start_date)} → {end ? formatIso(end) : "—"}
+                  de {termDays} {termDays === 1 ? "día" : "días"} · {formatIso(c.start_date)} → {end ? formatIso(end) : "—"}
                 </span>
               </div>
+                </>
+              )}
               <div>
                 <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={DeliveryTruck01Icon} className="size-3.5" />Líneas entregadas</dt>
                 <dd className="text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl">
@@ -227,7 +241,7 @@ export async function ContractDashboard({
           {/* Ilustración decorativa (public/Dummies). */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/Dummies/Forklift.avif"
+            src={credit ? "/Dummies/Excavator.avif" : "/Dummies/Forklift.avif"}
             alt=""
             aria-hidden
             className="pointer-events-none hidden size-64 shrink-0 translate-y-4 object-contain xl:block 2xl:size-80"

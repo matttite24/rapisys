@@ -7,12 +7,13 @@ import { PageFooterActions } from "@/components/page-shortcuts";
 import { PageSection } from "@/components/page-section";
 import { SearchInput } from "@/components/search-input";
 import { SearchBar } from "@/components/url-search";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { formatIso } from "@/lib/dates";
 
 export type DeliveryListRow = {
   id: string; number: number; delivered_on: string; received_by: string | null;
-  listName: string; lines: number; units: number;
+  listName: string; lines: number; units: number; voided?: boolean;
 };
 const deliveryCode = (n: number) => `ENT-${String(n).padStart(3, "0")}`;
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -21,7 +22,7 @@ export function DeliveryList({ org, contractId: id, rows }: { org: string; contr
   const [query, setQuery] = useState("");
   const words = normalize(query).trim().split(/\s+/).filter(Boolean);
   const deliveries = rows.filter((row) => {
-    const text = normalize([deliveryCode(row.number), row.number, row.delivered_on, formatIso(row.delivered_on), row.listName, row.received_by].join(" "));
+    const text = normalize([deliveryCode(row.number), row.voided ? "anulada" : "entregada", row.number, row.delivered_on, formatIso(row.delivered_on), row.listName, row.received_by].join(" "));
     return words.every((word) => text.includes(word));
   });
   return (
@@ -32,7 +33,7 @@ export function DeliveryList({ org, contractId: id, rows }: { org: string; contr
         </span>
       </PageFooterActions>
       <SearchBar>
-        <SearchInput label="Buscar entregas" placeholder="Buscar por entrega, fecha, lista o quién recibe" value={query} onChange={setQuery} />
+        <SearchInput label="Buscar entregas" placeholder="Buscar por entrega, estado, fecha, lista o quién recibe" value={query} onChange={setQuery} />
       </SearchBar>
       {rows.length === 0 ? (
         <div className="flex flex-col items-start gap-4 p-6">
@@ -51,6 +52,7 @@ export function DeliveryList({ org, contractId: id, rows }: { org: string; contr
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-transparent">
                 <TableHead>Entrega</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Lista</TableHead>
                 <TableHead className="text-right">Líneas</TableHead>
@@ -60,7 +62,7 @@ export function DeliveryList({ org, contractId: id, rows }: { org: string; contr
             </TableHeader>
             <TableBody>
               {deliveries.map((d) => (
-                <TableRow key={d.id} className="border-b last:border-b-0 hover:bg-accent/60">
+                <TableRow key={d.id} className={`border-b last:border-b-0 hover:bg-accent/60 ${d.voided ? "text-muted-foreground line-through decoration-muted-foreground/40" : ""}`}>
                   <TableCell className="p-0">
                     <Link
                       href={`/${org}/contratos/${id}/entregas/${d.id}`}
@@ -68,6 +70,9 @@ export function DeliveryList({ org, contractId: id, rows }: { org: string; contr
                     >
                       {deliveryCode(d.number)}
                     </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={d.voided ? "destructive" : "solid-stock"}>{d.voided ? "Anulada" : "Entregada"}</Badge>
                   </TableCell>
                   <TableCell className="num whitespace-nowrap">{formatIso(d.delivered_on)}</TableCell>
                   <TableCell>{d.listName}</TableCell>

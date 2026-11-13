@@ -31,7 +31,7 @@ export function MobileNav({
   const contract = useContractNav();
   const options = (contract?.groups ?? active.groups).flatMap((g) => g.items);
   const search = useSearchParams();
-  const current = activeNavigationHref(path, options.map((o) => o.href), search);
+  const current = activeNavigationHref(path.replace(/^(\/contratos\/[^/]+)\/gastos(?=\/|$)/, "$1/pagos"), options.map((o) => o.href), search);
   const on = "font-semibold text-foreground";
   // Cada botón de la fila inferior ocupa su celda completa.
   const cell = "[&_button]:h-16! [&_button]:w-full! [&_button]:rounded-none!";

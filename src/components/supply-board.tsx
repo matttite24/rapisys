@@ -23,9 +23,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { formatCents } from "@/lib/money";
+import { SupplyAddLine } from "@/components/supply-add-line";
 import { unitLabel } from "@/lib/units";
 import { cn } from "@/lib/utils";
-import { ArrowRight01Icon, Search01Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, Search01Icon, SidebarRightIcon } from "@hugeicons/core-free-icons";
 
 export type SupplyLine = {
   id: string;
@@ -67,6 +68,7 @@ export function SupplyBoard({
   estado: serverState,
   basePath,
   canAct,
+  credit,
   deliveries,
   money,
 }: {
@@ -82,6 +84,8 @@ export function SupplyBoard({
   estado: SupplyState | "";
   basePath: string;
   canAct: boolean;
+  // Contrato a crédito: permite agregar items directamente desde aquí.
+  credit?: boolean;
   // Entregas ya registradas en el contrato.
   deliveries: number;
   // Valor del contrato (con IVA) y costo de lo ya cubierto, para la barra de abajo.
@@ -127,6 +131,24 @@ export function SupplyBoard({
       setRightPanelOpen(false);
     };
   }, [panelShown]);
+
+  // Se deja correr la animación de salida antes de quitar el panel.
+  function closePanel() {
+    setClosing(true);
+    setTimeout(() => {
+      rc.hide();
+      setSelectedLine(null);
+      setClosing(false);
+    }, 200);
+  }
+  // Abre o cierra el panel sin tocar una línea. En un proceso a crédito abre directo en Facturas: ahí se agregan items.
+  function togglePanel() {
+    if (panelShown) return closePanel();
+    rc.unpick();
+    setSelectedLine(null);
+    rc.show();
+    if (credit && canAct) rc.setSource("facturas");
+  }
 
   function go(next: { lista?: string; q?: string; estado?: string; page?: number }) {
     const sp = new URLSearchParams();
@@ -215,6 +237,13 @@ export function SupplyBoard({
             onSearch={(next) => go({ q: next })}
             placeholder="Buscar por n.º de parte, descripción o producto asignado"
           />
+          {/* Abre el panel de abastecimiento sin elegir una línea: en un proceso a crédito, desde ahí se agregan items. */}
+          <div className="flex shrink-0 items-center border-l px-2">
+            <Button type="button" variant={panelShown ? "secondary" : "ghost"} size="sm" className="gap-1.5" aria-pressed={panelShown} onClick={togglePanel}>
+              <HugeiconsIcon icon={SidebarRightIcon} className="size-4" />
+              Abastecimiento
+            </Button>
+          </div>
         </div>
 
         {/* Fila 2: filtros por estado, como pestañas con su recuento (de líneas). */}
@@ -250,6 +279,10 @@ export function SupplyBoard({
             </Button>
           )}
         </div>
+
+        {credit && canAct && loaded && (
+          <SupplyAddLine org={org} contractId={contractId} listId={loaded.id} listName={loaded.name} />
+        )}
 
         {loaded && (
           <DeliveryActions
@@ -432,15 +465,8 @@ export function SupplyBoard({
         focus={focus}
         canAct={canAct}
         closing={closing}
-        onClose={() => {
-          // Se deja correr la animación de salida antes de quitar el panel.
-          setClosing(true);
-          setTimeout(() => {
-            rc.hide();
-            setSelectedLine(null);
-            setClosing(false);
-          }, 200);
-        }}
+        addToListId={credit && loaded ? loaded.id : undefined}
+        onClose={closePanel}
       />
     )}
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Cancel01Icon, FileUploadIcon, ImageUploadIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,8 @@ type Row = {
   price: string;
   raw: string;
   review: boolean;
+  // Sección del contrato (fila de ancho completo) a la que pertenece.
+  group?: string;
 };
 
 const REVIEW_PAGE = 100;
@@ -174,9 +176,10 @@ export function BulkImport({
           description: r.description,
           quantity: r.quantity,
           unit: "unit",
-          price: "",
+          price: r.price,
           raw: r.raw,
           review: r.review,
+          group: r.group,
         })),
       );
       setStep("review");
@@ -427,17 +430,23 @@ export function BulkImport({
                         </td>
                       </tr>
                     )}
-                    {pageIdx.map((i) => (
-                      <ReviewRow
-                        key={rows[i].id}
-                        row={rows[i]}
-                        index={i}
-                        dupKind={dups[i]?.kind}
-                        dupRef={dups[i]?.ref}
-                        errors={rowErrors}
-                        onPatch={patch}
-                        onRemove={removeRow}
-                      />
+                    {pageIdx.map((i, n) => (
+                      <Fragment key={rows[i].id}>
+                        {rows[i].group && rows[i].group !== rows[pageIdx[n - 1]]?.group && (
+                          <tr className="border-b bg-muted/60">
+                            <td colSpan={6} className="px-4 py-2 caps font-medium">{rows[i].group}</td>
+                          </tr>
+                        )}
+                        <ReviewRow
+                          row={rows[i]}
+                          index={i}
+                          dupKind={dups[i]?.kind}
+                          dupRef={dups[i]?.ref}
+                          errors={rowErrors}
+                          onPatch={patch}
+                          onRemove={removeRow}
+                        />
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

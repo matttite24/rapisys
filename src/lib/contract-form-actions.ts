@@ -20,6 +20,7 @@ const NEW = "__new__";
 const text = (fd: FormData, key: string) => String(fd.get(key) ?? "").trim();
 
 type Values = {
+  credit: boolean;
   name: string;
   code: string;
   totalCents: number;
@@ -31,6 +32,7 @@ type Values = {
 
 // Valida todos los campos a la vez, para mostrar todos los problemas juntos.
 function parseForm(fd: FormData): { fields: Record<string, string> } | { values: Values } {
+  const credit = text(fd, "credit") === "1";
   const name = text(fd, "name");
   const code = text(fd, "code");
   const total = parseCents(text(fd, "total"));
@@ -41,7 +43,8 @@ function parseForm(fd: FormData): { fields: Record<string, string> } | { values:
 
   const fields: Record<string, string> = {};
   if (!name) fields.name = "Escribe el nombre del contrato.";
-  if (!code) fields.code = "Escribe el código del contrato.";
+  // Un proceso a crédito nuevo recibe su código interno (CR-0001…) al guardar.
+  if (!code && !(credit && !text(fd, "contract_id"))) fields.code = "Escribe el código del contrato.";
   if (!clientChoice) fields.client_id = "Selecciona un cliente o crea uno nuevo.";
   if (clientChoice === NEW && !isClientType(text(fd, "client_type"))) fields.client_type = "Selecciona el tipo de cliente.";
   if (clientChoice === NEW && !text(fd, "client_name")) {
@@ -52,16 +55,19 @@ function parseForm(fd: FormData): { fields: Record<string, string> } | { values:
     fields.manager_name = "Escribe el nombre del responsable.";
   }
   let totalCents = 0;
-  if (!total.ok) fields.total = total.error;
+  // A crédito no hay monto ni plazo: no se validan.
+  if (credit) {
+    // nada
+  } else if (!total.ok) fields.total = total.error;
   else if (total.cents <= 0) fields.total = "El monto debe ser mayor a 0.";
   else totalCents = total.cents;
-  if (!Number.isInteger(termDays) || termDays <= 0) {
+  if (!credit && (!Number.isInteger(termDays) || termDays <= 0)) {
     fields.term_days = "Escribe los días de plazo como número entero mayor a 0.";
   }
   if (!startDate) fields.start_date = "Elige la fecha de inicio.";
 
   if (Object.keys(fields).length > 0) return { fields };
-  return { values: { name, code, totalCents, termDays, startDate, clientChoice, managerChoice } };
+  return { values: { credit, name, code, totalCents, termDays, startDate, clientChoice, managerChoice } };
 }
 
 // Cliente y responsable: existentes, o se crean aquí mismo.
@@ -115,6 +121,21 @@ function saveError(scope: string, error: { code?: string; message?: string }): C
   };
 }
 
+// Siguiente código interno de procesos a crédito de la organización: CR-0001, CR-0002…
+async function nextCreditCode(organizationId: string): Promise<string> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("contracts")
+    .select("code")
+    .eq("organization_id", organizationId)
+    .eq("kind", "credit")
+    .like("code", "CR-%")
+    .order("code", { ascending: false })
+    .limit(1);
+  const last = Number(/^CR-(\d+)$/.exec(data?.[0]?.code ?? "")?.[1] ?? 0);
+  return `CR-${String(last + 1).padStart(4, "0")}`;
+}
+
 export async function createContract(_: ContractState, formData: FormData): Promise<ContractState> {
   await requireUser();
   const org = text(formData, "org");
@@ -131,17 +152,26 @@ export async function createContract(_: ContractState, formData: FormData): Prom
   if ("error" in parties) return { error: parties.error };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("contracts").insert({
+  // Con dos altas a la vez el código puede chocar: se reintenta con el siguiente.
+  let error: { code?: string; message?: string } | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const code = v.credit ? await nextCreditCode(organizationId) : v.code;
+    ({ error } = await supabase.from("contracts").insert({
     organization_id: organizationId,
-    code: v.code,
+    code,
     name: v.name,
     client_id: parties.clientId,
     manager_id: parties.managerId,
-    total_cents: v.totalCents,
+    // A crédito: sin monto ni plazo, y nace abierto (en ejecución) porque no hay nada que confirmar.
+    kind: v.credit ? "credit" : "standard",
+    total_cents: v.credit ? null : v.totalCents,
     vat_rate: VAT_RATE,
-    term_days: v.termDays,
+    term_days: v.credit ? null : v.termDays,
     start_date: v.startDate,
-  });
+    ...(v.credit ? { status: "in_progress" } : {}),
+    }));
+    if (!(error?.code === "23505" && v.credit)) break;
+  }
   if (error) return saveError("createContract", error);
 
   revalidatePath(`/${org}/contratos`);
@@ -157,6 +187,7 @@ export async function updateContract(
   formData: FormData,
 ): Promise<ContractState> {
   await requireUser();
+  formData.set("contract_id", contractId);
   const parsed = parseForm(formData);
   if ("fields" in parsed) return { fields: parsed.fields };
   const v = parsed.values;
@@ -174,8 +205,7 @@ export async function updateContract(
       name: v.name,
       client_id: parties.clientId,
       manager_id: parties.managerId,
-      total_cents: v.totalCents,
-      term_days: v.termDays,
+      ...(v.credit ? {} : { total_cents: v.totalCents, term_days: v.termDays }),
       start_date: v.startDate,
     })
     .eq("id", contractId)
@@ -197,7 +227,7 @@ export async function loadContractEdit(org: string, contractId: string) {
   const supabase = await createClient();
   const contract = await supabase
       .from("contracts")
-      .select("id, name, code, client_id, manager_id, total_cents, start_date, term_days, vat_rate")
+      .select("id, name, code, client_id, manager_id, total_cents, start_date, term_days, vat_rate, kind")
       .eq("id", contractId)
       .eq("organization_id", organizationId)
       .maybeSingle();
@@ -216,10 +246,11 @@ export async function loadContractEdit(org: string, contractId: string) {
       code: c.code as string,
       clientId: c.client_id as string,
       managerId: c.manager_id as string,
-      totalCents: Number(c.total_cents),
+      credit: c.kind === "credit",
+      totalCents: Number(c.total_cents ?? 0),
       vatRate: Number(c.vat_rate),
       startDate: c.start_date as string,
-      termDays: Number(c.term_days),
+      termDays: Number(c.term_days ?? 0),
     },
   };
 }

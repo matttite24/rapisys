@@ -20,17 +20,21 @@ type Props = {
   // Botón presente pero aún sin función: se ve inactivo y explica por qué.
   disabled?: boolean;
   title?: string;
+  // Acción secundaria junto a la principal: sin atajo Alt + N y con estilo neutro.
+  secondary?: boolean;
+  // El enlace descarga un archivo (no navega dentro de la app).
+  download?: boolean;
 };
 
 // Uso desde cualquier página: <HeaderAction icon={Add01Icon} label="Nuevo" href="…" />
 // Se muestra en el encabezado de la sección como una celda al borde derecho: alto
 // completo, pegada a la línea (anula el padding del encabezado). En móvil queda
 // como un cuadrado con solo el ícono; el texto sigue disponible para lectores de pantalla.
-export function HeaderAction({ icon, label, href, onClick, disabled, title }: Props) {
+export function HeaderAction({ icon, label, href, onClick, disabled, title, secondary, download }: Props) {
   const slot = useContext(HeaderSlotContext);
   const router = useRouter();
   const registerNew = useContext(PageNewActionContext);
-  const usable = !disabled && (Boolean(href) || Boolean(onClick));
+  const usable = !disabled && !secondary && (Boolean(href) || Boolean(onClick));
 
   // Atajo general para crear: Alt + N (y Ctrl/⌘ + N donde el navegador lo deje pasar; Chrome, Safari y Firefox lo
   // reservan para "nueva ventana", así que Alt + N es el que siempre funciona).
@@ -55,8 +59,9 @@ export function HeaderAction({ icon, label, href, onClick, disabled, title }: Pr
   if (!slot) return null;
 
   const className = cn(
-    buttonVariants({ variant: "brand" }),
-    "-mr-4 h-full! rounded-none! border-0! bg-clip-border! px-5 max-sm:w-14 max-sm:px-0 sm:gap-2",
+    buttonVariants({ variant: secondary ? "ghost" : "brand" }),
+    "h-full! rounded-none! border-0! bg-clip-border! px-5 max-sm:w-14 max-sm:px-0 sm:gap-2",
+    !secondary && "-mr-4",
   );
   const content = (
     <>
@@ -66,12 +71,16 @@ export function HeaderAction({ icon, label, href, onClick, disabled, title }: Pr
   );
 
   return createPortal(
-    href && !disabled ? (
+    href && !disabled && download ? (
+      <a href={href} download data-slot="button" className={className} title={title}>
+        {content}
+      </a>
+    ) : href && !disabled ? (
       <Link href={href} data-slot="button" className={className}>
         {content}
       </Link>
     ) : (
-      <Button className={className} onClick={onClick} disabled={disabled} title={title}>
+      <Button variant={secondary ? "ghost" : "brand"} className={className} onClick={onClick} disabled={disabled} title={title}>
         {content}
       </Button>
     ),

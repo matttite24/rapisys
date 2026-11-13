@@ -17,11 +17,11 @@ it("mantiene costos, existencias y categoría de los items, acotados a organizac
   state.results = {
     items: { data: [{ id: "i", name: "Correa", sku: "SKU", line: "CAT", category_id: "c", part_numbers: [], margin_percent: "40", is_active: true }], count: 60, error: null },
     item_categories: { data: [{ id: "c", name: "Motor" }], error: null },
-    item_supplier_prices: { data: [{ item_id: "i", unit_cost_cents: 100 }, { item_id: "i", unit_cost_cents: 50 }], error: null },
+    item_supplier_prices: { data: [{ item_id: "i", unit_cost_cents: 100, vat_rate: 15 }, { item_id: "i", unit_cost_cents: 50, vat_rate: 15 }], error: null },
     item_stock: { data: [{ item_id: "i", on_hand: "3" }], error: null },
   };
   const result = await loadWarehouse("org", "items", "", 2);
-  expect(result.view).toMatchObject({ kind: "items", total: 60, rows: [{ category: "Motor", costCents: 50, stock: 3, margin_percent: 40 }] });
+  expect(result.view).toMatchObject({ kind: "items", total: 60, rows: [{ category: "Motor", costCents: 58, stock: 3, margin_percent: 40 }] });
   expect(state.calls.find((c) => c.table === "items")?.eq).toContainEqual(["organization_id", "org-id"]);
   expect(state.calls.find((c) => c.table === "items")?.range).toContainEqual([50, 99]);
 });

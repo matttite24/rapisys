@@ -21,7 +21,7 @@ describe("parseTable", () => {
       ["7C-7431", "GASKET-TURBOCHARGER", "1", "444210112"],
     ]);
     expect(rows.every((r) => !r.review)).toBe(true);
-    expect(skipped).toBe(3); // modelo, encabezado y nombre del activo
+    expect(skipped).toBe(2); // modelo y encabezado (el nombre del activo es una sección)
   });
 
   it("lee el resultado real del OCR de la tabla de ejemplo (modo una columna)", () => {
@@ -69,6 +69,70 @@ describe("parseTable", () => {
 
   it("normaliza la coma decimal", () => {
     expect(parseTable([line("1 AB-123 ACEITE 2,5 444210112")]).rows[0].quantity).toBe("2.5");
+  });
+});
+
+describe("parseTable con precios", () => {
+  it("lee descripción, parte, cantidad y toma el P. TOTAL (último importe)", () => {
+    const { rows } = parseTable([
+      line("ITEM DESCRIPCIÓN DEL PRODUCTO N° DE PARTE CANTIDAD PROFORMA 1 PROFORMA 2"),
+      line("3 LOCKNUT 3E-8017 4 $4.86 $4.76 $4.81 $19.24"),
+      line("2 TURBOCHARGER GP 135-2650 1 $3,190.56 $3,128.00 $3,159.28 $3,159.28"),
+      line("18 WASHER-HARD (17X32X3,5MM THK) 8T-4122 12 $1.66 $1.63 $1.65 $19.74"),
+    ]);
+    expect(rows.map((r) => [r.part, r.description, r.quantity, r.price])).toEqual([
+      ["3E-8017", "LOCKNUT", "4", "19.24"],
+      ["135-2650", "TURBOCHARGER GP", "1", "3159.28"],
+      ["8T-4122", "WASHER-HARD (17X32X3,5MM THK)", "12", "19.74"],
+    ]);
+  });
+});
+
+describe("parseTable formato estándar (coma decimal)", () => {
+  it("lee la planilla estándar y salta los títulos de equipo", () => {
+    const { rows, skipped } = parseTable([
+      line("ITEM DESCRIPCIÓN DEL PRODUCTO N° DE PARTE CANTIDAD P.UNIT P. TOTAL"),
+      line("MOTONIVELADORA CATERPILLAR 120H"),
+      line("1 V-BELT SET (INCLUDES 3 BELTS) 9L-2526 1 $117,00 $117,00"),
+      line("2 TURBOCHARGER GP 135-2650 1 $3.000,00 $3.000,00"),
+      line("3 LOCKNUT 3E-8017 4 $4,50 $18,00"),
+      line("5 PUMP-GP-FUEL INJECTION 236-8228 1 $4.550,00 $4.550,00"),
+      line("9 KIT-RECEPTACLE (2PIN) 102-8802 24 $7,55 $181,20"),
+    ]);
+    expect(rows.map((r) => [r.part, r.quantity, r.price])).toEqual([
+      ["9L-2526", "1", "117.00"],
+      ["135-2650", "1", "3000.00"],
+      ["3E-8017", "4", "18.00"],
+      ["236-8228", "1", "4550.00"],
+      ["102-8802", "24", "181.20"],
+    ]);
+    expect(skipped).toBe(1);
+    expect(rows.map((r) => r.group)).toEqual(Array(5).fill("MOTONIVELADORA CATERPILLAR 120H"));
+  });
+
+  it("asigna a cada fila la sección que la antecede", () => {
+    const { rows } = parseTable([
+      line("MOTONIVELADORA CATERPILLAR 120H"),
+      line("4 GASKET-TURBOCHARGER 7C-7431 1 $36,50 $36,50"),
+      line("RETROEXCAVADORA 420F"),
+      line("5 STRAINER (FUEL TANK) 390-0908 3 $195,00 $585,00"),
+    ]);
+    expect(rows.map((r) => r.group)).toEqual(["MOTONIVELADORA CATERPILLAR 120H", "RETROEXCAVADORA 420F"]);
+  });
+});
+
+describe("parseTable con importes mal leídos", () => {
+  it("toma el P. TOTAL aunque falte o cambie el $ o sobren espacios", () => {
+    const { rows } = parseTable([
+      line("6 STRAINER (FUEL TANK) 390-0908 3 $195,00 585,00"),
+      line("7 BELT TENSIONER 377-9087 1 S234,00 $ 234,00"),
+      line("BELT TENSIONER 377-9087 2 $234,00 $468,00"),
+    ]);
+    expect(rows.map((r) => [r.part, r.quantity, r.price])).toEqual([
+      ["390-0908", "3", "585.00"],
+      ["377-9087", "1", "234.00"],
+      ["377-9087", "2", "468.00"],
+    ]);
   });
 });
 

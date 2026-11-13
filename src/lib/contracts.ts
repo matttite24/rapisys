@@ -2,6 +2,25 @@ import type { Tone } from "@/lib/state-tone";
 
 export const VAT_RATE = 15;
 
+export type ContractKind = "standard" | "credit";
+
+// Ciclo del contrato a crédito: usa los mismos estados de base de datos (sin "finished" ni "pending_payment").
+// "in_progress" se muestra como Abierto, o Entregando cuando ya hay una entrega.
+export const CREDIT_ORDER = ["in_progress", "invoiced", "paid"] as const;
+export const CREDIT_LABEL: Record<string, string> = {
+  in_progress: "Abierto",
+  delivering: "Entregando",
+  invoiced: "Facturado",
+  paid: "Cobrado",
+};
+// Orden de estados según el tipo de contrato.
+export const orderFor = (kind: string | undefined): readonly string[] => (kind === "credit" ? CREDIT_ORDER : STATUS_ORDER);
+// Texto del estado: en crédito, un contrato en ejecución con entregas es "Entregando".
+export function statusText(status: string, kind?: string, deliveries = 0): string {
+  if (kind !== "credit") return STATUS_LABEL[status] ?? status;
+  return CREDIT_LABEL[status === "in_progress" && deliveries > 0 ? "delivering" : status] ?? status;
+}
+
 export const STATUS_LABEL: Record<string, string> = {
   new: "Nuevo",
   in_progress: "En ejecución",

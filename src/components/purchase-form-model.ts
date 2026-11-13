@@ -52,7 +52,7 @@ export const rowSubtotal = (r: Row): number | null => {
 };
 
 // Columnas de cada línea de la factura; el encabezado y las filas comparten la misma rejilla.
-export const ROW_GRID = "grid items-center gap-2 max-sm:grid-cols-2 sm:max-lg:grid-cols-7 lg:grid-cols-[1.5rem_11rem_minmax(0,1fr)_4rem_6rem_3.5rem_6.5rem_10.5rem_2rem]";
+export const ROW_GRID = "grid items-center gap-2 max-sm:grid-cols-2 sm:max-lg:grid-cols-7 lg:grid-cols-[1.5rem_11rem_minmax(0,1fr)_4rem_6rem_5.5rem_6.5rem_10.5rem_2rem]";
 
 // Clave única por fila (no un contador del módulo: con la recarga en caliente el contador vuelve a 0 y repite claves).
 // IVA que se puede elegir en cada línea de la factura.

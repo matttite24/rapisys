@@ -45,9 +45,9 @@ async function Detail({ params }: { params: IdParams }) {
             code: c.code,
             clientId: c.client_id,
             managerId: c.manager_id,
-            totalCents: Number(c.total_cents),
+            totalCents: Number(c.total_cents ?? 0),
             startDate: c.start_date,
-            termDays: Number(c.term_days),
+            termDays: Number(c.term_days ?? 0),
             vatRate: Number(c.vat_rate),
           }}
         />

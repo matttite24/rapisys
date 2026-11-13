@@ -2,9 +2,11 @@ import type { IconSvgElement } from "@hugeicons/react";
 import {
   AddressBookIcon,
   AddSquareIcon,
+  BankIcon,
   Building03Icon,
   CheckmarkCircle02Icon,
   Car01Icon,
+  CreditCardIcon,
   ContractsIcon,
   DeliveryTruck01Icon,
   File01Icon,
@@ -50,6 +52,11 @@ export const modules: NavModule[] = [
           { title: "Cobrados", href: "/contratos?estado=cobrados", icon: CheckmarkCircle02Icon },
         ],
       },
+      {
+        items: [
+          { title: "Procesos a crédito", href: "/contratos?estado=credito", icon: CreditCardIcon },
+        ],
+      },
     ],
   },
   {
@@ -88,6 +95,12 @@ export const modules: NavModule[] = [
     groups: [{ items: [{ title: "Listado", href: "/proveedores", icon: BriefcaseBusinessIcon }] }],
   },
   {
+    title: "Bancos",
+    href: "/bancos",
+    icon: BankIcon,
+    groups: [{ items: [{ title: "Cuentas", href: "/bancos", icon: BankIcon }] }],
+  },
+  {
     title: "Ajustes",
     href: "/ajustes",
     icon: Settings02Icon,
@@ -110,7 +123,7 @@ export const CONTRACT_SECTIONS = [
   { slug: "compras", title: "Compras", icon: ShoppingCart01Icon },
   { slug: "abastecimiento", title: "Abastecimiento", icon: PackageProcessIcon },
   { slug: "entregas", title: "Entregas", icon: DeliveryTruck01Icon },
-  { slug: "gastos", title: "Gastos", icon: Wallet01Icon },
+  { slug: "pagos", title: "Pagos", icon: Wallet01Icon },
   { slug: "revision", title: "Revisión", icon: Analytics01Icon },
   { slug: "archivos", title: "Archivos", icon: Folder01Icon },
 ] as const;

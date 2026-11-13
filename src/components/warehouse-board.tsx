@@ -12,6 +12,7 @@ import { Pager } from "@/components/pager";
 import { PageLoading } from "@/components/page-loading";
 import { SearchBar } from "@/components/url-search";
 import { SearchInput } from "@/components/search-input";
+import { ItemImport } from "@/components/item-import";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useWarehouseView } from "@/components/use-warehouse-view";
 import { WarehouseAssetsTable, WarehouseItemsTable } from "@/components/warehouse-tables";
@@ -37,6 +38,7 @@ export function WarehouseBoard({ org, initial }: { org: string; initial: Warehou
   const shownTotal = loading || error ? 0 : total;
   return <>
     <h1 className="sr-only">{assets ? "Activos" : "Items de bodega"}</h1>
+    {!assets && <ItemImport org={org} />}
     <HeaderAction icon={Add01Icon} label={assets ? "Nuevo activo" : "Nuevo item"} href={newHref} />
     <PageFigures figures={[{ label: assets ? (total === 1 ? "Activo" : "Activos") : (total === 1 ? "Item" : "Items"), value: loading || error ? "—" : String(total), ...(q ? { note: "Resultados de búsqueda" } : {}) }]} />
     <SearchBar><WarehouseSearch key={kind} kind={kind} q={q} onSearch={(text) => void select(kind, 1, text)} /></SearchBar>

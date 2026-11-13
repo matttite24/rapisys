@@ -111,6 +111,7 @@ function friendly(error: DbError) {
   if (error.message === "not_deliverable") return "Alguna línea ya no está lista para entregar (sin todo asignado de la bodega o ya entregada). Actualiza la pantalla.";
   if (error.message === "list_not_found") return "No encontramos la lista o alguna de sus líneas.";
   if (error.message === "duplicate_line") return "Una línea aparece repetida.";
+  if (error.message === "already_void") return "Esta entrega ya está anulada.";
   if (error.message === "bad_date") return "Elige la fecha de la entrega.";
   if (error.message === "nothing_to_deliver" || error.message === "bad_quantity") return "Elige al menos una línea con cantidad mayor a 0.";
   logDbError("entrega", error);
@@ -144,4 +145,14 @@ export async function createDelivery(
   if (error) return { error: friendly(error) };
   revalidatePath(`/${org}/contratos/${contractId}`, "layout");
   return { id: (data as { id: string }).id };
+}
+
+// Anula una entrega: sus líneas vuelven a la bodega (listas para entregar otra vez). Queda en el historial como anulada.
+export async function voidDelivery(org: string, contractId: string, deliveryId: string, reason: string): Promise<DeliveryResult> {
+  if (reason.length > 300) return { error: "El motivo admite máximo 300 caracteres." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delivery_void", { p_delivery_id: deliveryId, p_reason: reason });
+  if (error) return { error: friendly(error) };
+  revalidatePath(`/${org}/contratos/${contractId}`, "layout");
+  return { id: deliveryId };
 }

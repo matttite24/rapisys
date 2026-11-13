@@ -2,7 +2,7 @@
 
 import { finishBlocker } from "@/lib/contract-completion";
 import { revalidatePath } from "next/cache";
-import { MAX_LINES_PER_LIST, STATUS_ORDER } from "@/lib/contracts";
+import { MAX_LINES_PER_LIST, orderFor } from "@/lib/contracts";
 import { parseCents, parseDecimal } from "@/lib/money";
 import { isUnit } from "@/lib/units";
 import { createClient } from "@/lib/supabase/server";
@@ -218,18 +218,19 @@ export async function setContractStatus(
   status: string,
 ): Promise<LineState> {
   await requireUser();
-  if (!(STATUS_ORDER as readonly string[]).includes(status)) return { error: "Estado no válido." };
-
   const supabase = await createClient();
   const { data: current } = await supabase
     .from("contracts")
-    .select("status")
+    .select("status, kind")
     .eq("id", contractId)
     .maybeSingle();
   if (!current) return { error: "No encontramos el contrato." };
+  const credit = current.kind === "credit";
+  const order = orderFor(current.kind);
+  if (!order.includes(status)) return { error: "Estado no válido." };
 
   // Un contrato con items no puede volver a Nuevo: ahí los items todavía no se trabajan.
-  if (status === "new") {
+  if (status === "new" && !credit) {
     const { count } = await supabase
       .from("contract_items")
       .select("id", { count: "exact", head: true })
@@ -238,12 +239,12 @@ export async function setContractStatus(
   }
 
   // Solo se avanza o retrocede un paso a la vez.
-  const delta = STATUS_ORDER.indexOf(status as (typeof STATUS_ORDER)[number]) -
-    STATUS_ORDER.indexOf(current.status as (typeof STATUS_ORDER)[number]);
+  const delta = order.indexOf(status) - order.indexOf(current.status);
   if (Math.abs(delta) !== 1) return { error: "El estado solo cambia un paso a la vez." };
 
   // Finalizar solo con todo entregado: se valida aquí, no solo en el botón.
-  if (status === "finished") {
+  // En crédito, facturar equivale a cerrar la entrega: exige lo mismo.
+  if (status === "finished" || (credit && status === "invoiced")) {
     const blocker = await finishBlocker(supabase, contractId);
     if (blocker) return { error: blocker };
   }

@@ -29,6 +29,7 @@ export type ContractData = {
   code: string;
   clientId: string;
   managerId: string;
+  credit?: boolean;
   totalCents: number;
   vatRate?: number;
   startDate: string;
@@ -189,7 +190,9 @@ export function ContractForm({
   const formRef = useRef<HTMLFormElement>(null);
   const [total, setTotal] = useState(contract ? centsToInput(contract.totalCents) : "");
   const [start, setStart] = useState(contract?.startDate ?? "");
-  const [days, setDays] = useState(contract ? String(contract.termDays) : "");
+  const [days, setDays] = useState(contract && !contract.credit ? String(contract.termDays) : "");
+  // A crédito: sin monto ni plazo. Solo se elige al crear; al editar queda fijo.
+  const [credit, setCredit] = useState(contract?.credit ?? false);
 
   const errors: Errors = state?.fields ?? {};
   const parsed = parseCents(total);
@@ -223,6 +226,7 @@ export function ContractForm({
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate>
       <input type="hidden" name="org" value={org} />
+      <input type="hidden" name="credit" value={credit ? "1" : "0"} />
 
       <PageSection index="01" label="Identificación" className="p-0">
         <CellGrid className="border-0 border-t-0 md:grid-cols-2">
@@ -230,7 +234,13 @@ export function ContractForm({
             {(a11y) => <Input {...a11y} required autoFocus={!contract} defaultValue={contract?.name} />}
           </FormField>
           <FormField name="code" label="Código del contrato" error={errors.code}>
-            {(a11y) => <Input {...a11y} required className="font-mono" defaultValue={contract?.code} />}
+            {(a11y) =>
+              credit && !contract ? (
+                <Input {...a11y} disabled className="font-mono" placeholder="Se genera al guardar (CR-0001)" />
+              ) : (
+                <Input {...a11y} required className="font-mono" defaultValue={contract?.code} />
+              )
+            }
           </FormField>
         </CellGrid>
       </PageSection>
@@ -243,18 +253,29 @@ export function ContractForm({
       </PageSection>
 
       <PageSection index="03" label="Condiciones" className="p-0">
+        {!contract && (
+          <label className="flex items-start gap-3 border-b px-6 py-4 text-sm">
+            <input type="checkbox" className="mt-0.5 size-4" checked={credit} onChange={(e) => setCredit(e.target.checked)} />
+            <span>
+              <span className="font-medium">Proceso a crédito</span>
+              <span className="block text-muted-foreground">Sin monto ni plazo de entrega. Se crea abierto: los items se agregan desde Abastecimiento y se cierra al entregar todo.</span>
+            </span>
+          </label>
+        )}
         <CellGrid className="border-0 md:grid-cols-4">
           <FormField
             name="total"
             label="Monto total en USD (incluye IVA)"
             error={errors.total}
             hint={
-              breakdown
+              credit
+                ? "Proceso a crédito: sin monto"
+                : breakdown
                 ? `Subtotal ${formatCents(breakdown.subtotal)} · IVA ${vat}% ${formatCents(breakdown.vat)}`
                 : `Se desglosa el IVA ${vat}% automáticamente`
             }
           >
-            {(a11y) => <MoneyInput {...a11y} name="total" required value={total} onChange={setTotal} />}
+            {(a11y) => <MoneyInput {...a11y} name="total" required={!credit} disabled={credit} value={credit ? "" : total} onChange={setTotal} />}
           </FormField>
           <FormField name="start_date" label="Fecha de inicio" error={errors.start_date}>
             {(a11y) => <DatePicker {...a11y} name="start_date" value={start} onChange={setStart} />}
@@ -263,10 +284,11 @@ export function ContractForm({
             {(a11y) => (
               <NumericInput
                 {...a11y}
-                required
+                required={!credit}
+                disabled={credit}
                 maxLength={4}
                 className="font-mono"
-                value={days}
+                value={credit ? "" : days}
                 onChange={(e) => setDays(e.target.value)}
               />
             )}
@@ -276,9 +298,9 @@ export function ContractForm({
             <span className="caps font-medium text-muted-foreground">
               Fecha de entrega
             </span>
-            <span className="num flex h-10 items-center text-lg">{end ? formatIso(end) : "—"}</span>
+            <span className="num flex h-10 items-center text-lg">{end && !credit ? formatIso(end) : "—"}</span>
             <span className="font-mono text-xs text-muted-foreground">
-              {end ? `Inicio + ${termDays} días` : "Elige el inicio y el plazo"}
+              {credit ? "Sin plazo de entrega" : end ? `Inicio + ${termDays} días` : "Elige el inicio y el plazo"}
             </span>
           </div>
         </CellGrid>

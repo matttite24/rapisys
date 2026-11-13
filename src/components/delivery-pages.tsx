@@ -6,10 +6,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageSection } from "@/components/page-section";
 import { PrintButton } from "@/components/print-button";
+import { Badge } from "@/components/ui/badge";
+import { HeaderAction } from "@/components/header-action";
+import { PageFigures } from "@/components/page-shortcuts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowLeft01Icon, File01Icon } from "@hugeicons/core-free-icons";
+import { VoidDelivery } from "@/components/void-delivery";
 import { buttonVariants } from "@/components/ui/button";
 import { getContract } from "@/lib/contract-data";
 import { formatIso } from "@/lib/dates";
 import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
+import { assetsForLines } from "@/lib/line-assets";
 import { unitLabel } from "@/lib/units";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,6 +32,9 @@ type DeliveryRow = {
   delivered_on: string;
   received_by: string | null;
   notes: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  voided_lines: { part_number: string | null; description: string; quantity: number; unit: string }[] | null;
 };
 
 // Lista de entregas del contrato.
@@ -36,7 +46,7 @@ async function List({ params }: { params: IdParams }) {
     getContract(org, id),
     supabase
       .from("deliveries")
-      .select("id, list_id, number, delivered_on, received_by, notes")
+      .select("id, list_id, number, delivered_on, received_by, notes, voided_at, void_reason, voided_lines")
       .eq("contract_id", id)
       .order("number", { ascending: false })
       .limit(500),
@@ -60,7 +70,10 @@ async function List({ params }: { params: IdParams }) {
   return <DeliveryList org={org} contractId={id} rows={deliveries.map((delivery) => ({
     id: delivery.id, number: delivery.number, delivered_on: delivery.delivered_on, received_by: delivery.received_by,
     listName: listName.get(delivery.list_id) ?? "—",
-    lines: totals.get(delivery.id)?.lines ?? 0, units: totals.get(delivery.id)?.units ?? 0,
+    voided: delivery.voided_at !== null,
+    // Una anulada ya no tiene líneas entregadas: se muestran las que llevaba.
+    lines: delivery.voided_at ? (delivery.voided_lines?.length ?? 0) : (totals.get(delivery.id)?.lines ?? 0),
+    units: delivery.voided_at ? (delivery.voided_lines ?? []).reduce((s, l) => s + Number(l.quantity), 0) : (totals.get(delivery.id)?.units ?? 0),
   }))} />;
 }
 
@@ -72,8 +85,8 @@ export function DeliveryListPage({ params }: { params: IdParams }) {
   );
 }
 
-// Reporte de entrega, listo para imprimir o guardar como PDF.
-async function Report({ params }: { params: DeliveryParams }) {
+// Todo lo de una entrega que muestran la vista y el documento.
+async function loadDelivery(params: DeliveryParams) {
   await connection();
   const { org, id, deliveryId } = await params;
   const found = await getContract(org, id);
@@ -83,7 +96,7 @@ async function Report({ params }: { params: DeliveryParams }) {
 
   const { data: delivery } = await supabase
     .from("deliveries")
-    .select("id, list_id, number, delivered_on, received_by, notes")
+    .select("id, list_id, number, delivered_on, received_by, notes, voided_at, void_reason, voided_lines")
     .eq("id", deliveryId)
     .eq("contract_id", id)
     .maybeSingle();
@@ -109,11 +122,11 @@ async function Report({ params }: { params: DeliveryParams }) {
           .in("id", dl.map((l) => l.contract_item_id))
       : { data: [] },
     list?.asset_id
-      ? supabase.from("assets").select("kind, brand, model, serial, engine, identifier, year, other").eq("id", list.asset_id).maybeSingle()
+      ? supabase.from("assets").select("name, kind, brand, model, serial, engine, identifier, year, other").eq("id", list.asset_id).maybeSingle()
       : { data: null },
   ]);
   const qtyByItem = new Map(dl.map((l) => [l.contract_item_id, Number(l.quantity)]));
-  const items = ((itemsRes.data ?? []) as {
+  const liveItems = ((itemsRes.data ?? []) as {
     id: string;
     n: number;
     part_number: string | null;
@@ -121,7 +134,14 @@ async function Report({ params }: { params: DeliveryParams }) {
     unit: string;
     quantity: number;
   }[]).sort((a, b) => a.n - b.n);
+  // Una entrega anulada muestra lo que llevaba (copia guardada al anular).
+  const voided = d.voided_at !== null;
+  const items = voided
+    ? (d.voided_lines ?? []).map((l, i) => ({ id: `v${i}`, n: i + 1, part_number: l.part_number, description: l.description, unit: l.unit, quantity: Number(l.quantity) }))
+    : liveItems;
+  if (voided) for (const i of items) qtyByItem.set(i.id, i.quantity);
   const asset = assetRes.data as {
+    name?: string;
     kind: string;
     brand: string | null;
     model: string | null;
@@ -146,21 +166,43 @@ async function Report({ params }: { params: DeliveryParams }) {
       ]
     : [];
 
+  // Activo de la entrega: el de la lista; si la lista no tiene, los activos relacionados con los productos de sus líneas.
+  let assetNames: string[] = [];
+  if (asset?.name) {
+    const detail = [asset.brand, asset.model].filter(Boolean).join(" ");
+    assetNames = [detail && !asset.name.toLowerCase().includes(detail.toLowerCase()) ? `${asset.name} (${detail})` : asset.name];
+  } else if (!voided && dl.length) {
+    const byLine = await assetsForLines(supabase, dl.map((l) => l.contract_item_id));
+    assetNames = [...new Set([...byLine.values()].flat())];
+  }
+
+  return { org, id, deliveryId, found, c, d, list, voided, items, qtyByItem, totalUnits, info, assetNames, clientRes, managerRes, orgRes };
+}
+
+// Documento de la entrega, listo para imprimir o guardar como PDF.
+async function Report({ params }: { params: DeliveryParams }) {
+  const { org, id, deliveryId, c, d, list, voided, items, qtyByItem, totalUnits, info, assetNames, clientRes, managerRes, orgRes } = await loadDelivery(params);
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-3 print:hidden">
-        <Link href={`/${org}/contratos/${id}/entregas`} className={buttonVariants({ variant: "outline" })}>
-          ← Entregas
+        <Link href={`/${org}/contratos/${id}/entregas/${deliveryId}`} className={buttonVariants({ variant: "outline" })}>
+          ← Entrega {code(d.number)}
         </Link>
         <PrintButton />
       </div>
+      {voided && (
+        <div role="status" className="border-b border-destructive/30 bg-destructive/5 px-6 py-3 text-sm text-destructive print:border-2 print:border-foreground print:bg-transparent print:text-foreground">
+          <strong>Entrega anulada</strong> el {formatIso(String(d.voided_at).slice(0, 10))}
+          {d.void_reason ? <> · {d.void_reason}</> : null}. Sus líneas volvieron a la bodega.
+        </div>
+      )}
 
       {/* El documento: en pantalla va sobre el fondo; al imprimir ocupa la hoja. */}
       <article className="mx-auto max-w-[210mm] bg-background px-6 py-8 text-sm print:max-w-none print:p-0 print:text-[11pt]">
         <header className="flex items-start justify-between gap-6 border-b-2 border-foreground pb-4">
           <div>
             <p className="caps-md text-muted-foreground">{orgRes.data?.name}</p>
-            <h1 className="pt-1 text-2xl font-semibold tracking-tight">Reporte de entrega</h1>
+            <h1 className="pt-1 text-2xl font-semibold tracking-tight">Reporte de entrega{voided ? " (ANULADA)" : ""}</h1>
           </div>
           <div className="text-right">
             <p className="font-mono text-xl font-semibold">{code(d.number)}</p>
@@ -186,6 +228,10 @@ async function Report({ params }: { params: DeliveryParams }) {
           <div>
             <dt className="caps text-muted-foreground">Lista</dt>
             <dd>{list?.name ?? "—"}</dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="caps text-muted-foreground">Activo</dt>
+            <dd>{assetNames.length > 0 ? assetNames.join("; ") : "—"}</dd>
           </div>
         </dl>
 
@@ -234,12 +280,19 @@ async function Report({ params }: { params: DeliveryParams }) {
           </tfoot>
         </table>
 
-        {d.notes && (
-          <p className="mt-6 text-sm">
-            <span className="caps text-muted-foreground">Notas · </span>
-            {d.notes}
-          </p>
-        )}
+        {/* Observación: lo escrito al generar la entrega o, si no hay nada, renglones en blanco para anotar a mano. */}
+        <div className="mt-6 break-inside-avoid">
+          <p className="caps text-muted-foreground">Observación</p>
+          {d.notes ? (
+            <p className="whitespace-pre-wrap border-b py-2">{d.notes}</p>
+          ) : (
+            <div aria-hidden className="mt-1">
+              <div className="h-8 border-b" />
+              <div className="h-8 border-b" />
+              <div className="h-8 border-b" />
+            </div>
+          )}
+        </div>
 
         <div className="mt-20 grid grid-cols-2 gap-16 break-inside-avoid">
           <div className="border-t border-foreground pt-2">
@@ -261,5 +314,106 @@ export function DeliveryReportPage({ params }: { params: DeliveryParams }) {
     <Suspense fallback={<PageSection label="Cargando reporte…" />}>
       <Report params={params} />
     </Suspense>
+  );
+}
+
+// Vista de la entrega dentro de la app: datos, líneas entregadas y acciones. El documento para imprimir va aparte.
+async function View({ params }: { params: DeliveryParams }) {
+  const { org, id, deliveryId, found, d, list, voided, items, qtyByItem, totalUnits, info } = await loadDelivery(params);
+  const base = `/${org}/contratos/${id}`;
+  const canVoid = !voided && found.c.status === "in_progress";
+  return (
+    <>
+      <HeaderAction icon={ArrowLeft01Icon} label="Volver" href={`${base}/entregas`} secondary />
+      <HeaderAction icon={File01Icon} label="Ver documento" href={`${base}/entregas/${deliveryId}/documento`} />
+      <PageFigures figures={[
+        { label: items.length === 1 ? "Línea" : "Líneas", value: String(items.length) },
+        { label: totalUnits === 1 ? "Unidad" : "Unidades", value: String(totalUnits) },
+      ]} />
+      {voided && (
+        <div role="status" className="border-b border-destructive/30 bg-destructive/5 px-6 py-3 text-sm text-destructive">
+          <strong>Entrega anulada</strong> el {formatIso(String(d.voided_at).slice(0, 10))}
+          {d.void_reason ? <> · {d.void_reason}</> : null}. Sus líneas volvieron a la bodega.
+        </div>
+      )}
+      <PageSection label={`Entrega ${code(d.number)}`} meta={<Badge variant={voided ? "destructive" : "solid-stock"}>{voided ? "Anulada" : "Entregada"}</Badge>} className="p-0">
+        <dl className="grid grid-cols-2 gap-x-8 gap-y-4 px-4 py-4 lg:grid-cols-4">
+          <Field label="Fecha" value={<span className="num">{formatIso(d.delivered_on)}</span>} />
+          <Field label="Lista" value={list?.name ?? "—"} />
+          <Field label="Recibe" value={d.received_by ?? "—"} />
+          <Field label="Contrato" value={found.c.name} />
+          {d.notes && <div className="col-span-2 lg:col-span-4"><Field label="Notas" value={<span className="whitespace-pre-wrap">{d.notes}</span>} /></div>}
+        </dl>
+        {info.some(([, v]) => v) && (
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-4 border-t px-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
+            {info.filter(([, v]) => v).map(([k, v]) => (
+              <Field key={k} label={k} value={<span className="font-mono">{v}</span>} />
+            ))}
+          </dl>
+        )}
+      </PageSection>
+
+      <PageSection label="Líneas entregadas" className="p-0">
+        {items.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">Esta entrega no tiene líneas.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-transparent">
+                  <TableHead className="text-right">N.º</TableHead>
+                  <TableHead>N.º de parte</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead className="text-right">Cantidad</TableHead>
+                  <TableHead>Unidad</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((i) => (
+                  <TableRow key={i.id} className="border-b last:border-b-0">
+                    <TableCell className="num text-right text-muted-foreground">{i.n}</TableCell>
+                    <TableCell className="font-mono text-xs">{i.part_number ?? "—"}</TableCell>
+                    <TableCell className="min-w-56">{i.description}</TableCell>
+                    <TableCell className="num text-right">{qtyByItem.get(i.id)}</TableCell>
+                    <TableCell>{unitLabel(i.unit)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </PageSection>
+
+      {canVoid && (
+        <PageSection label="Anular" className="p-0">
+          <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4">
+            <p className="max-w-xl text-sm text-muted-foreground">
+              Si la entrega se registró por error, anúlala: sus líneas vuelven a la bodega y quedan otra vez listas para entregar.
+            </p>
+            <VoidDelivery org={org} contractId={id} deliveryId={deliveryId} code={code(d.number)} />
+          </div>
+        </PageSection>
+      )}
+    </>
+  );
+}
+
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <dt className="caps text-muted-foreground">{label}</dt>
+      <dd className="break-words text-sm">{value}</dd>
+    </div>
+  );
+}
+
+export function DeliveryViewPage({ params }: { params: DeliveryParams }) {
+  return (
+    <>
+      <h1 className="sr-only">Entrega</h1>
+      <Suspense fallback={<PageLoading />}>
+        <View params={params} />
+      </Suspense>
+    </>
   );
 }

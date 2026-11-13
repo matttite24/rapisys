@@ -6,7 +6,7 @@ import { PageShortcuts } from "@/components/page-shortcuts";
 import { Archive02Icon, Cancel01Icon, ClipboardCheckIcon, ClipboardPenLineIcon, Invoice01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import type { SupplyLine } from "@/components/supply-board";
-import type { Reconcile } from "@/components/use-reconcile";
+import { NEW_LINE, type Reconcile } from "@/components/use-reconcile";
 import { Button } from "@/components/ui/button";
 import { formatCents } from "@/lib/money";
 import { getLineSupply, type SourceView } from "@/lib/supply-actions";
@@ -25,6 +25,7 @@ export function ReconcilePanel({
   org,
   contractId,
   focus,
+  addToListId,
   canAct,
   closing,
   onClose,
@@ -33,11 +34,15 @@ export function ReconcilePanel({
   org: string;
   contractId: string;
   focus: SupplyLine | null;
+  // Proceso a crédito: lista a la que se agregan líneas nuevas desde Facturas y Bodega (sin línea abierta).
+  addToListId?: string;
   canAct: boolean;
   closing: boolean;
   onClose: () => void;
 }) {
-  const target: Target | null = focus ? { id: focus.id, open: Math.max(0, focus.quantity - focus.reserved - focus.purchased) } : null;
+  const target: Target | null = focus ? { id: focus.id, open: Math.max(0, focus.quantity - focus.reserved - focus.purchased), description: focus.description } : null;
+  // Sin línea abierta, en un proceso a crédito, lo elegido crea su propia línea en la lista.
+  const addTarget: Target | null = !focus && addToListId ? { id: NEW_LINE, open: Number.MAX_SAFE_INTEGER, addToListId } : null;
   // Lo ya asignado a la línea abierta: es lo primero que muestra el panel.
   const [supply, setSupply] = useState<{ lineId: string; version: number; rows?: SourceView[]; error?: string } | null>(null);
   const [supplyRetry, setSupplyRetry] = useState(0);
@@ -187,20 +192,24 @@ export function ReconcilePanel({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      {!focus ? (
-        <p className="p-6 text-sm text-muted-foreground">Toca una línea de la tabla para ver y asignarle productos.</p>
-      ) : rc.source === "asignados" ? (
+      {!focus && !(addTarget && canAct && (rc.source === "facturas" || rc.source === "bodega")) ? (
+        <p className="p-6 text-sm text-muted-foreground">
+          {addTarget
+            ? "Elige Facturas o Bodega para agregar productos a la lista, o toca una línea de la tabla para asignarle productos."
+            : "Toca una línea de la tabla para ver y asignarle productos."}
+        </p>
+      ) : focus && rc.source === "asignados" ? (
         activeSupply?.error ? (
           <PanelError message={activeSupply.error} onRetry={() => { setSupply(null); setSupplyRetry((n) => n + 1); }} />
         ) : <AssignedView rc={rc} org={org} contractId={contractId} sources={sources} canAct={canAct} />
-      ) : rc.source === "cotizaciones" ? (
+      ) : focus && rc.source === "cotizaciones" ? (
         <LineQuotations key={focus.id} org={org} contractId={contractId} lineId={focus.id} canAct={canAct} onSaved={rc.refresh} />
-      ) : !canAct ? (
+      ) : !focus && rc.source !== "facturas" && rc.source !== "bodega" ? null : !canAct ? (
         <p className="p-6 text-sm text-muted-foreground">El abastecimiento se trabaja cuando el contrato está En ejecución.</p>
       ) : rc.source === "facturas" ? (
-        <InvoiceMode rc={rc} target={target!} partNumber={focus?.partNumber ?? ""} />
+        <InvoiceMode rc={rc} target={(target ?? addTarget)!} partNumber={focus?.partNumber ?? ""} />
       ) : (
-        <StockMode rc={rc} target={target!} partNumber={focus?.partNumber ?? ""} />
+        <StockMode rc={rc} target={(target ?? addTarget)!} partNumber={focus?.partNumber ?? ""} />
       )}
 
       </div>

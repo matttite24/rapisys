@@ -12,7 +12,7 @@ import { PageFigures, PagePagination } from "@/components/page-shortcuts";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusChip } from "@/components/status-chip";
-import { formatIso } from "@/lib/dates";
+import { addDaysIso, daysLeft, formatIso } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { PAGE_SIZE } from "@/lib/pagination";
 
@@ -78,13 +78,16 @@ export function ContractListBoard({ org, initial }: { org: string; initial: Cont
                 </TableCell>
                 <TableCell>{r.clients?.name}</TableCell>
                 <TableCell>{r.contract_managers?.name}</TableCell>
-                <TableCell className="num text-right">{formatCents(Number(r.total_cents))}</TableCell>
+                <TableCell className="num text-right">{r.total_cents === null ? "—" : formatCents(r.total_cents)}</TableCell>
                 <TableCell className="whitespace-nowrap">
-                  <span className="num">{r.term_days} {r.term_days === 1 ? "día" : "días"}</span>
-                  <span className="block text-xs text-muted-foreground">desde {formatIso(r.start_date)}</span>
+                  {r.term_days === null ? (
+                    <span>Proceso a crédito</span>
+                  ) : (
+                    <Deadline start={r.start_date} term={r.term_days} status={r.status} />
+                  )}
                 </TableCell>
                 <TableCell>
-                  <StatusChip status={r.status} />
+                  <StatusChip status={r.status} kind={r.kind} />
                 </TableCell>
               </TableRow>
             ))}
@@ -97,5 +100,30 @@ export function ContractListBoard({ org, initial }: { org: string; initial: Cont
       </p>}
       <Pager basePath={`/${org}${basePath}`} page={page} total={loading || error ? 0 : total} size={size} params={{ ...(q ? { q } : {}), ...(filter ? { estado: filter } : {}) }} className="md:hidden" />
     </PageSection>
+  );
+}
+
+// Plazo de un contrato abierto: los días que faltan para la entrega (o de atraso), no el plazo total.
+// Con el contrato ya cerrado (finalizado, facturado, cobrado) el plazo ya no corre: se muestra el total.
+function Deadline({ start, term, status }: { start: string; term: number; status: string }) {
+  const open = status === "new" || status === "in_progress";
+  const left = open ? daysLeft(start, term) : null;
+  const end = addDaysIso(start, term);
+  const days = (n: number) => `${n} ${n === 1 ? "día" : "días"}`;
+  return (
+    <>
+      {left === null ? (
+        <span className="num">{days(term)}</span>
+      ) : left < 0 ? (
+        <span className="num font-medium text-destructive">{days(-left)} de atraso</span>
+      ) : left === 0 ? (
+        <span className="num font-medium">Vence hoy</span>
+      ) : (
+        <span className="num">{days(left)} restantes</span>
+      )}
+      <span className="block text-xs text-muted-foreground">
+        {left === null ? `desde ${formatIso(start)}` : `entrega ${end ? formatIso(end) : "—"}`}
+      </span>
+    </>
   );
 }

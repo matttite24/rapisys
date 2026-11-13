@@ -34,7 +34,9 @@ export function useContractFilter(org: string, initial: ContractListView) {
     if (!cached && !retry && initial.filter === "" && initial.page === 1 && initial.total === initial.rows.length && page === 1) {
       const statuses: readonly string[] = CONTRACT_FILTERS[filter].statuses;
       const allowed = new Set(statuses);
-      const rows = statuses.length ? initial.rows.filter((row) => allowed.has(row.status)) : initial.rows;
+      const rows = filter === "credito"
+        ? initial.rows.filter((row) => row.kind === "credit")
+        : statuses.length ? initial.rows.filter((row) => allowed.has(row.status)) : initial.rows;
       cached = { ...initial, filter, page, rows, total: rows.length };
     }
     if (cached) { setSelection({ source, view: cached, loading: false, error: "" }); return; }

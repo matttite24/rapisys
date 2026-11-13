@@ -26,6 +26,10 @@ function friendly(error: DbError) {
   if (m === "over_covered") return "Eso supera lo que pide la línea del contrato.";
   if (m === "line_not_found") return "No encontramos la línea del contrato.";
   if (m === "over_received") return "No puedes recibir más de lo que falta de esa línea.";
+  if (m === "not_credit") return "Esta función es solo para procesos a crédito.";
+  if (m === "purchase_draft") return "La factura sigue en borrador: complétala primero.";
+  if (m === "already_created") return "Esta factura ya tiene su lista creada.";
+  if (m === "not_received") return "Recibe todas las unidades de la factura antes de crear la lista.";
   if (m === "has_received") return "La factura ya tiene unidades recibidas: no se puede eliminar.";
   logDbError("compras", error);
   if (isSchemaError(error)) return SCHEMA_MESSAGE;
@@ -351,4 +355,13 @@ export async function receiveAllPurchase(org: string, contractId: string, purcha
   if (error) return { error: friendly(error) };
   refresh(org, contractId);
   return {};
+}
+
+// Proceso a crédito: crea una lista con todas las líneas de la factura recibida (cantidades y precios) y las abastece.
+export async function createListFromPurchase(org: string, contractId: string, purchaseId: string): Promise<PurchaseResult & { listId?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("purchase_create_list", { p_purchase_id: purchaseId });
+  if (error) return { error: friendly(error) };
+  refresh(org, contractId);
+  return { listId: data as string };
 }

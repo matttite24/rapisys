@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { setContractStatus } from "@/lib/contract-actions";
 import { StatusChip } from "@/components/status-chip";
-import { STATUS_LABEL, STATUS_ORDER } from "@/lib/contracts";
+import { orderFor, statusText } from "@/lib/contracts";
 
 const SUMMARY_LABEL =
   "mb-1 caps font-medium text-muted-foreground";
@@ -27,10 +27,15 @@ export function StatusControl({
   org,
   contractId,
   status,
+  kind,
+  deliveries,
   summary,
   blocker,
   inHeader,
 }: {
+  // Tipo de contrato y entregas hechas: el crédito tiene su propio ciclo y nombres.
+  kind?: string;
+  deliveries?: number;
   org: string;
   contractId: string;
   status: string;
@@ -44,9 +49,11 @@ export function StatusControl({
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const idx = STATUS_ORDER.indexOf(status as (typeof STATUS_ORDER)[number]);
-  const prev = STATUS_ORDER[idx - 1];
-  const next = STATUS_ORDER[idx + 1];
+  const order = orderFor(kind);
+  const idx = order.indexOf(status);
+  const prev = order[idx - 1];
+  const next = order[idx + 1];
+  const label = (s: string) => statusText(s, kind, s === "in_progress" ? 0 : undefined);
 
   async function go(target: string) {
     setPending(true);
@@ -64,11 +71,11 @@ export function StatusControl({
       <div className={inHeader ? "flex items-stretch gap-2" : "flex flex-wrap items-center gap-2"}>
         {/* En el encabezado el estado ya está en la columna de opciones y no se retrocede: solo el paso siguiente. */}
         {!inHeader && (
-        <StatusChip status={status} className="select-none" />
+        <StatusChip status={status} kind={kind} deliveries={deliveries} className="select-none" />
         )}
         {prev && !inHeader && (
           <Button variant="outline" disabled={pending} onClick={() => go(prev)}>
-            ← {STATUS_LABEL[prev]}
+            ← {label(prev)}
           </Button>
         )}
         {next && (
@@ -81,8 +88,8 @@ export function StatusControl({
               className={cn(inHeader && "-mr-4 h-auto! gap-2 rounded-none! border-0! bg-clip-border! px-5")}
               onClick={() => (next === "in_progress" ? setConfirmOpen(true) : go(next))}
             >
-              {STATUS_LABEL[next]}
-              <HugeiconsIcon icon={next === "finished" ? CheckmarkCircle02Icon : ArrowRight01Icon} className="size-4" />
+              {label(next)}
+              <HugeiconsIcon icon={next === "finished" || (kind === "credit" && next === "invoiced") ? CheckmarkCircle02Icon : ArrowRight01Icon} className="size-4" />
             </Button>
           </span>
         )}

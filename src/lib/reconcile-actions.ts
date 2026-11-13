@@ -9,6 +9,7 @@ export type InvoiceLine = {
   id: string; // línea de factura
   itemId: string;
   name: string;
+  tdrName?: string | null;
   sku: string | null;
   partNumbers: string[];
   // Código tal como vino en la factura; si no hay, el del producto.
@@ -57,7 +58,7 @@ export async function getInvoiceLines(org: string, contractId: string, invoiceId
   if (!lines.length) return [];
 
   const [itemResult, sourceResult, lotResult] = await Promise.all([
-    supabase.from("items").select("id, name, sku, part_numbers").in("id", [...new Set(lines.map((l) => l.item_id))]),
+    supabase.from("items").select("id, name, tdr_name, sku, part_numbers").in("id", [...new Set(lines.map((l) => l.item_id))]),
     supabase.from("supply_sources").select("purchase_line_id, kind, quantity").in("purchase_line_id", lines.map((l) => l.id)),
     supabase
       .from("stock_lots")
@@ -77,7 +78,7 @@ export async function getInvoiceLines(org: string, contractId: string, invoiceId
     lotsByLine.set(r.purchase_line_id, [...(lotsByLine.get(r.purchase_line_id) ?? []), { id: r.id, remaining: Number(r.remaining_qty) }]);
   }
   const itemById = new Map(
-    ((items ?? []) as { id: string; name: string; sku: string | null; part_numbers: string[] }[]).map((i) => [i.id, i]),
+    ((items ?? []) as { id: string; name: string; tdr_name: string | null; sku: string | null; part_numbers: string[] }[]).map((i) => [i.id, i]),
   );
   const assigned = new Map<string, number>();
   const pending = new Map<string, number>(); // lo reservado "por llegar" (kind compra)
@@ -97,6 +98,7 @@ export async function getInvoiceLines(org: string, contractId: string, invoiceId
       id: l.id,
       itemId: l.item_id,
       name: item?.name ?? "Producto eliminado",
+      tdrName: item?.tdr_name ?? null,
       sku: item?.sku ?? null,
       partNumbers: item?.part_numbers ?? [],
       code: l.new_part_number || l.xml_code || item?.part_numbers?.[0] || item?.sku || "",

@@ -7,17 +7,22 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageSection } from "@/components/page-section";
+import { PageFigures } from "@/components/page-shortcuts";
 import { AttachFiles } from "@/components/attach-files";
 import { DeletePurchase } from "@/components/purchase-actions-ui";
 import { PurchaseForm } from "@/components/purchase-form";
 import type { DraftData } from "@/components/purchase-form-model";
 import { XmlInfoList } from "@/components/xml-info";
 import { ReceiveAll, ReceiveLine, ReceiveShortcuts } from "@/components/receive-controls";
+import { CreateListFromPurchase } from "@/components/purchase-create-list";
+import { PurchasePayments } from "@/components/purchase-payments";
+import { PurchaseTabs } from "@/components/purchase-tabs";
+import { paymentState, type AdvanceOption, type BankOption, type Movement } from "@/lib/payments";
 import { buttonVariants } from "@/components/ui/button";
-import { Upload01Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, Upload01Icon } from "@hugeicons/core-free-icons";
 import { HeaderAction } from "@/components/header-action";
 import { getContract } from "@/lib/contract-data";
-import { formatIso } from "@/lib/dates";
+import { formatIso, todayEcuador } from "@/lib/dates";
 import { centsToInput, formatCents, lineAmounts, vatOf } from "@/lib/money";
 import { supplierNames } from "@/lib/supplier-names";
 import { createClient } from "@/lib/supabase/server";
@@ -74,6 +79,16 @@ async function List({ params }: { params: IdParams }) {
   const supplier = await supplierNames(supabase, purchases.map((p) => p.supplier_id));
   const canAct = found.c.status === "in_progress";
 
+  // Pagos, créditos y anticipos de cada factura, para mostrar su estado de pago.
+  const { data: payRows } = purchases.length
+    ? await supabase.from("purchase_payments").select("purchase_id, kind, amount_cents, due_on").in("purchase_id", purchases.map((p) => p.id)).limit(5000)
+    : { data: [] };
+  const byPurchase = new Map<string, { kind: Movement["kind"]; amount_cents: number; due_on: string | null }[]>();
+  for (const r of (payRows ?? []) as { purchase_id: string; kind: Movement["kind"]; amount_cents: number; due_on: string | null }[]) {
+    byPurchase.set(r.purchase_id, [...(byPurchase.get(r.purchase_id) ?? []), { kind: r.kind, amount_cents: Number(r.amount_cents), due_on: r.due_on }]);
+  }
+  const today = todayEcuador();
+
   return (
     <PageSection
       label={`${purchases.length} ${purchases.length === 1 ? "factura" : "facturas"}`}
@@ -102,12 +117,16 @@ async function List({ params }: { params: IdParams }) {
                 <TableHead className="text-right">Recibidas</TableHead>
                 <TableHead className="text-right">Sin reservar</TableHead>
                 <TableHead className="text-right">Total c/IVA</TableHead>
+                <TableHead>Pago</TableHead>
+                <TableHead className="text-right">Por pagar</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {purchases.map((p) => {
                 const t = totals.get(p.id);
                 const draft = p.status === "draft";
+                const total = t ? Number(t.subtotal_cents) + Number(t.vat_cents) : 0;
+                const pay = draft || !t ? null : paymentState(total, byPurchase.get(p.id) ?? [], today);
                 return (
                   <TableRow key={p.id} className="border-b last:border-b-0 hover:bg-accent/60">
                     <TableCell className="p-0">
@@ -134,6 +153,17 @@ async function List({ params }: { params: IdParams }) {
                     <TableCell className="num text-right">
                       {t ? formatCents(Number(t.subtotal_cents) + Number(t.vat_cents)) : "—"}
                     </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {pay ? (
+                        <Link href={`/${org}/contratos/${id}/compras/${p.id}?vista=pagos`} className="inline-flex flex-col gap-0.5">
+                          <Badge variant={pay.variant}>{pay.label}</Badge>
+                          {pay.dueOn && <span className="text-xs text-muted-foreground">vence {formatIso(pay.dueOn)}</span>}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className={cn("num text-right", pay && pay.owedCents > 0 && "font-medium")}>{pay ? formatCents(pay.owedCents) : "—"}</TableCell>
                   </TableRow>
                 );
               })}
@@ -197,12 +227,12 @@ async function Detail({ params }: { params: PurchaseParams }) {
 
   const { data: purchase } = await supabase
     .from("purchases")
-    .select("id, number, supplier_id, purchased_on, notes, status, xml_info")
+    .select("id, number, supplier_id, purchased_on, notes, status, xml_info, list_id")
     .eq("id", purchaseId)
     .eq("contract_id", id)
     .maybeSingle();
   if (!purchase) notFound();
-  const p = purchase as { id: string; number: string; supplier_id: string; purchased_on: string; notes: string | null; status: string; xml_info: Record<string, unknown> | null };
+  const p = purchase as { list_id: string | null; id: string; number: string; supplier_id: string; purchased_on: string; notes: string | null; status: string; xml_info: Record<string, unknown> | null };
   if (p.status === "draft") redirect(`/${org}/contratos/${id}/compras/${purchaseId}/editar`);
 
   const [linesRes, supRes, filesRes] = await Promise.all([
@@ -265,30 +295,92 @@ async function Detail({ params }: { params: PurchaseParams }) {
     : null;
   const hint = "caps text-muted-foreground lg:hidden";
 
+  // Pagos de la factura, anticipos disponibles de este proveedor en el contrato y cuentas de Bancos.
+  const [movRes, advRes, bankRes, orgRes] = await Promise.all([
+    supabase
+      .from("purchase_payments")
+      .select("id, kind, amount_cents, moved_on, due_on, method, bank_account_id, advance_id, reference, notes")
+      .eq("purchase_id", purchaseId)
+      .order("moved_on")
+      .order("created_at"),
+    supabase
+      .from("supplier_advances")
+      .select("id, paid_on, amount_cents, reference")
+      .eq("contract_id", id)
+      .eq("supplier_id", p.supplier_id)
+      .order("paid_on")
+      .limit(100),
+    supabase.from("bank_accounts").select("id, bank, account_number").eq("organization_id", found.orgId).order("bank").limit(200),
+    supabase.from("organizations").select("name").eq("id", found.orgId).maybeSingle(),
+  ]);
+  const banks: BankOption[] = ((bankRes.data ?? []) as { id: string; bank: string; account_number: string }[]).map((b) => ({ id: b.id, label: `${b.bank} · ${b.account_number}` }));
+  const bankLabel = new Map(banks.map((b) => [b.id, b.label]));
+  const advRows = (advRes.data ?? []) as { id: string; paid_on: string; amount_cents: number; reference: string }[];
+  // Cuánto se ha aplicado de cada anticipo, en cualquier factura.
+  const { data: appliedRows } = advRows.length
+    ? await supabase.from("purchase_payments").select("advance_id, amount_cents").in("advance_id", advRows.map((a) => a.id))
+    : { data: [] };
+  const applied = new Map<string, number>();
+  for (const r of (appliedRows ?? []) as { advance_id: string; amount_cents: number }[]) applied.set(r.advance_id, (applied.get(r.advance_id) ?? 0) + Number(r.amount_cents));
+  const advances: AdvanceOption[] = advRows
+    .map((a) => ({ a, remaining: Number(a.amount_cents) - (applied.get(a.id) ?? 0) }))
+    .filter((x) => x.remaining > 0)
+    .map(({ a, remaining }) => ({ id: a.id, remainingCents: remaining, label: `${formatIso(a.paid_on)} · ${formatCents(Number(a.amount_cents))}${a.reference ? ` · ${a.reference}` : ""}` }));
+  const advanceRef = new Map(advRows.map((a) => [a.id, `Anticipo ${formatIso(a.paid_on)}`]));
+  const movements: Movement[] = ((movRes.data ?? []) as { id: string; kind: Movement["kind"]; amount_cents: number; moved_on: string; due_on: string | null; method: string | null; bank_account_id: string | null; advance_id: string | null; reference: string; notes: string }[]).map((m) => ({
+    id: m.id, kind: m.kind, amount_cents: Number(m.amount_cents), moved_on: m.moved_on, due_on: m.due_on, method: m.method,
+    bank: m.bank_account_id ? (bankLabel.get(m.bank_account_id) ?? null) : null,
+    advance_ref: m.advance_id ? (advanceRef.get(m.advance_id) ?? "Anticipo") : null,
+    reference: m.reference, notes: m.notes,
+  }));
+
   return (
     <>
       <ReceiveShortcuts canReceive={canAct && pendingUnits > 0} />
+      {/* La cantidad de líneas va en la barra inferior. */}
+      <PageFigures figures={[{ label: lines.length === 1 ? "Línea" : "Líneas", value: String(lines.length) }]} />
       <PageSection
         label={`Factura ${p.number}`}
-        meta={
-          <Link href={`/${org}/contratos/${id}/compras`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "-mr-3")}>
-            ← Facturas
-          </Link>
-        }
+        meta={<AttachFiles org={org} contractId={id} source="purchase" sourceId={purchaseId} label={`Factura ${p.number}`} count={filesRes.count ?? 0} variant="ghost" />}
         className="p-0"
       >
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 px-4 py-3 lg:grid-cols-[auto_auto_minmax(0,1fr)]">
-          <Info label="Fecha" value={<span className="num">{formatIso(p.purchased_on)}</span>} />
-          <Info label="Proveedor" value={supRes.data?.name ?? "—"} />
-          {p.notes && <Info label="Notas" value={p.notes} />}
+        {/* Volver a la lista, en el encabezado de la página. */}
+        <HeaderAction icon={ArrowLeft01Icon} label="Volver" href={`/${org}/contratos/${id}/compras`} secondary />
+        {/* Una sola fila: comprador (el de la factura electrónica; sin XML, la organización), proveedor y fecha. */}
+        <div className="px-4 py-3">
+          <div className="grid min-w-0 grid-cols-2 gap-x-8 gap-y-3 sm:flex sm:flex-wrap">
+            <Info
+              label="Comprador"
+              value={
+                xml?.buyerName ? (
+                  <>
+                    {xml.buyerName}
+                    {xml.buyerRuc && <span className="num ml-2 text-muted-foreground">{xml.buyerRuc}</span>}
+                  </>
+                ) : (
+                  (orgRes.data as { name: string } | null)?.name ?? "—"
+                )
+              }
+            />
+            <Info label="Proveedor" value={supRes.data?.name ?? "—"} />
+            <Info label="Fecha" value={<span className="num">{formatIso(p.purchased_on)}</span>} />
+          </div>
         </div>
       </PageSection>
 
-      <PageSection
-        label={`${lines.length} ${lines.length === 1 ? "línea" : "líneas"}`}
-        meta={canAct && pendingUnits > 0 ? <ReceiveAll org={org} contractId={id} purchaseId={purchaseId} /> : undefined}
-        className="p-0"
-      >
+      <PurchaseTabs
+        paymentsCount={movements.length}
+        // En la fila de pestañas: recibir lo pendiente o, en un proceso a crédito con todo recibido, crear la lista y abastecer.
+        actions={
+          canAct && pendingUnits > 0 ? (
+            <ReceiveAll org={org} contractId={id} purchaseId={purchaseId} />
+          ) : canAct && found.c.kind === "credit" && lines.length > 0 ? (
+            <CreateListFromPurchase org={org} contractId={id} purchaseId={purchaseId} listId={p.list_id} />
+          ) : undefined
+        }
+        invoice={
+        <>
+      <PageSection className="p-0">
         <div className={`${DETAIL_GRID} border-b bg-surface-strong/60 px-4 py-2 caps font-medium text-muted-foreground max-lg:hidden`}>
           <span>N.º</span>
           <span>Código</span>
@@ -341,7 +433,6 @@ async function Detail({ params }: { params: PurchaseParams }) {
           <div className="flex min-w-0 flex-col gap-4">
             {xml && <XmlInfoList info={xml} subtotalCents={subtotal} totalCents={subtotal + vat} />}
             <div className="flex flex-wrap items-center gap-2">
-              <AttachFiles org={org} contractId={id} source="purchase" sourceId={purchaseId} label={`Factura ${p.number}`} count={filesRes.count ?? 0} />
               {canAct && !received && <DeletePurchase org={org} contractId={id} purchaseId={purchaseId} invoice={p.number} />}
             </div>
           </div>
@@ -355,6 +446,31 @@ async function Detail({ params }: { params: PurchaseParams }) {
           </dl>
         </div>
       </PageSection>
+      {/* Las notas van al final de la factura. */}
+      {p.notes && (
+        <PageSection label="Notas" className="p-0">
+          <p className="whitespace-pre-wrap break-words px-4 py-3 text-sm">{p.notes}</p>
+        </PageSection>
+      )}
+        </>
+        }
+        payments={
+        <>
+      <PageSection label="Pagos de la factura" className="p-0">
+        <PurchasePayments
+          org={org}
+          contractId={id}
+          purchaseId={purchaseId}
+          totalCents={subtotal + vat}
+          movements={movements}
+          advances={advances}
+          banks={banks}
+          canAct={found.c.status === "in_progress" || found.c.status === "finished" || found.c.status === "invoiced" || found.c.status === "pending_payment"}
+        />
+      </PageSection>
+        </>
+        }
+      />
     </>
   );
 }

@@ -123,7 +123,8 @@ export function PurchaseRow({
           <NativeSelect
             data-col="vat"
             aria-label={`IVA de la línea ${n}`}
-            className="h-9 font-mono lg:h-8"
+            // El className va al contenedor: se llena la columna y el select interno toma el alto de los demás campos.
+            className="w-full font-mono [&_select]:h-9 [&_select]:py-0 lg:[&_select]:h-8"
             value={row.vat}
             onChange={(e) => onPatch({ vat: e.target.value })}
           >

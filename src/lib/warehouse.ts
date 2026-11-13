@@ -3,7 +3,7 @@ export type WarehouseKind = "items" | "activos";
 export const warehouseKind = (value: string): WarehouseKind => value === "activos" ? "activos" : "items";
 export type WarehouseItem = {
   id: string; sku: string | null; name: string; line: string | null; category: string | null;
-  part_numbers: string[]; margin_percent: number; is_active: boolean; costCents: number | null; stock: number;
+  part_numbers: string[]; margin_percent: number; is_active: boolean; costCents: number | null; stock: number; // costCents: con IVA
 };
 export type WarehouseAsset = {
   id: string; kind: AssetKind; name: string; brand: string | null; model: string | null; year: number | null;

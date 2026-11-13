@@ -5,7 +5,7 @@ const line = (referenceCents: number | null, costCents: number, sources = 1, unk
 
 describe("rentabilidad", () => {
   it("utilidad de una línea = precio ref. − costo", () => {
-    expect(lineProfit(line(10000, 7000))).toEqual({ kind: "ok", profitCents: 3000, marginPct: 30 });
+    expect(lineProfit(line(10000, 7000))).toEqual({ kind: "ok", profitCents: 3000, marginPct: 30, markupPct: (3000 / 7000) * 100 });
   });
   it("sin precio ref. o sin compras no calcula", () => {
     expect(lineProfit(line(null, 0)).kind).toBe("none");

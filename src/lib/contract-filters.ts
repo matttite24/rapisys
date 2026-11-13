@@ -3,12 +3,13 @@ export const CONTRACT_FILTERS = {
   nuevos: { title: "Contratos nuevos", statuses: ["new"], empty: "No hay contratos nuevos." },
   ejecucion: { title: "Contratos en ejecución", statuses: ["in_progress"], empty: "No hay contratos en ejecución." },
   cierre: { title: "Por cobrar", statuses: ["finished", "invoiced", "pending_payment"], empty: "No hay contratos por cobrar." },
+  credito: { title: "Procesos a crédito", statuses: [] as string[], empty: "No hay procesos a crédito." },
   cobrados: { title: "Contratos cobrados", statuses: ["paid"], empty: "Todavía no hay contratos cobrados." },
 } as const;
 export type ContractFilter = keyof typeof CONTRACT_FILTERS;
 export const contractFilter = (value: string): ContractFilter => Object.hasOwn(CONTRACT_FILTERS, value) ? value as ContractFilter : "";
 export type ContractRow = {
-  id: string; code: string; name: string; total_cents: number; term_days: number; start_date: string; status: string;
+  id: string; code: string; name: string; kind?: string; total_cents: number | null; term_days: number | null; start_date: string; status: string;
   clients: { name: string } | null; contract_managers: { name: string } | null;
 };
 export type ContractListView = { rows: ContractRow[]; total: number; filter: ContractFilter; page: number; q: string };

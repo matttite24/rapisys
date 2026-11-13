@@ -32,10 +32,11 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
   ]);
 
   const counts = (navCounts ?? {}) as Partial<Record<"lists" | "lines" | "purchases" | "deliveries" | "expenses" | "files", number>>;
-  const deliveryIso = addDaysIso(c.start_date, Number(c.term_days));
+  const credit = c.kind === "credit";
+  const deliveryIso = credit ? null : addDaysIso(c.start_date, Number(c.term_days));
   const summary = {
     code: c.code as string,
-    total: formatCents(Number(c.total_cents)),
+    total: credit ? "—" : formatCents(Number(c.total_cents)),
     delivery: deliveryIso ? formatIso(deliveryIso) : "—",
   };
 
@@ -55,7 +56,7 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
             </div>
           )}
           <div className="hidden self-stretch md:flex">
-            <StatusControl org={org} contractId={id} status={c.status} summary={summary} blocker={blocker} inHeader />
+            <StatusControl org={org} contractId={id} status={c.status} kind={c.kind} deliveries={counts.deliveries ?? 0} summary={summary} blocker={blocker} inHeader />
           </div>
         </OnlyAtDetail>
       </HeaderSlot>
@@ -67,16 +68,16 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
           abastecimiento: counts.lines ?? 0,
           compras: counts.purchases ?? 0,
           entregas: counts.deliveries ?? 0,
-          gastos: counts.expenses ?? 0,
+          pagos: counts.expenses ?? 0,
           archivos: counts.files ?? 0,
         }}
       />
       <PanelTop>
-        <ContractStatusCell status={c.status} delivery={summary.delivery} />
+        <ContractStatusCell status={c.status} delivery={summary.delivery} kind={c.kind} deliveries={counts.deliveries ?? 0} />
       </PanelTop>
       <OnlyAtDetail>
         <div className="border-b p-4 md:hidden print:hidden">
-          <StatusControl org={org} contractId={id} status={c.status} summary={summary} blocker={blocker} />
+          <StatusControl org={org} contractId={id} status={c.status} kind={c.kind} deliveries={counts.deliveries ?? 0} summary={summary} blocker={blocker} />
         </div>
       </OnlyAtDetail>
     </>

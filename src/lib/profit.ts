@@ -10,7 +10,8 @@ export type ProfitLine = {
 export type LineProfit =
   | { kind: "none" } // sin precio referencial: no se puede calcular
   | { kind: "pending" } // todavía no se asignó nada: no hay costo
-  | { kind: "ok" | "partial"; profitCents: number; marginPct: number | null };
+  // marginPct: utilidad sobre el precio; markupPct: utilidad sobre el costo (el «margen» de la bodega).
+  | { kind: "ok" | "partial"; profitCents: number; marginPct: number | null; markupPct: number | null };
 
 export function lineProfit(l: ProfitLine): LineProfit {
   if (l.referenceCents === null) return { kind: "none" };
@@ -20,6 +21,7 @@ export function lineProfit(l: ProfitLine): LineProfit {
     kind: l.unknown > 0 ? "partial" : "ok",
     profitCents,
     marginPct: l.referenceCents > 0 ? (profitCents / l.referenceCents) * 100 : null,
+    markupPct: l.costCents > 0 ? (profitCents / l.costCents) * 100 : null,
   };
 }
 

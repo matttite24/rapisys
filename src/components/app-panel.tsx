@@ -29,7 +29,8 @@ export function Panel({
   const contract = useContractNav();
   const groups = preview ? preview.groups : (contract?.groups ?? active.groups);
   const search = useSearchParams();
-  const current = activeNavigationHref(path, groups.flatMap((g) => g.items.map((i) => i.href)), search);
+  // La pantalla de Gastos cuelga de Pagos: allí también se marca esa opción.
+  const current = activeNavigationHref(path.replace(/^(\/contratos\/[^/]+)\/gastos(?=\/|$)/, "$1/pagos"), groups.flatMap((g) => g.items.map((i) => i.href)), search);
 
   return (
     <div className="flex w-60 shrink-0 flex-col border-r bg-layer-2">

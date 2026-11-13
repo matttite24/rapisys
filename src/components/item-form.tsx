@@ -15,7 +15,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { formatCents, parseCents, parseDecimal, salePriceCents, withVatCents } from "@/lib/money";
+import { centsToInput, formatCents, parseCents, parseDecimal, salePriceCents, withVatCents } from "@/lib/money";
 import { deleteItem, saveItem } from "@/lib/item-actions";
 import {
   ASSET_KIND_LABEL,
@@ -32,7 +32,12 @@ export type AssetOption = { id: string; name: string; kind: AssetKind; detail: s
 export type ItemData = {
   id: string;
   name: string;
+  tdr_name: string | null;
   sku: string | null;
+  internal_code: string | null;
+  barcode: string | null;
+  unit: string | null;
+  retail_price_cents: number | null;
   line: string | null;
   description: string | null;
   category_id: string | null;
@@ -88,11 +93,13 @@ export function ItemForm({
   const [customMargin, setCustomMargin] = useState(inPresets ? "" : String(item?.margin_percent));
 
   const marginValue = parseDecimal(margin === "custom" ? customMargin : margin);
-  // Se vende sobre el costo más bajo entre los proveedores.
+  // Se vende sobre el costo más bajo (con IVA) entre los proveedores.
   const bestCost = useMemo(() => {
+    // Costo con IVA de cada proveedor: el margen se aplica sobre lo realmente pagado.
     const costs = prices.flatMap((p) => {
       const c = parseCents(p.unit_cost);
-      return c.ok ? [c.cents] : [];
+      const v = parseDecimal(p.vat_rate);
+      return c.ok && v !== null ? [withVatCents(c.cents, v)] : [];
     });
     return costs.length ? Math.min(...costs) : null;
   }, [prices]);
@@ -146,8 +153,23 @@ export function ItemForm({
           <FormField name="name" label="Nombre" error={errors.name} className="sm:col-span-2">
             {(a11y) => <Input {...a11y} required autoFocus defaultValue={item?.name ?? defaults?.name} />}
           </FormField>
+          <FormField name="tdr_name" label="Nombre TDR (opcional)" error={errors.tdr_name} className="sm:col-span-2">
+            {(a11y) => <Input {...a11y} maxLength={300} defaultValue={item?.tdr_name ?? ""} />}
+          </FormField>
           <FormField name="sku" label="SKU (opcional)" error={errors.sku}>
             {(a11y) => <Input {...a11y} className="font-mono" defaultValue={item?.sku ?? ""} />}
+          </FormField>
+          <FormField name="internal_code" label="Código interno (opcional)">
+            {(a11y) => <Input {...a11y} maxLength={60} className="font-mono" defaultValue={item?.internal_code ?? ""} />}
+          </FormField>
+          <FormField name="barcode" label="Código de barras (opcional)">
+            {(a11y) => <Input {...a11y} maxLength={60} className="font-mono" defaultValue={item?.barcode ?? ""} />}
+          </FormField>
+          <FormField name="unit" label="Unidad de medida (opcional)">
+            {(a11y) => <Input {...a11y} maxLength={30} defaultValue={item?.unit ?? ""} />}
+          </FormField>
+          <FormField name="retail_price" label="Precio al por menor (opcional)" error={errors.retail_price}>
+            {(a11y) => <Input {...a11y} inputMode="decimal" maxLength={16} className="text-right font-mono" placeholder="0,00" defaultValue={item?.retail_price_cents != null ? centsToInput(item.retail_price_cents) : ""} />}
           </FormField>
           <FormField name="line" label="Línea de producto (opcional)">
             {(a11y) => <Input {...a11y} defaultValue={item?.line ?? ""} />}
@@ -379,13 +401,13 @@ export function ItemForm({
           </div>
           <div className="flex flex-col gap-1">
             <span className="caps text-muted-foreground">
-              Costo más bajo (sin IVA)
+              Costo más bajo (con IVA)
             </span>
             <span className="num text-lg">{bestCost !== null ? formatCents(bestCost) : "—"}</span>
           </div>
           <div className="flex flex-col gap-1">
             <span className="caps text-muted-foreground">
-              Venta sin IVA
+              Precio de venta
             </span>
             <span className="num text-lg">
               {bestCost !== null && marginValue !== null ? formatCents(salePriceCents(bestCost, marginValue)) : "—"}

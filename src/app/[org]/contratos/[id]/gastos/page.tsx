@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import { ExpenseBoard } from "@/components/expense-board";
+import { PaymentTabs } from "@/components/payments-view";
 import { PageLoading } from "@/components/page-loading";
 import { getContract } from "@/lib/contract-data";
 import { createClient } from "@/lib/supabase/server";
@@ -45,9 +46,9 @@ async function Expenses({ params, searchParams }: Props) {
     const next = new URLSearchParams({ ...(q ? { q } : {}), ...(category ? { categoria: category } : {}), page: String(pageCount(count, EXPENSE_PAGE_SIZE)) });
     redirect(`/${org}/contratos/${id}/gastos?${next}`);
   }
-  return <ExpenseBoard org={org} contractId={id} rows={view.rows.map((row) => ({ ...row, amount_cents: Number(row.amount_cents), lines: row.lines.map((line) => ({ ...line, amount_cents: Number(line.amount_cents) })) }))}
+  return <><PaymentTabs base={`/${org}/contratos/${id}`} active="expense" /><ExpenseBoard org={org} contractId={id} rows={view.rows.map((row) => ({ ...row, amount_cents: Number(row.amount_cents), lines: row.lines.map((line) => ({ ...line, amount_cents: Number(line.amount_cents) })) }))}
     count={count} totalCents={Number(view.total_cents)} allCount={Number(view.all_count)} allTotalCents={Number(view.all_total_cents)}
-    q={q} category={category} page={page} fileCounts={fileCounts} />;
+    q={q} category={category} page={page} fileCounts={fileCounts} /></>;
 }
 export default function Page(props: Props) {
   return <Suspense fallback={<PageLoading />}><Expenses {...props} /></Suspense>;

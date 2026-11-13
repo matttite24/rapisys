@@ -27,3 +27,10 @@ const ECUADOR_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaq
 export function todayEcuador(): string {
   return ECUADOR_DAY.format(new Date());
 }
+
+// Días que faltan para la entrega (inicio + plazo) contados desde `today`. Negativo = días de atraso. null si no hay fecha válida.
+export function daysLeft(startIso: string, termDays: number, today: string = todayEcuador()): number | null {
+  const end = addDaysIso(startIso, termDays);
+  if (!end) return null;
+  return Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+}

@@ -24,7 +24,7 @@ export function useEnterToAssign(rc: Reconcile, target: Target) {
         if (t.tagName === "BUTTON" && !t.hasAttribute("aria-pressed")) return;
       }
       e.preventDefault();
-      void rc.assign(target);
+      void (target.addToListId ? rc.addToList(target.addToListId) : rc.assign(target));
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

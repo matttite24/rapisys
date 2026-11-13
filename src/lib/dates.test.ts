@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDaysIso, formatIso } from "./dates";
+import { addDaysIso, daysLeft, formatIso } from "./dates";
 
 describe("addDaysIso", () => {
   it("suma días cruzando meses y años", () => {
@@ -30,5 +30,14 @@ describe("formatIso", () => {
   it("da formato legible y no corre el día", () => {
     expect(formatIso("2026-11-05")).toMatch(/05.*nov.*2026/i);
     expect(formatIso("2026-01-01")).toMatch(/01.*ene.*2026/i);
+  });
+});
+
+describe("daysLeft", () => {
+  it("cuenta los días que faltan, 0 el día de la entrega y negativo si ya pasó", () => {
+    expect(daysLeft("2026-11-01", 30, "2026-11-10")).toBe(21);
+    expect(daysLeft("2026-11-01", 30, "2026-12-01")).toBe(0);
+    expect(daysLeft("2026-11-01", 30, "2026-12-04")).toBe(-3);
+    expect(daysLeft("no-fecha", 30, "2026-11-10")).toBeNull();
   });
 });

@@ -15,9 +15,9 @@ import { cn } from "@/lib/utils";
 
 export type ProfitTab = { key: string; label: string; count: number; list?: boolean };
 
-// Pestañas de la revisión, con forma de carpeta: facturas y gastos primero, luego una por lista. La pestaña viaja en la
+// Pestañas de la revisión, con forma de carpeta: facturas y gastos primero, luego una por entrega. La pestaña viaja en la
 // dirección (?pestana=) y el servidor entrega solo el contenido de la activa: cambiarla pide únicamente esa pestaña.
-// El botón de la izquierda abre el cajón con todas las listas (son muchas para caber en la fila).
+// El botón de la izquierda abre el cajón con todas las entregas (son muchas para caber en la fila).
 export function ProfitTabs({
   tabs,
   activeKey,
@@ -30,7 +30,7 @@ export function ProfitTabs({
   activeKey: string;
   top?: React.ReactNode;
   figures: PageFigure[];
-  note: React.ReactNode;
+  note?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -50,7 +50,7 @@ export function ProfitTabs({
     <>
       {top}
       <FolderTabs
-        label="Revisión por facturas, gastos y listas"
+        label="Revisión por facturas, gastos y entregas"
         tabs={tabs.map((t) => ({ key: t.key, label: t.label, count: t.count }))}
         activeKey={current?.key}
         onSelect={select}
@@ -58,8 +58,8 @@ export function ProfitTabs({
           lists.length > 0 ? (
             <button
               type="button"
-              aria-label={`Ver todas las listas (${lists.length})`}
-              title="Todas las listas"
+              aria-label={`Ver todas las entregas (${lists.length})`}
+              title="Todas las entregas"
               onClick={() => setOpen(true)}
               className="mr-2 mb-px flex h-full shrink-0 items-center px-2 text-muted-foreground transition-colors hover:text-foreground"
             >
@@ -69,7 +69,7 @@ export function ProfitTabs({
         }
       />
       <PageFigures figures={figures} />
-      <p className="border-b px-4 py-3 text-xs text-muted-foreground">{note}</p>
+      {note && <p className="border-b px-4 py-3 text-xs text-muted-foreground">{note}</p>}
       <div aria-busy={pending} className={cn("transition-opacity", pending && "opacity-60")}>
         {children}
       </div>
@@ -83,17 +83,17 @@ export function ProfitTabs({
       >
         <SheetContent side="left" showCloseButton={false} className="gap-0 bg-background data-[side=left]:w-full data-[side=left]:sm:max-w-md">
           <SheetHeader className={cn(CELL_ROW, "flex-row justify-between gap-3 px-4 pr-4 shadow-bar")}>
-            <SheetTitle className="caps-md min-w-0 truncate font-medium">Listas del contrato</SheetTitle>
-            <SheetDescription className="sr-only">Elige una lista para ver su rentabilidad.</SheetDescription>
-            <SheetClose render={<Button variant="ghost" size="icon" aria-label="Cerrar listas" />}>
+            <SheetTitle className="caps-md min-w-0 truncate font-medium">Entregas del contrato</SheetTitle>
+            <SheetDescription className="sr-only">Elige una entrega para ver su rentabilidad.</SheetDescription>
+            <SheetClose render={<Button variant="ghost" size="icon" aria-label="Cerrar entregas" />}>
               <HugeiconsIcon icon={Cancel01Icon} className="size-5" />
             </SheetClose>
           </SheetHeader>
           <div className="flex h-12 border-b">
-            <SearchInput label="Buscar lista" placeholder="Buscar por nombre" value={q} onChange={setQ} autoFocus />
+            <SearchInput label="Buscar entrega" placeholder="Buscar por número de entrega" value={q} onChange={setQ} autoFocus />
           </div>
           <ul aria-label="Listas" className="min-h-0 flex-1 divide-y overflow-y-auto">
-            {shown.length === 0 && <li className="p-4 text-sm text-muted-foreground">Ninguna lista coincide.</li>}
+            {shown.length === 0 && <li className="p-4 text-sm text-muted-foreground">Ninguna entrega coincide.</li>}
             {shown.map((t) => {
               const on = current?.key === t.key;
               return (

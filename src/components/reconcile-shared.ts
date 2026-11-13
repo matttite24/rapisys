@@ -6,4 +6,6 @@ export const covered = (l: InvoiceLine) => l.free <= 0;
 export const normCode = (v: string) => v.toUpperCase().replace(/[\s\-_.]+/g, "");
 export const codesOf = (r: { sku: string | null; partNumbers: string[] }) => [r.sku, ...r.partNumbers].filter(Boolean).join(" · ");
 
-export type Target = { id: string; open: number };
+// Destino de lo elegido: una línea existente, o (proceso a crédito, sin línea abierta) `addToListId`: se crea la línea
+// en esa lista con el producto y se le asigna.
+export type Target = { id: string; open: number; description?: string; addToListId?: string };
