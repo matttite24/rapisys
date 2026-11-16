@@ -87,4 +87,4 @@ export const STATUS_TONE: Record<string, Tone> = {
 
 // Tope de líneas de una lista del proceso, y tamaño de página de la tabla.
 export const MAX_LINES_PER_LIST = 1000;
-export const LINES_PAGE_SIZE = 25;
+export const LINES_PAGE_SIZE = 50;

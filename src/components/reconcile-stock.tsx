@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectableRow } from "@/components/selectable-row";
 import { useState } from "react";
 import { PanelLoading } from "@/components/panel-loading";
 import { Archive02Icon } from "@hugeicons/core-free-icons";
@@ -145,10 +146,9 @@ export function StockRow({ rc, row: r, target }: { rc: Reconcile; row: StockResu
   const selected = rc.stockPicked?.id === r.id;
   return (
     <li className={cn(selected && "bg-accent/60")}>
-      <button
-        type="button"
-        aria-pressed={selected}
-        onClick={() => rc.pickStock(selected ? null : r)}
+      <SelectableRow
+        selected={selected}
+        onActivate={() => rc.pickStock(selected ? null : r)}
         className={cn("flex w-full flex-col gap-1 px-4 py-3.5 text-left hover:bg-accent/60", selected && "shadow-[inset_4px_0_0_var(--primary)]")}
       >
         <span className="flex items-center justify-between gap-3">
@@ -174,7 +174,7 @@ export function StockRow({ rc, row: r, target }: { rc: Reconcile; row: StockResu
             })()}
           </span>
         </span>
-      </button>
+      </SelectableRow>
       {selected && <AssignTo rc={rc} target={target} />}
     </li>
   );

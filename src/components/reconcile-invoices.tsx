@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectableRow } from "@/components/selectable-row";
 import { PanelLoading } from "@/components/panel-loading";
 import { useEffect, useRef, useState } from "react";
 import { AiMagicIcon, ArrowRight01Icon, Exchange01Icon, Invoice01Icon } from "@hugeicons/core-free-icons";
@@ -297,10 +298,9 @@ export function LineRow({ rc, line: l, target }: { rc: Reconcile; line: InvoiceL
   const done = covered(l);
   return (
     <li id={`rc-line-${l.id}`} className={cn(selected && "bg-accent/60", done && !selected && "opacity-60")}>
-      <button
-        type="button"
-        aria-pressed={selected}
-        onClick={() => rc.pick(selected ? null : l)}
+      <SelectableRow
+        selected={selected}
+        onActivate={() => rc.pick(selected ? null : l)}
         className={cn("flex w-full flex-col gap-1 px-4 py-3.5 text-left hover:bg-accent/60", selected && "shadow-[inset_4px_0_0_var(--primary)]")}
       >
         <span className="flex items-center justify-between gap-3">
@@ -316,7 +316,7 @@ export function LineRow({ rc, line: l, target }: { rc: Reconcile; line: InvoiceL
           {/* Precio unitario de la factura (sin IVA), para compararlo con lo que paga el proceso. */}
           <span className="num shrink-0 text-xs text-muted-foreground">{formatCents(l.unitCostCents)}</span>
         </span>
-      </button>
+      </SelectableRow>
       {selected && <AssignTo rc={rc} target={target} />}
     </li>
   );

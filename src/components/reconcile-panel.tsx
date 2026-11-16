@@ -30,6 +30,7 @@ export function ReconcilePanel({
   addToListId,
   onRemove,
   removing,
+  vatRate,
   canAct,
   closing,
   onClose,
@@ -42,6 +43,8 @@ export function ReconcilePanel({
   addToListId?: string;
   // La línea abierta se puede quitar desde el pie.
   onRemove?: () => void;
+  // IVA del proceso (%), para calcular el precio con IVA de las cotizaciones.
+  vatRate?: number;
   removing?: boolean;
   canAct: boolean;
   closing: boolean;
@@ -215,7 +218,7 @@ export function ReconcilePanel({
           </div>
         )
       ) : focus && rc.source === "cotizaciones" ? (
-        <LineQuotations key={focus.id} org={org} contractId={contractId} lineId={focus.id} canAct={canAct} onSaved={rc.refresh} />
+        <LineQuotations key={focus.id} org={org} contractId={contractId} lineId={focus.id} canAct={canAct} onSaved={rc.refresh} vatRate={vatRate} quantity={focus.quantity} lineLabel={[focus.partNumber, focus.description].filter(Boolean).join(" — ")} />
       ) : !focus && rc.source !== "facturas" && rc.source !== "bodega" ? null : !canAct ? (
         <p className="p-6 text-sm text-muted-foreground">El abastecimiento se trabaja cuando el proceso está En ejecución.</p>
       ) : rc.source === "facturas" ? (

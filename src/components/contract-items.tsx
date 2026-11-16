@@ -98,13 +98,17 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
   // El precio referencial no viene en la función de la lista: se piden aparte los de las líneas de esta página.
   const lineIds = view.lines.map((l) => l.id);
   const priceRes = lineIds.length
-    ? await supabase.from("contract_items").select("id, reference_price_cents").in("id", lineIds)
+    ? await supabase.from("contract_items").select("id, reference_price_cents, internal_code").in("id", lineIds)
     : { data: [] };
   const prices = new Map(
-    ((priceRes.data ?? []) as { id: string; reference_price_cents: number | null }[]).map((r) => [
+    ((priceRes.data ?? []) as { id: string; reference_price_cents: number | null; internal_code?: string | null }[]).map((r) => [
       r.id,
       r.reference_price_cents === null ? null : Number(r.reference_price_cents),
     ]),
+  );
+
+  const codes = new Map(
+    ((priceRes.data ?? []) as { id: string; internal_code?: string | null }[]).map((r) => [r.id, r.internal_code ?? ""]),
   );
 
   const lines: LineView[] = view.lines.map((l, i) => ({
@@ -116,6 +120,7 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
     description: l.description,
     quantity: Number(l.quantity),
     unit: l.unit,
+    internalCode: codes.get(l.id) ?? "",
     referencePriceCents: prices.get(l.id) ?? null,
   }));
 

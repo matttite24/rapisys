@@ -16,6 +16,8 @@ export type LineView = {
   n: number;
   dupOf?: number;
   partNumber: string;
+  // Segundo código de la línea (código interno de la empresa); se muestra como chip.
+  internalCode: string;
   description: string;
   quantity: number;
   unit: string;

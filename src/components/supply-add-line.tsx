@@ -13,7 +13,7 @@ export function AddLineButton({ open, onToggle, listName }: { open: boolean; onT
       type="button"
       variant="ghost"
       size="sm"
-      className="ml-auto gap-1.5"
+      className="shrink-0 gap-1.5"
       title={`Los items se agregan a «${listName}» sin cargarlos antes en Listas.`}
       onClick={onToggle}
     >

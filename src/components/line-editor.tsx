@@ -56,6 +56,9 @@ export function LineEditor({ org, contractId, line }: { org: string; contractId:
       <FormField name="part_number" label="N.º de parte" error={errors.part_number}>
         {(a11y) => <Input {...a11y} autoComplete="off" maxLength={60} className="font-mono" defaultValue={line.partNumber} autoFocus />}
       </FormField>
+      <FormField name="internal_code" label="Código interno" error={errors.internal_code}>
+        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={60} className="font-mono" defaultValue={line.internalCode} />}
+      </FormField>
       <FormField name="description" label="Descripción" error={errors.description}>
         {(a11y) => <Input {...a11y} autoComplete="off" maxLength={500} defaultValue={line.description} />}
       </FormField>

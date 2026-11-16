@@ -23,6 +23,7 @@ import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { formatCents } from "@/lib/money";
 import { removeLine } from "@/lib/contract-actions";
 import { toast } from "sonner";
+import { CodeChip } from "@/components/code-chip";
 import { AddLineButton, SupplyAddLine } from "@/components/supply-add-line";
 import { unitLabel } from "@/lib/units";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,8 @@ export type SupplyLine = {
   listId: string;
   n: number;
   partNumber: string;
+  // Código interno de la línea (segundo código); se muestra como chip.
+  internalCode: string;
   description: string;
   quantity: number;
   unit: string;
@@ -58,7 +61,7 @@ export type { SupplyState };
 // Filtro por estado como chip: relleno cuando está activo, con borde cuando no.
 const CHIP = (active: boolean) =>
   cn(
-    "inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+    "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
     active ? "border-foreground bg-foreground text-background" : "bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground",
   );
 
@@ -75,7 +78,6 @@ export function SupplyBoard({
   estado: serverState,
   basePath,
   canAct,
-  deliveries,
   money,
 }: {
   org: string;
@@ -91,7 +93,6 @@ export function SupplyBoard({
   basePath: string;
   canAct: boolean;
   // Entregas ya registradas en el proceso.
-  deliveries: number;
   // Valor del proceso (con IVA) y costo de lo ya cubierto, para la barra de abajo.
   money: { totalCents: number; vatRate: number; coveredCents: number; unknown: number } | null;
 }) {
@@ -271,7 +272,8 @@ export function SupplyBoard({
         </div>
 
         {/* Fila 2: filtros por estado, como pestañas con su recuento (de líneas). */}
-        <div role="group" aria-label="Filtrar por estado" className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2">
+        <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
+          <div role="group" aria-label="Filtrar por estado" className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [scrollbar-width:none]">
           <button type="button" aria-pressed={estado === ""} onClick={() => go({ estado: "" })} className={CHIP(estado === "")}>
             Todas
             <span className="num text-xs opacity-70">{totalLines}</span>
@@ -289,14 +291,12 @@ export function SupplyBoard({
               <span className="num text-xs opacity-70">{counts[s]}</span>
             </button>
           ))}
-          {canAct && loaded && (
-            <AddLineButton open={addOpen} onToggle={() => setAddOpen((v) => !v)} listName={loaded.name} />
-          )}
+          </div>
           {(q || estado) && (
             <Button
               variant="ghost"
               size="sm"
-              
+              className="shrink-0"
               onClick={() => {
                 setSearchReset((n) => n + 1);
                 go({ q: "", estado: "" });
@@ -304,6 +304,9 @@ export function SupplyBoard({
             >
               Limpiar
             </Button>
+          )}
+          {canAct && loaded && (
+            <AddLineButton open={addOpen} onToggle={() => setAddOpen((v) => !v)} listName={loaded.name} />
           )}
         </div>
 
@@ -316,7 +319,6 @@ export function SupplyBoard({
             listId={loaded.id}
             listName={loaded.name}
             canAct={canAct}
-            deliveries={deliveries}
             ready={counts.in_stock}
             hidden={panelShown}
           />
@@ -380,6 +382,7 @@ export function SupplyBoard({
                             <span className="block text-xs text-muted-foreground">{l.description}</span>
                             <span className={cn("mt-0.5 block font-mono text-sm font-medium", !l.partNumber && "font-normal text-muted-foreground")}>
                               {l.partNumber || "Sin n.º de parte"}
+                              {l.internalCode && <> <CodeChip code={l.internalCode} /></>}
                             </span>
                             {children && (
                               <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -483,6 +486,7 @@ export function SupplyBoard({
         contractId={contractId}
         focus={focus}
         canAct={canAct}
+        vatRate={money?.vatRate}
         closing={closing}
         addToListId={canAct && loaded ? loaded.id : undefined}
         onRemove={canAct ? removeFocused : undefined}

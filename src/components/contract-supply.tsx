@@ -107,7 +107,7 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     assetExtras(supabase, view.lists.map((l) => l.asset_id)),
     // Precio referencial (total de la fila) de las líneas de esta página.
     lineIds.length
-      ? supabase.from("contract_items").select("id, reference_price_cents").in("id", lineIds)
+      ? supabase.from("contract_items").select("id, reference_price_cents, internal_code").in("id", lineIds)
       : Promise.resolve({ data: [] }),
     lineIds.length
       ? supabase.from("supply_sources")
@@ -153,12 +153,17 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     ]),
   );
 
+  const codeById = new Map(
+    ((priceRows ?? []) as { id: string; internal_code?: string | null }[]).map((r) => [r.id, r.internal_code ?? ""]),
+  );
+
   const lines: SupplyLine[] = view.lines.map((l) => ({
     id: l.id,
     referenceCents: refById.get(l.id) ?? null,
     listId: l.list_id,
     n: Number(l.n),
     partNumber: l.part_number ?? "",
+    internalCode: codeById.get(l.id) ?? "",
     description: l.description,
     quantity: Number(l.quantity),
     unit: l.unit,
@@ -202,7 +207,6 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
       estado={estado}
       basePath={`/${org}/contratos/${id}/abastecimiento`}
       canAct={view.status === "in_progress"}
-      deliveries={Number(view.deliveries)}
       money={
         contract && contract.c.kind !== "credit"
           ? {

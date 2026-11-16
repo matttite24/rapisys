@@ -1,5 +1,6 @@
 "use client";
 
+import { CodeChip } from "@/components/code-chip";
 import { ConfirmTap } from "@/components/confirm-tap";
 import { cn } from "@/lib/utils";
 import { Delete02Icon, Edit02Icon } from "@hugeicons/core-free-icons";
@@ -28,7 +29,7 @@ export function LinesTable({
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className={`${TH} w-px text-right`}>N.º</TableHead>
-            <TableHead className={TH}>Part. num.</TableHead>
+            <TableHead className={TH}>Part. num. · Cód. interno</TableHead>
             <TableHead className={TH}>Descripción</TableHead>
             <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
             <TableHead className={TH}>Unidad</TableHead>
@@ -84,8 +85,9 @@ export function LineRow({
       )}
     >
       <TableCell className={`${TD} num text-right text-muted-foreground`}>{n}</TableCell>
-      <TableCell className={`${TD} whitespace-nowrap font-mono text-xs`}>
+      <TableCell className={`${TD} font-mono text-xs`}>
         {l.partNumber || "—"}
+        {l.internalCode && <> <CodeChip code={l.internalCode} /></>}
         {duplicateOf && (
           <span className="block font-sans text-2xs font-medium text-destructive">Repetido: igual a la línea {duplicateOf}</span>
         )}

@@ -58,6 +58,7 @@ export function LineForm({
     const form = e.currentTarget;
     const data = new FormData(form);
     const partNumber = String(data.get("part_number") ?? "").trim();
+    const internalCode = String(data.get("internal_code") ?? "").trim();
     const description = String(data.get("description") ?? "").trim();
     const quantity = parseDecimal(String(data.get("quantity") ?? ""));
     const unit = String(data.get("unit") ?? "");
@@ -80,7 +81,7 @@ export function LineForm({
     }
 
     setState(undefined);
-    const line = { listId, n: editing?.n ?? 0, partNumber, description, quantity, unit, referencePriceCents };
+    const line = { listId, n: editing?.n ?? 0, partNumber, internalCode, description, quantity, unit, referencePriceCents };
 
     if (editing) {
       // La fila cambia ya; el formulario sale de edición cuando el servidor confirma.
@@ -104,7 +105,7 @@ export function LineForm({
       const res = await addLine(org, contractId, listId, data);
       if (res?.error || res?.fields) {
         // No se guardó: se devuelve lo escrito para no perderlo.
-        for (const name of ["part_number", "description", "quantity", "unit", "reference_price"]) {
+        for (const name of ["part_number", "internal_code", "description", "quantity", "unit", "reference_price"]) {
           const el = form.elements.namedItem(name);
           if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) {
             el.value = String(data.get(name) ?? "");
@@ -129,11 +130,16 @@ export function LineForm({
           formRef.current?.requestSubmit();
         }
       }}
-      className="grid gap-4 md:grid-cols-[9rem_1fr_6.5rem_9rem_9rem_auto] md:items-start [&_input]:bg-background [&_select]:bg-background"
+      className="grid gap-4 md:grid-cols-[9rem_8rem_1fr_6.5rem_9rem_9rem_auto] md:items-start [&_input]:bg-background [&_select]:bg-background"
     >
       <FormField name="part_number" label="Part. num." error={errors.part_number}>
         {(a11y) => (
           <Input {...a11y} autoComplete="off" maxLength={60} className="font-mono" defaultValue={editing?.partNumber} />
+        )}
+      </FormField>
+      <FormField name="internal_code" label="Cód. interno" error={errors.internal_code}>
+        {(a11y) => (
+          <Input {...a11y} autoComplete="off" maxLength={60} className="font-mono" defaultValue={editing?.internalCode} />
         )}
       </FormField>
       <FormField name="description" label="Descripción" error={errors.description}>
@@ -189,7 +195,7 @@ export function LineForm({
         </Button>
       </Field>
       {state?.error && (
-        <div className="md:col-span-6">
+        <div className="md:col-span-7">
           <FieldError>{state.error}</FieldError>
         </div>
       )}

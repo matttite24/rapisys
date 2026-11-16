@@ -24,7 +24,7 @@ let slot: HTMLDivElement;
 beforeEach(() => { vi.clearAllMocks(); slot = document.createElement("div"); document.body.append(slot); });
 afterEach(() => { cleanup(); slot.remove(); });
 function openDelivery() {
-  render(<HeaderSlotContext.Provider value={slot}><DeliveryActions org="org" contractId="contract" listId="list" listName="Excavadora" canAct deliveries={0} ready={1} /></HeaderSlotContext.Provider>);
+  render(<HeaderSlotContext.Provider value={slot}><DeliveryActions org="org" contractId="contract" listId="list" listName="Excavadora" canAct ready={1} /></HeaderSlotContext.Provider>);
   fireEvent.click(screen.getByRole("button", { name: /Generar entrega/ }));
 }
 

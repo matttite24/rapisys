@@ -61,6 +61,9 @@ export function AssignedView({
   if (sources.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+        {/* Decorativa (public/Dummies): alt vacío, el texto de abajo ya dice lo que pasa. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={`/Dummies/${encodeURIComponent("Engine Hoist ")}.avif`} alt="" className="size-40 object-contain" />
         <p className="text-sm font-medium">Esta línea aún no tiene nada asignado</p>
         <p className="max-w-xs text-sm text-muted-foreground">
           {canAct ? "Búscalo en una factura del proceso o entre las existencias de la bodega." : "El proceso debe estar En ejecución para asignar productos."}
