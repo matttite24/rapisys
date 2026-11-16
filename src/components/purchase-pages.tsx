@@ -10,7 +10,7 @@ import { PageSection } from "@/components/page-section";
 import { PageFigures } from "@/components/page-shortcuts";
 import { AttachFiles } from "@/components/attach-files";
 import { DeletePurchase } from "@/components/purchase-actions-ui";
-import { PurchaseForm } from "@/components/purchase-form";
+import { NewPurchaseForm, PurchaseForm } from "@/components/purchase-form";
 import type { DraftData } from "@/components/purchase-form-model";
 import { XmlInfoList } from "@/components/xml-info";
 import { ReceiveAll, ReceiveLine, ReceiveShortcuts } from "@/components/receive-controls";
@@ -200,7 +200,7 @@ async function NewForm({ params }: { params: IdParams }) {
   }
   const supabase = await createClient();
   const { data } = await supabase.from("suppliers").select("id, name").eq("organization_id", found.orgId).order("name");
-  return <PurchaseForm org={org} contractId={id} suppliers={(data ?? []) as { id: string; name: string }[]} />;
+  return <NewPurchaseForm org={org} contractId={id} suppliers={(data ?? []) as { id: string; name: string }[]} />;
 }
 
 export function PurchaseNewPage({ params }: { params: IdParams }) {

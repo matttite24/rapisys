@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { PanelLoading } from "@/components/panel-loading";
 import { Archive02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -23,6 +24,10 @@ export function StockMode({ rc, target, partNumber }: { rc: Reconcile; target: T
   const suggested = stocked.filter(sameCode);
   const others = stocked.filter((r) => !sameCode(r));
   const withStock = [...suggested, ...others];
+  // Productos que coinciden pero no tienen existencias: se pueden ver u ocultar (no se pueden asignar).
+  const [showEmpty, setShowEmpty] = useState(true);
+  const empty = (rows ?? []).filter((r) => r.onHand <= 0);
+  const emptySorted = [...empty.filter(sameCode), ...empty.filter((r) => !sameCode(r))];
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
@@ -61,6 +66,26 @@ export function StockMode({ rc, target, partNumber }: { rc: Reconcile; target: T
       </div>
       {rc.stockSummaryError && <PanelError message={rc.stockSummaryError} onRetry={() => void rc.loadStockSummary(true)} />}
       <SearchRow label="Buscar en la bodega" placeholder="Número de parte, SKU o nombre" value={rc.stockQ} onChange={rc.searchStockText} autoFocus />
+      {empty.length > 0 && rc.stockQ.trim() && (
+        <label className="flex shrink-0 cursor-pointer items-center justify-between gap-3 border-b px-4 py-2 text-xs text-muted-foreground">
+          <span>
+            Sin existencias <span className="num">({empty.length})</span>
+          </span>
+          <span className="flex items-center gap-2">
+            {showEmpty ? "Mostrando" : "Ocultos"}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showEmpty}
+              aria-label="Mostrar productos sin existencias"
+              onClick={() => setShowEmpty((v) => !v)}
+              className={cn("relative block h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none", showEmpty ? "bg-foreground" : "bg-foreground/25")}
+            >
+              <span aria-hidden className={cn("absolute top-0.5 left-0.5 size-4 rounded-full bg-background shadow transition-transform", showEmpty && "translate-x-4")} />
+            </button>
+          </span>
+        </label>
+      )}
       <div aria-busy={rc.stockLoading} className="min-h-0 flex-1 overflow-y-auto">
         {!rc.stockQ.trim() ? (
           <p className="px-4 py-4 text-sm text-muted-foreground">Escribe un número de parte, SKU o nombre.</p>
@@ -70,8 +95,10 @@ export function StockMode({ rc, target, partNumber }: { rc: Reconcile; target: T
           <PanelLoading label="Buscando productos en bodega" />
         ) : rows.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted-foreground">Ningún producto de la bodega coincide.</p>
-        ) : withStock.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted-foreground">Hay productos que coinciden, pero ninguno tiene existencias.</p>
+        ) : withStock.length === 0 && !(showEmpty && empty.length > 0) ? (
+          <p className="px-4 py-4 text-sm text-muted-foreground">
+            {empty.length === 1 ? "Hay un producto que coincide" : `Hay ${empty.length} productos que coinciden`}, pero {empty.length === 1 ? "no tiene" : "ninguno tiene"} existencias. Activa «Sin existencias» para verlos.
+          </p>
         ) : (
           <>
             {suggested.length > 0 && (
@@ -90,6 +117,16 @@ export function StockMode({ rc, target, partNumber }: { rc: Reconcile; target: T
                 <ul className="divide-y">
                   {others.map((r) => (
                     <StockRow key={r.id} rc={rc} row={r} target={target} />
+                  ))}
+                </ul>
+              </>
+            )}
+            {showEmpty && emptySorted.length > 0 && (
+              <>
+                <GroupBar label="Sin existencias" count={emptySorted.length} />
+                <ul className="divide-y">
+                  {emptySorted.map((r) => (
+                    <EmptyStockRow key={r.id} row={r} />
                   ))}
                 </ul>
               </>
@@ -139,6 +176,24 @@ export function StockRow({ rc, row: r, target }: { rc: Reconcile; row: StockResu
         </span>
       </button>
       {selected && <AssignTo rc={rc} target={target} />}
+    </li>
+  );
+}
+
+// Producto de la bodega sin existencias: se ve para saber que existe, pero no se puede asignar.
+function EmptyStockRow({ row: r }: { row: StockResult }) {
+  return (
+    <li className="flex flex-col gap-1 px-4 py-3.5 text-muted-foreground">
+      <span className="flex items-center justify-between gap-3">
+        <span className={cn("truncate font-mono text-sm", !codesOf(r) && "font-normal")} title={codesOf(r)}>
+          {codesOf(r) || "Sin código"}
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5 font-mono text-sm" title="Sin existencias en la bodega">
+          <span aria-hidden className={cn("size-2 rounded-full", STATE.pending.dot)} />
+          <span className="num">0</span>
+        </span>
+      </span>
+      <span className="truncate text-xs" title={r.name}>{r.name}</span>
     </li>
   );
 }

@@ -327,7 +327,7 @@ export function useReconcile(org: string, contractId: string) {
     setBusy(false);
   }
 
-  // Proceso a crédito: crea la línea en la lista con el producto elegido (nombre TDR o el editado) y le asigna lo elegido.
+  // Sin línea abierta: crea la línea en la lista con el producto elegido (nombre TDR o el editado) y le asigna lo elegido.
   // Si la asignación falla, la línea recién creada se quita para no dejar filas vacías.
   const adding = useRef(false);
   async function addImpl(listId: string, how?: How) {

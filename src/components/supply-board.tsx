@@ -2,7 +2,6 @@
 
 import { useSupplyFilter } from "@/components/use-supply-filter";
 import { StateLabel } from "@/components/state-label";
-import { TAB, TABS_ROW, TabCount } from "@/components/count-tabs";
 import { EmptyState, NO_RESULTS_IMAGE } from "@/components/empty-state";
 import { setRightPanelOpen } from "@/components/use-side-panel";
 import { useEffect, useOptimistic, useState, useTransition } from "react";
@@ -13,10 +12,9 @@ import { ListTabs } from "@/components/contract-list-tabs";
 import type { ListView } from "@/components/contract-lists-model";
 import { LineSearch } from "@/components/line-search";
 import { PageSection, TABLE_TD, TABLE_TH } from "@/components/page-section";
-import { Pager } from "@/components/pager";
 import { DeliveryActions } from "@/components/delivery-sheet";
 import { ReconcilePanel } from "@/components/reconcile-panel";
-import { PageFigures, PageFooterActions, type PageFigure } from "@/components/page-shortcuts";
+import { PageFigures, PageFooterActions, PagePagination, type PageFigure } from "@/components/page-shortcuts";
 import { useReconcile } from "@/components/use-reconcile";
 import { Progress, STATE, type SupplyState } from "@/components/supply-progress";
 import { Button } from "@/components/ui/button";
@@ -25,10 +23,10 @@ import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { formatCents } from "@/lib/money";
 import { removeLine } from "@/lib/contract-actions";
 import { toast } from "sonner";
-import { SupplyAddLine } from "@/components/supply-add-line";
+import { AddLineButton, SupplyAddLine } from "@/components/supply-add-line";
 import { unitLabel } from "@/lib/units";
 import { cn } from "@/lib/utils";
-import { ArrowRight01Icon, Search01Icon, SidebarRightIcon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, PackageMovingIcon, Search01Icon } from "@hugeicons/core-free-icons";
 
 export type SupplyLine = {
   id: string;
@@ -57,6 +55,13 @@ const STATE_ORDER: SupplyState[] = ["pending", "quoted", "purchased", "partial",
 
 export type { SupplyState };
 
+// Filtro por estado como chip: relleno cuando está activo, con borde cuando no.
+const CHIP = (active: boolean) =>
+  cn(
+    "inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+    active ? "border-foreground bg-foreground text-background" : "bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground",
+  );
+
 export function SupplyBoard({
   org,
   contractId,
@@ -70,7 +75,6 @@ export function SupplyBoard({
   estado: serverState,
   basePath,
   canAct,
-  credit,
   deliveries,
   money,
 }: {
@@ -86,8 +90,6 @@ export function SupplyBoard({
   estado: SupplyState | "";
   basePath: string;
   canAct: boolean;
-  // Proceso a crédito: permite agregar items directamente desde aquí.
-  credit?: boolean;
   // Entregas ya registradas en el proceso.
   deliveries: number;
   // Valor del proceso (con IVA) y costo de lo ya cubierto, para la barra de abajo.
@@ -108,6 +110,7 @@ export function SupplyBoard({
   const [selectedLine, setSelectedLine] = useState<SupplyLine | null>(null);
   const selectedId = selectedLine?.id ?? null;
   // Panel de conciliación (derecha). Con una línea de factura elegida, tocar una fila de esta tabla le reserva.
+  const [addOpen, setAddOpen] = useState(false);
   const rc = useReconcile(org, contractId);
   // Conserva el historial abierto si guardar una gestión saca la línea del filtro Pendiente.
   const focus = lines.find((l) => l.id === selectedId) ?? (selectedLine?.listId === loaded?.id ? selectedLine : null);
@@ -143,7 +146,7 @@ export function SupplyBoard({
       setClosing(false);
     }, 200);
   }
-  // Proceso a crédito: la línea abierta se quita desde el pie del panel.
+  // La línea abierta se quita desde el pie del panel.
   const [removing, startRemove] = useTransition();
   function removeFocused() {
     if (!focus) return;
@@ -155,13 +158,13 @@ export function SupplyBoard({
       router.refresh();
     });
   }
-  // Abre o cierra el panel sin tocar una línea. En un proceso a crédito abre directo en Facturas: ahí se agregan items.
+  // Abre o cierra el panel sin tocar una línea. Con el proceso en ejecución abre directo en Facturas: ahí se agregan items.
   function togglePanel() {
     if (panelShown) return closePanel();
     rc.unpick();
     setSelectedLine(null);
     rc.show();
-    if (credit && canAct) rc.setSource("facturas");
+    if (canAct) rc.setSource("facturas");
   }
 
   function go(next: { lista?: string; q?: string; estado?: string; page?: number }) {
@@ -217,6 +220,13 @@ export function SupplyBoard({
     <div className="h-full">
     <div className="flex h-full min-w-0 flex-col">
       <PageFigures figures={figures} />
+      <PagePagination
+        basePath={basePath}
+        page={page}
+        total={total}
+        size={LINES_PAGE_SIZE}
+        params={{ lista: loaded?.id ?? "", ...(q ? { q } : {}), ...(estado ? { estado } : {}) }}
+      />
       <PageFooterActions>
         <span aria-live="polite" className="whitespace-nowrap text-sm text-muted-foreground">
           <span className="num">{q || estado ? `${total} de ${totalLines}` : totalLines}</span> líneas
@@ -251,20 +261,20 @@ export function SupplyBoard({
             onSearch={(next) => go({ q: next })}
             placeholder="Buscar por n.º de parte, descripción o producto asignado"
           />
-          {/* Abre el panel de abastecimiento sin elegir una línea: en un proceso a crédito, desde ahí se agregan items. */}
-          <div className="flex shrink-0 items-center border-l px-2">
-            <Button type="button" variant={panelShown ? "secondary" : "ghost"} size="sm" className="gap-1.5" aria-pressed={panelShown} onClick={togglePanel}>
-              <HugeiconsIcon icon={SidebarRightIcon} className="size-4" />
+          {/* Abre el panel de abastecimiento sin elegir una línea: con el proceso en ejecución, desde ahí se agregan items. */}
+          <div className="flex shrink-0 items-stretch border-l">
+            <Button type="button" variant={panelShown ? "secondary" : "default"} size="sm" className={cn("h-full gap-2 rounded-none px-6", !panelShown && "bg-state-running-solid text-state-running-on hover:bg-state-running-solid/90")} aria-pressed={panelShown} onClick={togglePanel}>
+              <HugeiconsIcon icon={PackageMovingIcon} className="size-4" />
               Abastecimiento
             </Button>
           </div>
         </div>
 
         {/* Fila 2: filtros por estado, como pestañas con su recuento (de líneas). */}
-        <div role="group" aria-label="Filtrar por estado" className={cn(TABS_ROW, "shrink-0")}>
-          <button type="button" aria-pressed={estado === ""} onClick={() => go({ estado: "" })} className={TAB(estado === "")}>
+        <div role="group" aria-label="Filtrar por estado" className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2">
+          <button type="button" aria-pressed={estado === ""} onClick={() => go({ estado: "" })} className={CHIP(estado === "")}>
             Todas
-            <TabCount n={totalLines} />
+            <span className="num text-xs opacity-70">{totalLines}</span>
           </button>
           {STATE_ORDER.map((s) => (
             <button
@@ -272,18 +282,21 @@ export function SupplyBoard({
               type="button"
               aria-pressed={estado === s}
               onClick={() => go({ estado: estado === s ? "" : s })}
-              className={cn(TAB(estado === s), counts[s] === 0 && estado !== s && "opacity-60")}
+              className={cn(CHIP(estado === s), counts[s] === 0 && estado !== s && "opacity-60")}
             >
               <span aria-hidden className={cn("size-2 rounded-full", STATE[s].dot)} />
               {STATE[s].label}
-              <TabCount n={counts[s]} />
+              <span className="num text-xs opacity-70">{counts[s]}</span>
             </button>
           ))}
+          {canAct && loaded && (
+            <AddLineButton open={addOpen} onToggle={() => setAddOpen((v) => !v)} listName={loaded.name} />
+          )}
           {(q || estado) && (
             <Button
               variant="ghost"
               size="sm"
-              className="ml-auto"
+              
               onClick={() => {
                 setSearchReset((n) => n + 1);
                 go({ q: "", estado: "" });
@@ -294,9 +307,7 @@ export function SupplyBoard({
           )}
         </div>
 
-        {credit && canAct && loaded && (
-          <SupplyAddLine org={org} contractId={contractId} listId={loaded.id} listName={loaded.name} />
-        )}
+        {canAct && loaded && addOpen && <SupplyAddLine org={org} contractId={contractId} listId={loaded.id} />}
 
         {loaded && (
           <DeliveryActions
@@ -460,13 +471,6 @@ export function SupplyBoard({
                 </table>
               </div>
             )}
-            <Pager
-              basePath={basePath}
-              page={page}
-              total={total}
-              size={LINES_PAGE_SIZE}
-              params={{ lista: loaded?.id ?? "", ...(q ? { q } : {}), ...(estado ? { estado } : {}) }}
-            />
           </div>
         )}
       </section>
@@ -480,8 +484,8 @@ export function SupplyBoard({
         focus={focus}
         canAct={canAct}
         closing={closing}
-        addToListId={credit && loaded ? loaded.id : undefined}
-        onRemove={credit && canAct ? removeFocused : undefined}
+        addToListId={canAct && loaded ? loaded.id : undefined}
+        onRemove={canAct ? removeFocused : undefined}
         removing={removing}
         onClose={closePanel}
       />

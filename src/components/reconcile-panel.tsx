@@ -38,9 +38,9 @@ export function ReconcilePanel({
   org: string;
   contractId: string;
   focus: SupplyLine | null;
-  // Proceso a crédito: lista a la que se agregan líneas nuevas desde Facturas y Bodega (sin línea abierta).
+  // Lista a la que se agregan líneas nuevas desde Facturas y Bodega (sin línea abierta).
   addToListId?: string;
-  // Proceso a crédito: la línea abierta se puede quitar desde el pie.
+  // La línea abierta se puede quitar desde el pie.
   onRemove?: () => void;
   removing?: boolean;
   canAct: boolean;
@@ -48,7 +48,7 @@ export function ReconcilePanel({
   onClose: () => void;
 }) {
   const target: Target | null = focus ? { id: focus.id, open: Math.max(0, focus.quantity - focus.reserved - focus.purchased), description: focus.description } : null;
-  // Sin línea abierta, en un proceso a crédito, lo elegido crea su propia línea en la lista.
+  // Sin línea abierta, lo elegido crea su propia línea en la lista.
   const addTarget: Target | null = !focus && addToListId ? { id: NEW_LINE, open: Number.MAX_SAFE_INTEGER, addToListId } : null;
   // Lo ya asignado a la línea abierta: es lo primero que muestra el panel.
   const [supply, setSupply] = useState<{ lineId: string; version: number; rows?: SourceView[]; error?: string } | null>(null);
@@ -145,7 +145,7 @@ export function ReconcilePanel({
      >
       <PageShortcuts shortcuts={[{ keys: ["Esc"], label: "Cerrar panel" }]} />
       {/* Mismo alto que el encabezado de la página, para que lo de abajo siga alineado con la tabla. */}
-      <div style={{ height: top || 48 }} className="flex shrink-0 items-center justify-between gap-3 border-b bg-primary px-4 text-primary-foreground">
+      <div style={{ height: top || 48 }} className="flex shrink-0 items-center justify-between gap-3 border-b bg-state-running-solid px-4 text-state-running-on">
         <span className="caps-md font-bold">Abastecimiento</span>
         <div className="flex items-center gap-3">
           {focus && (
@@ -156,7 +156,7 @@ export function ReconcilePanel({
         <Button
           variant="ghost"
           size="icon"
-          className="-mr-2 size-8 shrink-0 hover:bg-primary-foreground/15 hover:text-primary-foreground"
+          className="-mr-2 size-8 shrink-0 hover:bg-state-running-on/15 hover:text-state-running-on"
           aria-label="Cerrar el panel"
           onClick={onClose}
         >

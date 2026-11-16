@@ -202,7 +202,6 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
       estado={estado}
       basePath={`/${org}/contratos/${id}/abastecimiento`}
       canAct={view.status === "in_progress"}
-      credit={contract?.c.kind === "credit"}
       deliveries={Number(view.deliveries)}
       money={
         contract && contract.c.kind !== "credit"

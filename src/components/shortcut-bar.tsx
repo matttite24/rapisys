@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 // Cifra: etiqueta gris y valor en peso medio, en una sola línea. "warn" pasa el valor al rojo de atención.
 function Figure({ f }: { f: PageFigure }) {
   return (
-    <div className="flex items-baseline gap-2 px-4">
+    <div className="flex shrink-0 items-baseline gap-2 whitespace-nowrap px-4">
       <dt className="text-xs text-muted-foreground">{f.label}</dt>
       <dd className={cn("num flex items-baseline gap-1.5 text-sm font-semibold", f.tone === "warn" ? "text-destructive" : "text-foreground")}>
         {f.value}
@@ -94,7 +94,7 @@ export function ShortcutBar({
     <div role="group" aria-label="Resumen y atajos" className="flex min-w-0 flex-1 items-stretch overflow-hidden bg-background/75 text-muted-foreground backdrop-blur-xs">
       {leading}
       {pageFigures.length > 0 && (
-        <dl className="flex shrink-0 items-center divide-x py-3">
+        <dl className="flex min-w-0 items-center divide-x overflow-hidden py-3">
           {pageFigures.map((f) => (
             <Figure key={f.label} f={f} />
           ))}

@@ -8,6 +8,7 @@ import { useModKey, type PageFigure, type PagePaginationState, type PageShortcut
 import { Kbd } from "@/components/ui/kbd";
 import { ShortcutBar } from "@/components/shortcut-bar";
 import { cn } from "@/lib/utils";
+import { useRightPanelOpen } from "@/components/use-side-panel";
 import { useActiveModule } from "@/components/app-shell-nav";
 
 export function SectionHeader({
@@ -60,6 +61,8 @@ export function Footer({
   pagePagination: PagePaginationState | null;
 }) {
   const mod = useModKey();
+  // La columna de asignar tapa el borde derecho de la barra: se deja ese ancho libre y se ocultan las cifras.
+  const rightOpen = useRightPanelOpen();
   return (
     <div data-layout-footer className="absolute inset-x-0 bottom-0 z-[24] hidden h-(--footer-height) border-t print:hidden md:flex">
       {/* La celda de la cuenta es la continuación de la columna de módulos: mismo fondo, mismo borde y el ícono con el
@@ -92,13 +95,13 @@ export function Footer({
           </span>
         </button>
       </div>
-      <div className="relative flex min-w-0 flex-1">
+      <div className={cn("relative flex min-w-0 flex-1 transition-[padding] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none", rightOpen && "lg:pr-[32rem]")}>
         {/* Cruz sobre el cruce de la línea del pie (y de 0 a 1) y la vertical de la columna anterior (x de -1 a 0). */}
         <span aria-hidden className="pointer-events-none absolute -top-[5px] -left-[6px] z-30 size-[11px]">
           <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-foreground" />
           <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-foreground" />
         </span>
-        <ShortcutBar pageShortcuts={pageShortcuts} pageFigures={pageFigures} pagePagination={pagePagination} setActionsSlot={setActionsSlot} setContextSlot={setContextSlot} newLabel={newLabel} leading={panelOpen ? null : (
+        <ShortcutBar pageShortcuts={pageShortcuts} pageFigures={rightOpen ? [] : pageFigures} pagePagination={pagePagination} setActionsSlot={setActionsSlot} setContextSlot={setContextSlot} newLabel={newLabel} leading={panelOpen ? null : (
           <button
             type="button"
             onClick={onTogglePanel}

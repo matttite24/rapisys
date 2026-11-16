@@ -84,11 +84,15 @@ export type SupplierOption = { id: string; name: string; ruc: string | null };
 export async function searchSuppliers(org: string, q: string): Promise<SupplierOption[]> {
   const orgId = await getOrgId(org);
   if (!orgId) return [];
-  const term = cleanSearch(q);
+  const term = cleanSearch(q).slice(0, 100);
   const supabase = await createClient();
-  let query = supabase.from("suppliers").select("id, name, ruc").eq("organization_id", orgId).order("name").limit(15);
+  let query = supabase.from("suppliers").select("id, name, ruc").eq("organization_id", orgId).order("name").order("id").limit(15);
   if (term) query = query.or(`name.ilike.%${term}%,ruc.ilike.%${term}%`);
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) {
+    logDbError("búsqueda de proveedores", error);
+    throw new Error(isSchemaError(error) ? SCHEMA_MESSAGE : "No se pudieron buscar los proveedores. Inténtalo de nuevo.");
+  }
   return (data ?? []) as SupplierOption[];
 }
 
@@ -294,7 +298,9 @@ export async function deletePurchase(org: string, contractId: string, purchaseId
   return {};
 }
 
-export type ContractInvoice = { id: string; number: string; supplier: string };
+// Además del número y el proveedor: cuántos productos tiene, cuántas unidades ya se asignaron a líneas del proceso y
+// cuántas siguen disponibles (llegadas y libres en la bodega, o por llegar sin reservar). Misma cuenta que la lista de la factura.
+export type ContractInvoice = { id: string; number: string; supplier: string; items: number; assigned: number; available: number };
 
 // Facturas completas del proceso, para filtrar la búsqueda de abastecimiento por una de ellas.
 export async function listContractInvoices(contractId: string): Promise<ContractInvoice[]> {
@@ -312,7 +318,49 @@ export async function listContractInvoices(contractId: string): Promise<Contract
   const { data: sups, error: supplierError } = await supabase.from("suppliers").select("id, name").in("id", [...new Set(ps.map((p) => p.supplier_id))]);
   if (supplierError) throw new Error(friendly(supplierError));
   const name = new Map(((sups ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]));
-  return ps.map((p) => ({ id: p.id, number: p.number, supplier: name.get(p.supplier_id) ?? "" }));
+
+  const ids = ps.map((p) => p.id);
+  const { data: lineRows, error: lineError } = await supabase
+    .from("purchase_lines")
+    .select("id, purchase_id, quantity, received_qty")
+    .in("purchase_id", ids)
+    .limit(5000);
+  if (lineError) throw new Error(friendly(lineError));
+  const lines = (lineRows ?? []) as { id: string; purchase_id: string; quantity: number; received_qty: number }[];
+  const lineIds = lines.map((l) => l.id);
+  const [sourceResult, lotResult] = lineIds.length
+    ? await Promise.all([
+        supabase.from("supply_sources").select("purchase_line_id, kind, quantity").in("purchase_line_id", lineIds),
+        supabase.from("stock_lots").select("purchase_line_id, remaining_qty").in("purchase_line_id", lineIds).gt("remaining_qty", 0),
+      ])
+    : [{ data: [], error: null }, { data: [], error: null }];
+  if (sourceResult.error) throw new Error(friendly(sourceResult.error));
+  if (lotResult.error) throw new Error(friendly(lotResult.error));
+  const assigned = new Map<string, number>();
+  const reserved = new Map<string, number>(); // reservado «por llegar»
+  for (const r of (sourceResult.data ?? []) as { purchase_line_id: string; kind: string; quantity: number }[]) {
+    assigned.set(r.purchase_line_id, (assigned.get(r.purchase_line_id) ?? 0) + Number(r.quantity));
+    if (r.kind === "compra") reserved.set(r.purchase_line_id, (reserved.get(r.purchase_line_id) ?? 0) + Number(r.quantity));
+  }
+  const inStock = new Map<string, number>();
+  for (const r of (lotResult.data ?? []) as { purchase_line_id: string; remaining_qty: number }[]) {
+    inStock.set(r.purchase_line_id, (inStock.get(r.purchase_line_id) ?? 0) + Number(r.remaining_qty));
+  }
+  const totals = new Map<string, { items: number; assigned: number; available: number }>();
+  for (const l of lines) {
+    const t = totals.get(l.purchase_id) ?? { items: 0, assigned: 0, available: 0 };
+    t.items += 1;
+    t.assigned += assigned.get(l.id) ?? 0;
+    // Igual que en la lista de la factura: por llegar sin reservar + lo que ya llegó y sigue libre en la bodega.
+    t.available += Math.max(0, Number(l.quantity) - Number(l.received_qty) - (reserved.get(l.id) ?? 0)) + (inStock.get(l.id) ?? 0);
+    totals.set(l.purchase_id, t);
+  }
+  return ps.map((p) => ({
+    id: p.id,
+    number: p.number,
+    supplier: name.get(p.supplier_id) ?? "",
+    ...(totals.get(p.id) ?? { items: 0, assigned: 0, available: 0 }),
+  }));
 }
 
 export async function assignPurchase(

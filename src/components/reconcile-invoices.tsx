@@ -77,11 +77,23 @@ export function InvoiceMode({ rc, target, partNumber }: { rc: Reconcile; target:
             <li key={i.id}>
               <button
                 type="button"
-                className="flex w-full flex-col items-start px-4 py-3 text-left hover:bg-accent"
+                className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left hover:bg-accent"
                 onClick={() => void rc.chooseInvoice(i.id)}
               >
-                <span className="font-mono text-sm">{i.number}</span>
-                <span className="text-xs text-muted-foreground">{i.supplier || "Sin proveedor"}</span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate font-mono text-sm">{i.number}</span>
+                  <span className="truncate text-xs text-muted-foreground">{i.supplier || "Sin proveedor"}</span>
+                </span>
+                {/* Cuánto queda por asignar de esta factura y cuánto ya se usó. */}
+                <span className="num flex shrink-0 flex-col items-end gap-0.5 font-mono text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5 text-sm text-foreground">
+                    <span aria-hidden className={cn("size-2 rounded-full", i.available > 0 ? STATE.in_stock.dot : STATE.pending.dot)} />
+                    {i.available} {i.available === 1 ? "disponible" : "disponibles"}
+                  </span>
+                  <span>
+                    {i.assigned} {i.assigned === 1 ? "asignado" : "asignados"} · {i.items} {i.items === 1 ? "ítem" : "ítems"}
+                  </span>
+                </span>
               </button>
             </li>
           ))

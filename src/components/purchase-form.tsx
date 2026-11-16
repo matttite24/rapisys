@@ -3,7 +3,7 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Add01Icon, File01Icon, Tick02Icon, FloppyDiskIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { DatePicker, toIsoDate } from "@/components/date-picker";
@@ -516,3 +516,17 @@ export function PurchaseForm({
 }
 
 
+
+// Factura nueva. Al guardar el primer borrador la URL pasa a «…/editar» sin cambiar de pantalla, así que el formulario sigue
+// montado; al volver a «Subir factura» la ruta es la misma y React reutilizaría el formulario con la factura anterior.
+// Cada vez que se entra a «…/nueva» desde otra ruta se monta un formulario limpio.
+export function NewPurchaseForm(props: Omit<React.ComponentProps<typeof PurchaseForm>, "draft">) {
+  const pathname = usePathname();
+  const [seen, setSeen] = useState(pathname);
+  const [epoch, setEpoch] = useState(0);
+  if (pathname !== seen) {
+    setSeen(pathname);
+    if (pathname.endsWith("/compras/nueva")) setEpoch((e) => e + 1);
+  }
+  return <PurchaseForm key={epoch} {...props} />;
+}
