@@ -37,14 +37,6 @@ export async function saveItem(
 
   if (text(formData, "tdr_name").length > 300) fields.tdr_name = "Máximo 300 caracteres.";
 
-  const retailText = text(formData, "retail_price");
-  let retailCents: number | null = null;
-  if (retailText) {
-    const retail = parseCents(retailText);
-    if (!retail.ok) fields.retail_price = retail.error;
-    else retailCents = retail.cents;
-  }
-
   const categoryChoice = text(formData, "category_id");
   const newCategory = text(formData, "new_category");
   if (categoryChoice === NEW && !newCategory) {
@@ -124,8 +116,6 @@ export async function saveItem(
       internal_code: text(formData, "internal_code"),
       barcode: text(formData, "barcode"),
       unit: text(formData, "unit"),
-      retail_price_cents: retailCents,
-      line: text(formData, "line"),
       description: text(formData, "description"),
       category_id: categoryChoice === NEW ? "" : categoryChoice,
       new_category: categoryChoice === NEW ? newCategory : "",

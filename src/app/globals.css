@@ -36,12 +36,14 @@
   --color-state-stock: var(--state-stock);
   --color-state-delivered: var(--state-delivered);
   --color-state-running: var(--state-running);
+  --color-state-quoted: var(--state-quoted);
   --color-state-pending-ink: var(--state-pending-ink);
   --color-state-partial-ink: var(--state-partial-ink);
   --color-state-arriving-ink: var(--state-arriving-ink);
   --color-state-stock-ink: var(--state-stock-ink);
   --color-state-delivered-ink: var(--state-delivered-ink);
   --color-state-running-ink: var(--state-running-ink);
+  --color-state-quoted-ink: var(--state-quoted-ink);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-mark: var(--brand-mark);
@@ -54,12 +56,14 @@
   --color-state-stock-on: var(--state-stock-on);
   --color-state-delivered-on: var(--state-delivered-on);
   --color-state-running-on: var(--state-running-on);
+  --color-state-quoted-on: var(--state-quoted-on);
   --color-state-pending-solid: var(--state-pending-solid);
   --color-state-partial-solid: var(--state-partial-solid);
   --color-state-arriving-solid: var(--state-arriving-solid);
   --color-state-stock-solid: var(--state-stock-solid);
   --color-state-delivered-solid: var(--state-delivered-solid);
   --color-state-running-solid: var(--state-running-solid);
+  --color-state-quoted-solid: var(--state-quoted-solid);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -151,6 +155,7 @@
   --meter-track: oklch(0.28 0 0);
   --nav-marker: oklch(0.28 0 0);
   --state-running: oklch(0.67 0.17 50);
+  --state-quoted: oklch(0.58 0.2 305);
   /* Texto de los chips de estado (sobre su tinte al 15 %): mismo tono que la marca pero oscuro, con 4,5:1 o más. */
   --state-pending-ink: oklch(0.42 0 0);
   --state-partial-ink: oklch(0.4 0.08 195);
@@ -158,6 +163,7 @@
   --state-stock-ink: oklch(0.4 0.1 150);
   --state-delivered-ink: oklch(0.2 0 0);
   --state-running-ink: oklch(0.45 0.12 50);
+  --state-quoted-ink: oklch(0.42 0.15 305);
   /* Texto sobre el relleno pleno del estado (badges sólidos de factura): sobre el relleno --state-*-solid: blanco en claro y tinta en oscuro (más de 4,5:1). */
   --state-pending-on: oklch(0.99 0 0);
   --state-partial-on: oklch(0.99 0 0);
@@ -165,12 +171,14 @@
   --state-stock-on: oklch(0.99 0 0);
   --state-delivered-on: oklch(0.99 0 0);
   --state-running-on: oklch(0.99 0 0);
+  --state-quoted-on: oklch(0.99 0 0);
   --state-pending-solid: oklch(0.45 0 0);
   --state-partial-solid: oklch(0.5 0.09 195);
   --state-arriving-solid: oklch(0.5 0.17 255);
   --state-stock-solid: oklch(0.48 0.12 150);
   --state-delivered-solid: oklch(0.205 0 0);
   --state-running-solid: oklch(0.56 0.16 50);
+  --state-quoted-solid: oklch(0.5 0.19 305);
   /* Esquinas, una escala corta: botones, tablas, barras y celdas del marco, cuadrados; etiquetas, contadores y teclas
      rounded-sm; miniaturas rounded-md; campos y tarjetas rounded-lg; lo que flota (diálogos, menús) rounded-xl.
      No se redondea lo que toca una línea recta del marco (la pestaña activa solo arriba). */
@@ -236,24 +244,28 @@
   --meter-track: oklch(0.5 0 0);
   --nav-marker: oklch(0.72 0 0);
   --state-running: oklch(0.75 0.16 55);
+  --state-quoted: oklch(0.72 0.16 305);
   --state-pending-ink: oklch(0.82 0 0);
   --state-partial-ink: oklch(0.86 0.07 195);
   --state-arriving-ink: oklch(0.86 0.08 250);
   --state-stock-ink: oklch(0.86 0.1 150);
   --state-delivered-ink: oklch(0.95 0 0);
   --state-running-ink: oklch(0.87 0.1 55);
+  --state-quoted-ink: oklch(0.86 0.09 305);
   --state-pending-on: oklch(0.16 0 0);
   --state-partial-on: oklch(0.16 0 0);
   --state-arriving-on: oklch(0.16 0 0);
   --state-stock-on: oklch(0.16 0 0);
   --state-delivered-on: oklch(0.16 0 0);
   --state-running-on: oklch(0.16 0 0);
+  --state-quoted-on: oklch(0.16 0 0);
   --state-pending-solid: oklch(0.78 0 0);
   --state-partial-solid: oklch(0.8 0.09 195);
   --state-arriving-solid: oklch(0.78 0.11 250);
   --state-stock-solid: oklch(0.8 0.13 150);
   --state-delivered-solid: oklch(0.922 0 0);
   --state-running-solid: oklch(0.8 0.13 55);
+  --state-quoted-solid: oklch(0.8 0.12 305);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

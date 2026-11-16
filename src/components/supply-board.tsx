@@ -425,7 +425,8 @@ export function SupplyBoard({
                           open &&
                           l.assigned.map((a, i) => (
                             <tr key={i} className="text-[0.8125rem]">
-                              <td className={TD} />
+                              {/* El filo izquierdo toma el color del estado del producto: verde en bodega, el de «por llegar» si viene en una compra. */}
+                              <td className={TD} style={{ boxShadow: `inset 4px 0 0 var(--state-${a.kind === "compra" ? "arriving" : "stock"})` }} />
                               <td className={cn(TD, "max-w-0 py-1.5 pl-12")}>
                                 <span className="flex items-baseline gap-2">
                                   <span aria-hidden className="shrink-0 text-muted-foreground/70">↳</span>

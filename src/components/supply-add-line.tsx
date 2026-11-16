@@ -14,7 +14,7 @@ export function SupplyAddLine({ org, contractId, listId, listName }: { org: stri
     <div className="border-b px-4 py-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">Proceso a crédito: los items se agregan a «{listName}» sin cargarlos antes en Listas.</span>
-        <Button type="button" variant={open ? "ghost" : "outline"} size="sm" className="gap-1.5" onClick={() => setOpen((v) => !v)}>
+        <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => setOpen((v) => !v)}>
           <HugeiconsIcon icon={open ? Cancel01Icon : Add01Icon} className="size-4" />
           {open ? "Cerrar" : "Añadir línea"}
         </Button>

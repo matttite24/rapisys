@@ -25,6 +25,7 @@ const badgeVariants = cva(
         stock: `${CHIP} ${TONE_CLASS.stock}`,
         delivered: `${CHIP} ${TONE_CLASS.delivered}`,
         running: `${CHIP} ${TONE_CLASS.running}`,
+        quoted: `${CHIP} ${TONE_CLASS.quoted}`,
         // Relleno pleno (estado de las facturas).
         "solid-pending": `${CHIP} ${TONE_SOLID.pending}`,
         "solid-partial": `${CHIP} ${TONE_SOLID.partial}`,
@@ -32,6 +33,7 @@ const badgeVariants = cva(
         "solid-stock": `${CHIP} ${TONE_SOLID.stock}`,
         "solid-delivered": `${CHIP} ${TONE_SOLID.delivered}`,
         "solid-running": `${CHIP} ${TONE_SOLID.running}`,
+        "solid-quoted": `${CHIP} ${TONE_SOLID.quoted}`,
       },
     },
     defaultVariants: {

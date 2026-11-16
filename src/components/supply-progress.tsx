@@ -6,8 +6,8 @@ export type SupplyState = "pending" | "quoted" | "partial" | "purchased" | "in_s
 // Etiqueta y punto de color de cada estado. El color nunca va solo: siempre lo acompaña el texto.
 export const STATE: Record<SupplyState, { label: string; dot: string; tone: Tone }> = {
   pending: { label: "Pendiente", dot: "bg-state-pending", tone: "pending" },
-  quoted: { label: "Cotizando", dot: "bg-state-running", tone: "running" },
-  partial: { label: "Parcial", dot: "bg-state-partial", tone: "partial" },
+  quoted: { label: "Cotizando", dot: "bg-state-quoted", tone: "quoted" },
+  partial: { label: "Parcial", dot: "bg-state-running", tone: "running" },
   purchased: { label: "Por llegar", dot: "bg-state-arriving", tone: "arriving" },
   in_stock: { label: "En bodega", dot: "bg-state-stock", tone: "stock" },
   delivered: { label: "Entregado", dot: "bg-state-delivered", tone: "delivered" },

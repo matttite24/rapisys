@@ -199,24 +199,6 @@ export async function updateLine(
   refresh(org, contractId);
 }
 
-// Cambia solo el nombre (descripción) de una línea, sin tocar cantidad ni precios.
-export async function renameLine(org: string, contractId: string, lineId: string, description: string): Promise<LineState> {
-  await requireUser();
-  const name = description.trim();
-  if (!name) return { error: "Escribe el nombre de la línea." };
-  if (name.length > 500) return { error: "El nombre es demasiado largo." };
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("contract_items")
-    .update({ description: name })
-    .eq("id", lineId)
-    .eq("contract_id", contractId)
-    .select("id");
-  if (error) return { error: friendly(error) };
-  if (!data?.length) return { error: "No tienes permiso para editar esta línea." };
-  refresh(org, contractId);
-}
-
 export async function removeLine(org: string, contractId: string, lineId: string): Promise<LineState> {
   await requireUser();
   const supabase = await createClient();

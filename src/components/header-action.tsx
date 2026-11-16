@@ -61,7 +61,8 @@ export function HeaderAction({ icon, label, href, onClick, disabled, title, seco
   const className = cn(
     buttonVariants({ variant: secondary ? "ghost" : "brand" }),
     "h-full! rounded-none! border-0! bg-clip-border! px-5 max-sm:w-14 max-sm:px-0 sm:gap-2",
-    !secondary && "-mr-4",
+    // Las secundarias van a la izquierda y la principal al borde derecho, sin importar en qué orden se monten.
+    secondary ? "order-first" : "order-last -mr-4",
   );
   const content = (
     <>

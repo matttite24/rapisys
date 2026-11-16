@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Add01Icon, Delete02Icon, FloppyDiskIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ConfirmDelete } from "@/components/confirm-delete";
@@ -15,7 +16,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { centsToInput, formatCents, parseCents, parseDecimal, salePriceCents, withVatCents } from "@/lib/money";
+import { formatCents, parseCents, parseDecimal, salePriceCents, withVatCents } from "@/lib/money";
 import { deleteItem, saveItem } from "@/lib/item-actions";
 import {
   ASSET_KIND_LABEL,
@@ -82,6 +83,7 @@ export function ItemForm({
   const errors = state?.fields ?? {};
 
   const [category, setCategory] = useState(item?.category_id ?? "");
+  const [active, setActive] = useState(item?.is_active !== false);
   const [specs, setSpecs] = useState<SpecRow[]>(() =>
     Object.entries(item?.specs ?? {}).map(([key, value]) => ({ key, value })),
   );
@@ -150,31 +152,34 @@ export function ItemForm({
 
       <PageSection index="01" label="Identificación" className="p-0">
         <CellGrid className="border-0 sm:grid-cols-2 xl:grid-cols-4">
+          <FormField name="is_active" label="Estado" className="sm:col-span-2 xl:col-span-4">
+            {() => (
+              <div className="flex items-center gap-3">
+                <input type="hidden" name="is_active" value={active ? "active" : "inactive"} />
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={active}
+                  aria-label="Estado del item"
+                  onClick={() => setActive((v) => !v)}
+                  className={cn("relative block h-6 w-11! shrink-0 cursor-pointer rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none", active ? "bg-state-stock" : "bg-foreground/25")}
+                >
+                  <span aria-hidden className={cn("absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform", active && "translate-x-5")} />
+                </button>
+                <span className="text-sm font-medium">{active ? "Activo" : "Inactivo"}</span>
+              </div>
+            )}
+          </FormField>
           <FormField name="name" label="Nombre" error={errors.name} className="sm:col-span-2">
             {(a11y) => <Input {...a11y} required autoFocus defaultValue={item?.name ?? defaults?.name} />}
           </FormField>
           <FormField name="tdr_name" label="Nombre TDR (opcional)" error={errors.tdr_name} className="sm:col-span-2">
             {(a11y) => <Input {...a11y} maxLength={300} defaultValue={item?.tdr_name ?? ""} />}
           </FormField>
-          <FormField name="sku" label="SKU (opcional)" error={errors.sku}>
-            {(a11y) => <Input {...a11y} className="font-mono" defaultValue={item?.sku ?? ""} />}
+          <FormField name="description" label="Descripción (opcional)" className="sm:col-span-2">
+            {(a11y) => <Input {...a11y} defaultValue={item?.description ?? ""} />}
           </FormField>
-          <FormField name="internal_code" label="Código interno (opcional)">
-            {(a11y) => <Input {...a11y} maxLength={60} className="font-mono" defaultValue={item?.internal_code ?? ""} />}
-          </FormField>
-          <FormField name="barcode" label="Código de barras (opcional)">
-            {(a11y) => <Input {...a11y} maxLength={60} className="font-mono" defaultValue={item?.barcode ?? ""} />}
-          </FormField>
-          <FormField name="unit" label="Unidad de medida (opcional)">
-            {(a11y) => <Input {...a11y} maxLength={30} defaultValue={item?.unit ?? ""} />}
-          </FormField>
-          <FormField name="retail_price" label="Precio al por menor (opcional)" error={errors.retail_price}>
-            {(a11y) => <Input {...a11y} inputMode="decimal" maxLength={16} className="text-right font-mono" placeholder="0,00" defaultValue={item?.retail_price_cents != null ? centsToInput(item.retail_price_cents) : ""} />}
-          </FormField>
-          <FormField name="line" label="Línea de producto (opcional)">
-            {(a11y) => <Input {...a11y} defaultValue={item?.line ?? ""} />}
-          </FormField>
-          <div className="flex min-w-0 flex-col gap-4 xl:col-span-2">
+          <div className="flex min-w-0 flex-col gap-4 sm:col-span-2">
             <FormField name="category_id" label="Categoría">
               {(a11y) => (
                 <NativeSelect
@@ -199,31 +204,30 @@ export function ItemForm({
               </FormField>
             )}
           </div>
-          <FormField name="is_active" label="Estado" className="xl:col-span-2">
-            {(a11y) => (
-              <NativeSelect {...a11y} className="w-full" defaultValue={item?.is_active === false ? "inactive" : "active"}>
-                <option value="active">Activo</option>
-                <option value="inactive">Inactivo</option>
-              </NativeSelect>
-            )}
-          </FormField>
         </CellGrid>
       </PageSection>
 
       <PageSection index="02" label="Referencias" className="p-0">
-        <CellGrid className="border-0 md:grid-cols-3">
+        <CellGrid className="border-0 md:grid-cols-12">
+          <FormField name="sku" label="SKU (opcional)" error={errors.sku} className="md:col-span-3">
+            {(a11y) => <Input {...a11y} className="font-mono" defaultValue={item?.sku ?? ""} />}
+          </FormField>
+          <FormField name="internal_code" label="Código interno (opcional)" className="md:col-span-3">
+            {(a11y) => <Input {...a11y} maxLength={60} className="font-mono" defaultValue={item?.internal_code ?? ""} />}
+          </FormField>
+          <FormField name="barcode" label="Código de barras (opcional)" className="md:col-span-3">
+            {(a11y) => <Input {...a11y} maxLength={60} className="font-mono" defaultValue={item?.barcode ?? ""} />}
+          </FormField>
+          <FormField name="unit" label="Unidad de medida (opcional)" className="md:col-span-3">
+            {(a11y) => <Input {...a11y} maxLength={30} defaultValue={item?.unit ?? ""} />}
+          </FormField>
           {[1, 2, 3].map((n) => (
-            <FormField key={n} name={`part_${n}`} label={`Número de parte ${n}`}>
+            <FormField key={n} name={`part_${n}`} label={`Número de parte ${n}`} className="md:col-span-4">
               {(a11y) => (
                 <Input {...a11y} className="font-mono" defaultValue={item?.part_numbers[n - 1] ?? (n === 1 ? (defaults?.part ?? "") : "")} />
               )}
             </FormField>
           ))}
-          <div className="md:col-span-3">
-            <FormField name="description" label="Descripción (opcional)">
-              {(a11y) => <Input {...a11y} defaultValue={item?.description ?? ""} />}
-            </FormField>
-          </div>
         </CellGrid>
       </PageSection>
 

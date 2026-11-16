@@ -2,6 +2,7 @@
 // las líneas de la tabla y recupera las cantidades. No sabe nada de pantallas ni de React;
 // la interfaz de la carga masiva (components/bulk-import) solo la usa.
 import { groupWords, parseTable, type OcrLine, type OcrWord, type ParsedRow } from "@/lib/ocr-table";
+import { gridFromWords, type Grid } from "@/lib/table-map";
 
 // Agranda la captura si es chica y la apoya sobre fondo blanco (una imagen con transparencia se
 // lee como negro). No se le aplican filtros de contraste: en pruebas hacían que el OCR perdiera
@@ -166,4 +167,16 @@ export async function fillQuantities(rows: ParsedRow[], words: OcrWord[], ocr: O
     const text = await ocr.digitsAt({ left, top, width, height });
     if (/^\d{1,4}$/.test(text)) r.quantity = text;
   }
+}
+
+// La captura como tabla de celdas (filas × columnas), sin interpretar qué es cada columna: eso lo elige la persona.
+// Las columnas salen de las líneas verticales de la tabla (o, sin ellas, de los huecos en blanco).
+export async function gridFromImage(file: Blob, onProgress: (p: number) => void): Promise<{ grid: Grid; raw: string }> {
+  return withOcr(file, onProgress, async (ocr) => {
+    const reading = await ocr.read((r) => r.words.length > 0);
+    const lines = groupWords(reading.words);
+    const mid = lines[Math.floor(lines.length / 2)];
+    const borders = mid && mid.y0 !== undefined && mid.y1 !== undefined ? ocr.bordersAt(mid.y0 - 4, mid.y1 + 4) : [];
+    return { grid: gridFromWords(reading.words, borders), raw: reading.lines.map((l) => l.text.trim()).filter(Boolean).join("\n") };
+  });
 }

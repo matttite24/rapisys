@@ -2,7 +2,7 @@
 //   · tinte:  fondo = marca al 15 % sobre el fondo de la página, texto = variante oscura/clara (--state-*-ink).
 //   · sólido: fondo = --state-*-solid (más profundo en claro, más claro en oscuro), texto = --state-*-on: contraste alto.
 //   · punto:  solo la marca, para los círculos de color.
-export type Tone = "pending" | "partial" | "arriving" | "stock" | "delivered" | "running";
+export type Tone = "pending" | "partial" | "arriving" | "stock" | "delivered" | "running" | "quoted";
 
 export const TONE_CLASS: Record<Tone, string> = {
   pending: "bg-state-pending/15 text-state-pending-ink",
@@ -11,6 +11,7 @@ export const TONE_CLASS: Record<Tone, string> = {
   stock: "bg-state-stock/15 text-state-stock-ink",
   delivered: "bg-state-delivered/15 text-state-delivered-ink",
   running: "bg-state-running/15 text-state-running-ink",
+  quoted: "bg-state-quoted/15 text-state-quoted-ink",
 };
 
 export const TONE_SOLID: Record<Tone, string> = {
@@ -20,6 +21,7 @@ export const TONE_SOLID: Record<Tone, string> = {
   stock: "bg-state-stock-solid text-state-stock-on",
   delivered: "bg-state-delivered-solid text-state-delivered-on",
   running: "bg-state-running-solid text-state-running-on",
+  quoted: "bg-state-quoted-solid text-state-quoted-on",
 };
 
 export const TONE_DOT: Record<Tone, string> = {
@@ -29,4 +31,5 @@ export const TONE_DOT: Record<Tone, string> = {
   stock: "bg-state-stock",
   delivered: "bg-state-delivered",
   running: "bg-state-running",
+  quoted: "bg-state-quoted",
 };

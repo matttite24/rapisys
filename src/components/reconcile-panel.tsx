@@ -16,7 +16,7 @@ import { Target } from "@/components/reconcile-shared";
 import { PanelError } from "@/components/reconcile-parts";
 import { InvoiceMode } from "@/components/reconcile-invoices";
 import { StockMode } from "@/components/reconcile-stock";
-import { LineNameEditor } from "@/components/line-name-editor";
+import { LineEditor } from "@/components/line-editor";
 import { AssignedView } from "@/components/reconcile-assigned";
 
 // Panel «Abastecimiento»: se abre a la derecha de la tabla al tocar una línea del proceso (esa línea es el destino).
@@ -210,7 +210,7 @@ export function ReconcilePanel({
           <PanelError message={activeSupply.error} onRetry={() => { setSupply(null); setSupplyRetry((n) => n + 1); }} />
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">
-            {canAct && <LineNameEditor key={`${focus.id}:${focus.description}`} org={org} contractId={contractId} lineId={focus.id} name={focus.description} />}
+            {canAct && <LineEditor key={focus.id} org={org} contractId={contractId} line={focus} />}
             <AssignedView rc={rc} org={org} contractId={contractId} sources={sources} canAct={canAct} />
           </div>
         )

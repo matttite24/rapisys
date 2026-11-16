@@ -26,10 +26,14 @@ import { Input } from "@/components/ui/input";
 import { addLines, getListKeys } from "@/lib/contract-actions";
 import { MAX_LINES_PER_LIST } from "@/lib/contracts";
 import { findDuplicates } from "@/lib/duplicates";
-import { fillQuantities, tableFrom, withOcr } from "@/lib/ocr-engine";
+import { gridFromImage } from "@/lib/ocr-engine";
+import { readSheet } from "@/lib/sheet-actions";
+import { splitCsv } from "@/lib/item-csv";
+import { FIELDS, applyMapping, guessMapping, looksLikeHeader, normalizeGrid, type Field, type Grid, type Mapping } from "@/lib/table-map";
+import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 
-type Step = "start" | "reading" | "review";
+type Step = "start" | "reading" | "map" | "review";
 
 type Row = {
   id: number;
@@ -46,6 +50,7 @@ type Row = {
 };
 
 const REVIEW_PAGE = 100;
+const MAP_PREVIEW = 300;
 
 // Una fila de la revisión. Está memorizada: al escribir en una fila no se redibujan las demás.
 const ReviewRow = memo(function ReviewRow({
@@ -122,6 +127,12 @@ export function BulkImport({
   const [progress, setProgress] = useState(0);
   const [rows, setRows] = useState<Row[]>([]);
   const [skipped, setSkipped] = useState(0);
+  // Tabla leída tal cual (antes de decidir qué es cada columna), el mapeo elegido y las filas que se dejan fuera.
+  const [grid, setGrid] = useState<Grid>([]);
+  const [mapping, setMapping] = useState<Mapping>([]);
+  const [hasHeader, setHasHeader] = useState(true);
+  const [skipRows, setSkipRows] = useState<Set<number>>(new Set());
+  const [fileName, setFileName] = useState("");
   const [rawText, setRawText] = useState("");
   const [error, setError] = useState<string>();
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
@@ -147,6 +158,11 @@ export function BulkImport({
     setProgress(0);
     setRows([]);
     setSkipped(0);
+    setGrid([]);
+    setMapping([]);
+    setHasHeader(true);
+    setSkipRows(new Set());
+    setFileName("");
     setRawText("");
     setError(undefined);
     setRowErrors({});
@@ -155,39 +171,72 @@ export function BulkImport({
     setReviewPage(0);
   }
 
-  async function start(file: Blob) {
+  // Archivo → tabla de celdas. Imagen: OCR; .csv: se lee aquí; .xlsx: lo lee el servidor. Después, el mapeo de columnas.
+  async function start(file: File) {
     setError(undefined);
-    setImageUrl(URL.createObjectURL(file));
+    setFileName(file.name || "captura");
+    const isImage = file.type.startsWith("image/");
+    const isCsv = /\.csv$/i.test(file.name) || file.type === "text/csv";
+    const isXlsx = /\.xlsx$/i.test(file.name);
+    if (!isImage && !isCsv && !isXlsx) return setError("Usa una imagen, un CSV o un Excel (.xlsx).");
+    if (isImage) setImageUrl(URL.createObjectURL(file));
     setProgress(0);
     setStep("reading");
     try {
-      const { parsed, raw } = await withOcr(file, setProgress, async (ocr) => {
-        const reading = await ocr.read((r) => tableFrom(r).rows.length > 0);
-        const parsed = tableFrom(reading);
-        await fillQuantities(parsed.rows, reading.words, ocr);
-        return { parsed, raw: reading.lines.map((l) => l.text.trim()).filter(Boolean).join("\n") };
-      });
-      setRawText(raw);
-      setSkipped(parsed.skipped);
-      setRows(
-        parsed.rows.map((r) => ({
-          id: nextId.current++,
-          part: r.part,
-          description: r.description,
-          quantity: r.quantity,
-          unit: "unit",
-          price: r.price,
-          raw: r.raw,
-          review: r.review,
-          group: r.group,
-        })),
-      );
-      setStep("review");
+      let table: Grid;
+      if (isImage) {
+        const { grid: g, raw } = await gridFromImage(file, setProgress);
+        setRawText(raw);
+        table = g;
+      } else if (isCsv) {
+        table = normalizeGrid(splitCsv(await file.text()));
+      } else {
+        const fd = new FormData();
+        fd.set("file", file);
+        const res = await readSheet(fd);
+        if (!res.rows) throw new Error(res.error ?? "No se pudo leer el archivo.");
+        table = normalizeGrid(res.rows);
+      }
+      if (table.length === 0) throw new Error(isImage ? "No se reconoció ninguna tabla. Prueba con una captura más grande o más nítida." : "El archivo no tiene filas.");
+      const header = looksLikeHeader(table[0]);
+      setGrid(table);
+      setHasHeader(header);
+      setMapping(header ? guessMapping(table[0]) : table[0].map(() => null));
+      setSkipRows(new Set());
+      setStep("map");
     } catch (e) {
-      console.error("OCR", e);
-      setError("No se pudo leer la imagen. Revisa tu conexión (la primera vez descarga el idioma) e inténtalo de nuevo.");
+      console.error("Carga masiva", e);
+      setError(e instanceof Error && e.message ? e.message : "No se pudo leer el archivo. Inténtalo de nuevo.");
       setStep("start");
     }
+  }
+
+  // Del mapeo a las filas editables de la revisión.
+  function applyColumns() {
+    const mapped = applyMapping(grid, mapping, (i) => !(hasHeader && i === 0) && !skipRows.has(i));
+    setSkipped(grid.length - mapped.length);
+    setRows(mapped.map((r) => ({ id: nextId.current++, part: r.part, description: r.description, quantity: r.quantity, unit: r.unit, price: r.price, raw: r.raw, review: r.review })));
+    setRowErrors({});
+    setError(undefined);
+    setReviewPage(0);
+    setStep("review");
+  }
+
+  function pickColumn(col: number, field: Field | null) {
+    setMapping((m) => m.map((f, i) => (i === col ? field : field && f === field ? null : f)));
+  }
+
+  function toggleHeader(on: boolean) {
+    setHasHeader(on);
+    if (on && grid[0]) setMapping(guessMapping(grid[0]));
+  }
+
+  function toggleRow(i: number) {
+    setSkipRows((cur) => {
+      const next = new Set(cur);
+      if (!next.delete(i)) next.add(i);
+      return next;
+    });
   }
 
   // Ctrl+V con una captura en el portapapeles, mientras el modal espera una imagen.
@@ -292,7 +341,7 @@ export function BulkImport({
           <SheetHeader>
             <SheetTitle>Carga masiva en «{listName}»</SheetTitle>
             <SheetDescription className="sr-only">
-              Pega una captura de la tabla del proceso, revisa lo que se leyó y cárgalo a la lista.
+              Sube un Excel, un CSV o una captura, elige qué columna es cada dato, revisa y cárgalo a la lista.
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -300,7 +349,7 @@ export function BulkImport({
           {step === "start" && (
             <div className="p-6">
               <p className="pb-4 text-sm text-muted-foreground">
-                Pega una captura de la tabla del proceso. Se lee en tu navegador: la imagen no sale de tu equipo.
+                Sube un Excel (.xlsx), un CSV o una captura de la tabla. Después eliges qué columna es cada dato. Las capturas se leen en tu navegador: la imagen no sale de tu equipo.
               </p>
               <div
                 onDragOver={(e) => {
@@ -311,7 +360,7 @@ export function BulkImport({
                 onDrop={(e) => {
                   e.preventDefault();
                   setDragging(false);
-                  const file = Array.from(e.dataTransfer.files).find((f) => f.type.startsWith("image/"));
+                  const file = e.dataTransfer.files[0];
                   if (file) void start(file);
                 }}
                 className={cn(
@@ -321,17 +370,17 @@ export function BulkImport({
               >
                 <HugeiconsIcon icon={ImageUploadIcon} className="size-10 text-muted-foreground" />
                 <div className="flex flex-col gap-1">
-                  <p className="font-medium">Pega la captura con Ctrl + V</p>
-                  <p className="text-sm text-muted-foreground">o arrástrala aquí, o elige un archivo de imagen</p>
+                  <p className="font-medium">Pega una captura con Ctrl + V</p>
+                  <p className="text-sm text-muted-foreground">o arrastra aquí un Excel, un CSV o una imagen</p>
                 </div>
                 <Button type="button" variant="outline" className="h-10" onClick={() => fileInput.current?.click()}>
-                  Elegir imagen
+                  Elegir archivo
                 </Button>
                 <input
                   ref={fileInput}
                   type="file"
-                  accept="image/*"
-                  aria-label="Elegir la imagen de la captura"
+                  accept="image/*,.csv,.xlsx,text/csv"
+                  aria-label="Elegir el archivo o la captura"
                   className="sr-only"
                   tabIndex={-1}
                   onChange={(e) => {
@@ -347,12 +396,80 @@ export function BulkImport({
 
           {step === "reading" && (
             <div className="flex flex-col items-center gap-4 p-16 text-center">
-              <p className="font-medium">Leyendo la imagen…</p>
+              <p className="font-medium">Leyendo {fileName || "el archivo"}…</p>
               <div className="h-1.5 w-full max-w-sm bg-muted" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
                 <div className="h-full bg-primary transition-[width]" style={{ width: `${Math.max(4, progress * 100)}%` }} />
               </div>
               <p className="text-sm text-muted-foreground">La primera vez tarda más: descarga el idioma de lectura.</p>
             </div>
+          )}
+
+          {step === "map" && (
+            <>
+              <div className="flex flex-col gap-3 border-b p-4">
+                <p className="text-sm text-muted-foreground">
+                  Esto es lo que se leyó de <span className="font-mono">{fileName}</span>: {grid.length} {grid.length === 1 ? "fila" : "filas"} y {grid[0]?.length ?? 0} columnas.
+                  Elige arriba de cada columna qué dato es. Quita la marca de una fila para dejarla fuera.
+                </p>
+                <label className="flex w-fit items-center gap-2 text-sm">
+                  <input type="checkbox" className="size-4" checked={hasHeader} onChange={(e) => toggleHeader(e.target.checked)} />
+                  La primera fila es el encabezado
+                </label>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[40rem] text-sm">
+                  <thead className="sticky top-0 z-10 bg-muted">
+                    <tr className="border-b text-left">
+                      <th className="w-px px-3 py-2 caps font-bold">Usar</th>
+                      <th className="w-px px-2 py-2 text-right caps font-bold">Fila</th>
+                      {(grid[0] ?? []).map((_, c) => (
+                        <th key={c} className="min-w-40 px-2 py-2 font-normal">
+                          <NativeSelect
+                            aria-label={`Qué es la columna ${c + 1}`}
+                            className={cn("w-full", mapping[c] ? "font-semibold" : "text-muted-foreground")}
+                            value={mapping[c] ?? ""}
+                            onChange={(e) => pickColumn(c, (e.target.value || null) as Field | null)}
+                          >
+                            <option value="">No usar</option>
+                            {FIELDS.map((f) => (
+                              <option key={f.key} value={f.key}>{f.label}</option>
+                            ))}
+                          </NativeSelect>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grid.slice(0, MAP_PREVIEW).map((cells, i) => {
+                      const off = (hasHeader && i === 0) || skipRows.has(i);
+                      return (
+                        <tr key={i} className={cn("border-b align-top", off && "bg-muted/50 text-muted-foreground line-through")}>
+                          <td className="px-3 py-2">
+                            <input
+                              type="checkbox"
+                              className="size-4"
+                              aria-label={`Usar la fila ${i + 1}`}
+                              checked={!(hasHeader && i === 0) && !skipRows.has(i)}
+                              disabled={hasHeader && i === 0}
+                              onChange={() => toggleRow(i)}
+                            />
+                          </td>
+                          <td className="num px-2 py-2 text-right text-muted-foreground">{i + 1}</td>
+                          {cells.map((cell, c) => (
+                            <td key={c} className={cn("px-2 py-2", mapping[c] ? "" : "opacity-50", mapping[c] === "part" && "font-mono")}>{cell}</td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {grid.length > MAP_PREVIEW && (
+                  <p className="border-t px-4 py-2 text-xs text-muted-foreground">
+                    Se muestran las primeras {MAP_PREVIEW} filas; las demás se cargan con el mismo mapeo.
+                  </p>
+                )}
+              </div>
+            </>
           )}
 
           {step === "review" && (
@@ -468,6 +585,21 @@ export function BulkImport({
           )}
           </div>
 
+          {step === "map" && (
+            <div className="relative z-10 shrink-0 border-t bg-popover [box-shadow:0_-8px_16px_-10px_color-mix(in_oklch,var(--foreground)_30%,transparent)]">
+              {error && <div className="border-b p-4"><FieldError>{error}</FieldError></div>}
+              <div className="flex flex-wrap items-center gap-2 p-4">
+                <Button type="button" className="h-10" disabled={!mapping.includes("description") || !mapping.includes("quantity") || grid.length - skipRows.size - (hasHeader ? 1 : 0) <= 0} onClick={applyColumns}>
+                  Continuar
+                </Button>
+                <Button type="button" variant="outline" className="h-10" onClick={reset}>Otro archivo</Button>
+                {(!mapping.includes("description") || !mapping.includes("quantity")) && (
+                  <span className="text-sm text-muted-foreground">Elige al menos la columna de Descripción y la de Cantidad.</span>
+                )}
+              </div>
+            </div>
+          )}
+
           {step === "review" && (
             <div className="relative z-10 shrink-0 border-t bg-popover [box-shadow:0_-8px_16px_-10px_color-mix(in_oklch,var(--foreground)_30%,transparent)]">
               {overBy > 0 && (
@@ -483,8 +615,11 @@ export function BulkImport({
                 <Button type="button" className="h-10" disabled={saving || rows.length === 0 || overBy > 0} onClick={load}>
                   {saving ? "Cargando…" : `Cargar ${rows.length} ${rows.length === 1 ? "línea" : "líneas"}`}
                 </Button>
+                <Button type="button" variant="outline" className="h-10" disabled={saving || grid.length === 0} onClick={() => setStep("map")}>
+                  Cambiar columnas
+                </Button>
                 <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={reset}>
-                  Otra captura
+                  Otro archivo
                 </Button>
               </div>
             </div>
