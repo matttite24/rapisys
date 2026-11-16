@@ -2,7 +2,7 @@
 // las líneas de la tabla y recupera las cantidades. No sabe nada de pantallas ni de React;
 // la interfaz de la carga masiva (components/bulk-import) solo la usa.
 import { groupWords, parseTable, type OcrLine, type OcrWord, type ParsedRow } from "@/lib/ocr-table";
-import { gridFromWords, type Grid } from "@/lib/table-map";
+import { gridFromWords, normalizeGrid, type Grid } from "@/lib/table-map";
 
 // Agranda la captura si es chica y la apoya sobre fondo blanco (una imagen con transparencia se
 // lee como negro). No se le aplican filtros de contraste: en pruebas hacían que el OCR perdiera
@@ -53,6 +53,41 @@ function verticalBorders(img: ImageData, y0: number, y1: number): number[] {
   return centers;
 }
 
+// Líneas horizontales de la tabla: renglones de píxeles donde un trazo oscuro cubre buena parte del ancho. Devuelve sus
+// posiciones (y) y de dónde a dónde llega la tabla (x). Si no hay al menos dos, la imagen no tiene una tabla con bordes.
+function horizontalBorders(img: ImageData): { ys: number[]; x0: number; x1: number } | null {
+  const minRun = img.width * 0.4;
+  const hits: { y: number; start: number; end: number }[] = [];
+  for (let y = 0; y < img.height; y++) {
+    let best = 0, bestStart = 0, run = 0, start = 0;
+    for (let x = 0; x < img.width; x++) {
+      const i = (y * img.width + x) * 4;
+      const dark = img.data[i] * 0.299 + img.data[i + 1] * 0.587 + img.data[i + 2] * 0.114 < 140;
+      if (dark) {
+        if (run === 0) start = x;
+        run++;
+        if (run > best) { best = run; bestStart = start; }
+      } else run = 0;
+    }
+    if (best >= minRun) hits.push({ y, start: bestStart, end: bestStart + best });
+  }
+  // Un trazo grueso ocupa varios renglones seguidos: se queda con su centro.
+  const ys: number[] = [];
+  let group: number[] = [];
+  for (const h of hits) {
+    if (group.length && h.y - group[group.length - 1] > 3) {
+      ys.push(Math.round(group.reduce((a, v) => a + v, 0) / group.length));
+      group = [];
+    }
+    group.push(h.y);
+  }
+  if (group.length) ys.push(Math.round(group.reduce((a, v) => a + v, 0) / group.length));
+  if (ys.length < 2) return null;
+  const starts = hits.map((h) => h.start).sort((a, b) => a - b);
+  const ends = hits.map((h) => h.end).sort((a, b) => a - b);
+  return { ys, x0: starts[Math.floor(starts.length / 2)], x1: ends[Math.floor(ends.length / 2)] };
+}
+
 export type Reading = { lines: OcrLine[]; words: OcrWord[] };
 type Rect = { left: number; top: number; width: number; height: number };
 
@@ -67,6 +102,8 @@ export type Ocr = {
   digitsAt: (rect: Rect) => Promise<string>;
   // Líneas verticales de la tabla en una franja de la imagen.
   bordersAt: (y0: number, y1: number) => number[];
+  // Tabla con bordes: cada celda se lee por separado (null si la imagen no tiene una tabla con bordes).
+  cells: (onProgress: (p: number) => void) => Promise<string[][] | null>;
 };
 
 // Abre Tesseract en el navegador (la captura no sale de tu equipo; los datos de idioma se
@@ -122,6 +159,44 @@ export async function withOcr<T>(file: Blob, onProgress: (p: number) => void, ru
       return data.text.trim();
     },
     bordersAt: (y0, y1) => (pixels ? verticalBorders(pixels, y0, y1) : []),
+    async cells(report) {
+      if (!pixels) return null;
+      const h = horizontalBorders(pixels);
+      if (!h) return null;
+      const top = h.ys[0], bottom = h.ys[h.ys.length - 1];
+      const xs = verticalBorders(pixels, top + 4, bottom - 4).filter((x) => x >= h.x0 - 6 && x <= h.x1 + 6);
+      if (xs.length < 2) return null;
+      // Celdas entre dos líneas seguidas, sin el trazo de la línea (inset) y sin renglones demasiado finos.
+      const inset = 3;
+      const rows = h.ys.slice(1).map((y, i) => [h.ys[i], y] as const).filter(([a, b]) => b - a >= 12);
+      const cols = xs.slice(1).map((x, i) => [xs[i], x] as const).filter(([a, b]) => b - a >= 12);
+      if (rows.length < 2 || cols.length < 2) return null;
+      const grid: string[][] = rows.map(() => cols.map(() => ""));
+      const total = rows.length * cols.length;
+      let done = 0;
+      const rect = (r: number, c: number) => ({ left: cols[c][0] + inset, top: rows[r][0] + inset, width: cols[c][1] - cols[c][0] - inset * 2, height: rows[r][1] - rows[r][0] - inset * 2 });
+
+      // 1.ª pasada: cada celda como un bloque de texto (admite descripciones de dos renglones).
+      await worker.setParameters({ tessedit_pageseg_mode: "6" as never, tessedit_char_whitelist: "" });
+      for (let r = 0; r < rows.length; r++)
+        for (let c = 0; c < cols.length; c++) {
+          const { data } = await worker.recognize(image, { rectangle: rect(r, c) });
+          grid[r][c] = data.text.replace(/\s+/g, " ").trim();
+          report(++done / total);
+        }
+      // 2.ª pasada: lo que quedó vacío suele ser un número suelto (ítem, cantidad); se relee solo con dígitos.
+      for (let r = 0; r < rows.length; r++)
+        for (let c = 0; c < cols.length; c++) {
+          if (grid[r][c]) continue;
+          for (const mode of ["7", "10"]) {
+            await worker.setParameters({ tessedit_pageseg_mode: mode as never, tessedit_char_whitelist: "0123456789" });
+            const { data } = await worker.recognize(image, { rectangle: rect(r, c) });
+            const text = data.text.trim();
+            if (/^\d{1,12}$/.test(text)) { grid[r][c] = text; break; }
+          }
+        }
+      return grid;
+    },
   };
 
   try {
@@ -172,7 +247,17 @@ export async function fillQuantities(rows: ParsedRow[], words: OcrWord[], ocr: O
 // La captura como tabla de celdas (filas × columnas), sin interpretar qué es cada columna: eso lo elige la persona.
 // Las columnas salen de las líneas verticales de la tabla (o, sin ellas, de los huecos en blanco).
 export async function gridFromImage(file: Blob, onProgress: (p: number) => void): Promise<{ grid: Grid; raw: string }> {
-  return withOcr(file, onProgress, async (ocr) => {
+  // El progreso del lector se ignora: se informa por celda leída (tabla con bordes) o el del lector (sin bordes).
+  let cellMode = false;
+  return withOcr(file, (p) => { if (!cellMode) onProgress(p); }, async (ocr) => {
+    cellMode = true;
+    const cells = await ocr.cells(onProgress);
+    cellMode = false;
+    if (cells) {
+      const grid = normalizeGrid(cells);
+      return { grid, raw: grid.map((r) => r.join(" | ")).join("\n") };
+    }
+    // Sin bordes: se leen las palabras con su posición y las columnas salen de los huecos en blanco.
     const reading = await ocr.read((r) => r.words.length > 0);
     const lines = groupWords(reading.words);
     const mid = lines[Math.floor(lines.length / 2)];
