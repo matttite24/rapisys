@@ -36,6 +36,8 @@ export function AppShell({
   const [peek, setPeek] = useState<{ module: NavModule; from: string } | null>(null);
   // La vista previa vale solo hasta que cambia la ruta.
   const preview = peek && peek.from === pathname ? peek.module : null;
+  // Se descarta al cambiar de ruta; si no, volver a la ruta de origen la resucitaría y taparía el subsidebar del proceso.
+  if (peek && peek.from !== pathname) setPeek(null);
   const [panelPref, setPanelPref] = usePanelOpen();
   // Plegada sola en pantallas angostas o con la columna derecha abierta; el usuario puede abrirla mientras dure ese estado.
   const narrow = useNarrowScreen();

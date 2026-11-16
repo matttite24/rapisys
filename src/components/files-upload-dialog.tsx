@@ -15,7 +15,7 @@ import { createClient } from "@/lib/supabase/client";
 import { makeThumbnail } from "@/lib/thumbnail";
 import { cn } from "@/lib/utils";
 
-// Cargar uno o varios archivos al contrato, a la vez, indicando a qué pertenecen. La subida va directo a Storage con una URL
+// Cargar uno o varios archivos al proceso, a la vez, indicando a qué pertenecen. La subida va directo a Storage con una URL
 // firmada que prepara el servidor; después se registra cada archivo.
 export function FilesUploadDialog({
   org,
@@ -186,7 +186,7 @@ export function FilesUploadDialog({
                   setSourceId("");
                   if (e.target.value !== "contract" && !sources) void listFileSources(org, contractId).then(setSources);
                 }}>
-                  <option value="contract">El contrato</option>
+                  <option value="contract">El proceso</option>
                   <option value="purchase">Una compra</option>
                   <option value="expense">Un gasto</option>
                 </NativeSelect>
@@ -209,7 +209,7 @@ export function FilesUploadDialog({
           </div>
           )}
           {!fixed && source !== "contract" && options.length === 0 && (
-            <p className="text-xs text-muted-foreground">{source === "purchase" ? "Este contrato aún no tiene compras." : "Este contrato aún no tiene gastos."}</p>
+            <p className="text-xs text-muted-foreground">{source === "purchase" ? "Este proceso aún no tiene compras." : "Este proceso aún no tiene gastos."}</p>
           )}
           {error && <FieldError>{error}</FieldError>}
         </div>

@@ -4,7 +4,7 @@ import { PartyForm } from "@/components/party-form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PARTIES, type ClientType, type PartyKind } from "@/lib/parties";
 
-// Alta de un cliente o responsable de contrato en un modal, sobre el directorio. Al guardar, la acción navega a la lista
+// Alta de un cliente o responsable de proceso en un modal, sobre el directorio. Al guardar, la acción navega a la lista
 // (que ya muestra el registro nuevo); Cancelar o Esc cierran sin salir de la pantalla.
 export function PartyNewDialog({
   org,

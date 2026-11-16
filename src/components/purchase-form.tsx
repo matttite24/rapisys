@@ -27,8 +27,8 @@ import { XmlReviewBar } from "@/components/xml-review-bar";
 import { SupplierPicker } from "@/components/purchase-pickers";
 import { XmlLabel } from "@/components/xml-label";
 
-// Factura de compra de un contrato: proveedor, número, fecha y líneas. Primero se guarda como borrador (se puede
-// dejar incompleta y retomar); al completarla cuenta como compra. Asignarla a las líneas del contrato se hace
+// Factura de compra de un proceso: proveedor, número, fecha y líneas. Primero se guarda como borrador (se puede
+// dejar incompleta y retomar); al completarla cuenta como compra. Asignarla a las líneas del proceso se hace
 // después, desde Abastecimiento.
 export function PurchaseForm({
   org,

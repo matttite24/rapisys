@@ -4,7 +4,7 @@ export const VAT_RATE = 15;
 
 export type ContractKind = "standard" | "credit";
 
-// Ciclo del contrato a crédito: usa los mismos estados de base de datos (sin "finished" ni "pending_payment").
+// Ciclo del proceso a crédito: usa los mismos estados de base de datos (sin "finished" ni "pending_payment").
 // "in_progress" se muestra como Abierto, o Entregando cuando ya hay una entrega.
 export const CREDIT_ORDER = ["in_progress", "invoiced", "paid"] as const;
 export const CREDIT_LABEL: Record<string, string> = {
@@ -13,9 +13,9 @@ export const CREDIT_LABEL: Record<string, string> = {
   invoiced: "Facturado",
   paid: "Cobrado",
 };
-// Orden de estados según el tipo de contrato.
+// Orden de estados según el tipo de proceso.
 export const orderFor = (kind: string | undefined): readonly string[] => (kind === "credit" ? CREDIT_ORDER : STATUS_ORDER);
-// Texto del estado: en crédito, un contrato en ejecución con entregas es "Entregando".
+// Texto del estado: en crédito, un proceso en ejecución con entregas es "Entregando".
 export function statusText(status: string, kind?: string, deliveries = 0): string {
   if (kind !== "credit") return STATUS_LABEL[status] ?? status;
   return CREDIT_LABEL[status === "in_progress" && deliveries > 0 ? "delivering" : status] ?? status;
@@ -30,7 +30,7 @@ export const STATUS_LABEL: Record<string, string> = {
   paid: "Cobrado",
 };
 
-// Orden del ciclo de vida del contrato.
+// Orden del ciclo de vida del proceso.
 export const STATUS_ORDER = [
   "new",
   "in_progress",
@@ -40,7 +40,7 @@ export const STATUS_ORDER = [
   "paid",
 ] as const;
 
-// Fases de cada línea (item) dentro del contrato, en orden.
+// Fases de cada línea (item) dentro del proceso, en orden.
 export const PHASE_ORDER = [
   "pending",
   "quoted",
@@ -75,7 +75,7 @@ export const STATUS_DOT: Record<string, string> = {
   paid: "bg-state-stock",
 };
 
-// Tono de cada fase del contrato: naranja en ejecución, amarillo en espera de cobro, verde completo.
+// Tono de cada fase del proceso: naranja en ejecución, amarillo en espera de cobro, verde completo.
 export const STATUS_TONE: Record<string, Tone> = {
   new: "pending",
   in_progress: "running",
@@ -85,6 +85,6 @@ export const STATUS_TONE: Record<string, Tone> = {
   paid: "stock",
 };
 
-// Tope de líneas de una lista del contrato, y tamaño de página de la tabla.
+// Tope de líneas de una lista del proceso, y tamaño de página de la tabla.
 export const MAX_LINES_PER_LIST = 1000;
 export const LINES_PAGE_SIZE = 25;

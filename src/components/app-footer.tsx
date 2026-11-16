@@ -20,7 +20,7 @@ export function SectionHeader({
   title: React.ReactNode;
 }) {
   const { active, path } = useActiveModule();
-  // Dentro de un contrato: arriba la sección y debajo "cliente / contrato" (lo que pone el layout).
+  // Dentro de un proceso: arriba la sección y debajo "cliente / contrato" (lo que pone el layout).
   const slug = path.match(/^\/contratos\/[0-9a-f-]{36}(?:\/([^/]+))?/i);
   const section = slug ? CONTRACT_SECTIONS.find((s) => s.slug === (slug[1] ?? "")) : undefined;
   return (
@@ -37,7 +37,7 @@ export function SectionHeader({
 }
 
 // Pie de la cuadrícula, con las mismas tres columnas que el encabezado: cuenta bajo los módulos,
-// "Volver" (dentro de un contrato) bajo las opciones, y los atajos bajo el contenido.
+// "Volver" (dentro de un proceso) bajo las opciones, y los atajos bajo el contenido.
 export function Footer({
   setActionsSlot,
   setContextSlot,

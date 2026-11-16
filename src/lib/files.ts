@@ -1,4 +1,4 @@
-// Archivos del contrato: límites y utilidades compartidas entre el servidor y el navegador (sin dependencias de servidor).
+// Archivos del proceso: límites y utilidades compartidas entre el servidor y el navegador (sin dependencias de servidor).
 export const FILES_BUCKET = "contract-files";
 export const MAX_FILE_BYTES = 15 * 1024 * 1024;
 

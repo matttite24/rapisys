@@ -22,7 +22,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/[org]/contratos/
   if (!auth?.claims) return new Response("No autorizado", { status: 401 });
 
   const found = await getContract(org, id);
-  if (!found) return new Response("No encontramos el contrato", { status: 404 });
+  if (!found) return new Response("No encontramos el proceso", { status: 404 });
   const { c } = found;
 
   const { data: d } = await supabase

@@ -2,7 +2,7 @@
 
 import { ConfirmTap } from "@/components/confirm-tap";
 import { useState } from "react";
-import { Delete02Icon, Edit02Icon, ArrowDown01Icon, LeftToRightListBulletIcon } from "@hugeicons/core-free-icons";
+import { Delete02Icon, Edit02Icon, ArrowDown01Icon, CheckListIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { AssetFactsLine, AssetFactsWrap, assetFactList } from "@/components/asset-facts";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ export function ListInfo({
           // Lista general: solo lleva nombre, sin datos de activo (serie, motor, etc.). No hay nada que abrir.
           <div className="flex min-w-0 flex-1 items-center gap-3 pl-6">
             <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-              <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-[1.125rem]" />
+              <HugeiconsIcon icon={CheckListIcon} className="size-[1.125rem]" />
             </span>
             <div className="min-w-0">
               <p className="text-sm font-medium">Lista general</p>

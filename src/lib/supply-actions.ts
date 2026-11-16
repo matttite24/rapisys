@@ -12,7 +12,7 @@ export type SupplyState = { error?: string; ok?: boolean; id?: string } | undefi
 
 function friendly(error: DbError) {
   if (error.code === "42501" || error.message === "forbidden") return "No tienes permiso para hacer esto.";
-  if (error.message === "not_in_progress") return "El abastecimiento se trabaja cuando el contrato está En ejecución.";
+  if (error.message === "not_in_progress") return "El abastecimiento se trabaja cuando el proceso está En ejecución.";
   if (error.message === "insufficient") return "Ese lote no tiene tantas unidades. Actualiza la búsqueda.";
   if (error.message === "over_covered") return "Eso supera lo que pide la línea.";
   if (error.message === "bad_quantity") return "Escribe una cantidad mayor a 0.";
@@ -234,7 +234,7 @@ export async function reserveStock(
   });
   if (error) return { error: friendly(error) };
   refresh(org, contractId);
-  // `id` es el tramo creado en la línea del contrato: sirve para deshacer.
+  // `id` es el tramo creado en la línea del proceso: sirve para deshacer.
   return { ok: true, id: data as string };
 }
 
@@ -288,7 +288,7 @@ export async function addLineForProduct(
   });
   if (error) {
     if (error.message === "list_not_found") return { error: "No encontramos la lista." };
-    if (error.message === "not_in_progress") return { error: "Los items se cargan cuando el contrato está en ejecución." };
+    if (error.message === "not_in_progress") return { error: "Los items se cargan cuando el proceso está en ejecución." };
     if (error.message === "list_full") return { error: "La lista llegó a su tope de líneas." };
     return { error: friendly(error) };
   }

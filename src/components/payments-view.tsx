@@ -68,7 +68,7 @@ async function Payments({ params, searchParams }: Props) {
   ]);
   if (!found) notFound();
   if (error || !data) {
-    if (error) logDbError("pagos del contrato", error);
+    if (error) logDbError("pagos del proceso", error);
     return <div role="alert" className="p-6 text-sm text-destructive">{error && isSchemaError(error) ? SCHEMA_MESSAGE : "No se pudieron cargar los pagos. Actualiza la sección para reintentar."}</div>;
   }
   const view = data as { count: number; total_cents: number; by_kind: ByKind; rows: PaymentRow[] };

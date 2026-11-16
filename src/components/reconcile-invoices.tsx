@@ -71,7 +71,7 @@ export function InvoiceMode({ rc, target, partNumber }: { rc: Reconcile; target:
       rc.invoices === null ? <PanelLoading label="Cargando facturas" /> :
       <ul className="min-h-0 flex-1 divide-y overflow-y-auto">
         {rc.invoices.length === 0 ? (
-          <li className="px-4 py-4 text-sm text-muted-foreground">Este contrato aún no tiene facturas completas.</li>
+          <li className="px-4 py-4 text-sm text-muted-foreground">Este proceso aún no tiene facturas completas.</li>
         ) : (
           rc.invoices.map((i) => (
             <li key={i.id}>
@@ -142,7 +142,7 @@ export function InvoiceMode({ rc, target, partNumber }: { rc: Reconcile; target:
                 >
                   <HugeiconsIcon icon={AiMagicIcon} className={cn("size-5", rc.proposing && "animate-pulse")} />
                 </TooltipTrigger>
-                <TooltipContent>Cubrir automáticamente: cruza esta factura con el contrato por número de parte y te deja revisar antes de asignar</TooltipContent>
+                <TooltipContent>Cubrir automáticamente: cruza esta factura con el proceso por número de parte y te deja revisar antes de asignar</TooltipContent>
               </Tooltip>
             )}
           </SearchRow>
@@ -278,7 +278,7 @@ export function StockBadge({ line: l }: { line: InvoiceLine }) {
   );
 }
 
-// Línea de factura: el código manda (es lo que cruza con la línea del contrato), con sus existencias a la derecha, y la
+// Línea de factura: el código manda (es lo que cruza con la línea del proceso), con sus existencias a la derecha, y la
 // descripción debajo, atenuada.
 export function LineRow({ rc, line: l, target }: { rc: Reconcile; line: InvoiceLine; target: Target }) {
   const selected = rc.picked?.id === l.id;
@@ -301,7 +301,7 @@ export function LineRow({ rc, line: l, target }: { rc: Reconcile; line: InvoiceL
           <span className="truncate text-xs text-muted-foreground" title={l.name}>
             {l.name}
           </span>
-          {/* Precio unitario de la factura (sin IVA), para compararlo con lo que paga el contrato. */}
+          {/* Precio unitario de la factura (sin IVA), para compararlo con lo que paga el proceso. */}
           <span className="num shrink-0 text-xs text-muted-foreground">{formatCents(l.unitCostCents)}</span>
         </span>
       </button>

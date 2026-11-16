@@ -41,7 +41,7 @@ type Row = {
   price: string;
   raw: string;
   review: boolean;
-  // Sección del contrato (fila de ancho completo) a la que pertenece.
+  // Sección del proceso (fila de ancho completo) a la que pertenece.
   group?: string;
 };
 
@@ -292,7 +292,7 @@ export function BulkImport({
           <SheetHeader>
             <SheetTitle>Carga masiva en «{listName}»</SheetTitle>
             <SheetDescription className="sr-only">
-              Pega una captura de la tabla del contrato, revisa lo que se leyó y cárgalo a la lista.
+              Pega una captura de la tabla del proceso, revisa lo que se leyó y cárgalo a la lista.
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -300,7 +300,7 @@ export function BulkImport({
           {step === "start" && (
             <div className="p-6">
               <p className="pb-4 text-sm text-muted-foreground">
-                Pega una captura de la tabla del contrato. Se lee en tu navegador: la imagen no sale de tu equipo.
+                Pega una captura de la tabla del proceso. Se lee en tu navegador: la imagen no sale de tu equipo.
               </p>
               <div
                 onDragOver={(e) => {

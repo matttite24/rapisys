@@ -29,7 +29,7 @@ export type Current = {
   label: string;
   productName: string; // Nombre del producto en la bodega
   tdrName?: string; // Nombre TDR del producto, si tiene
-  codes: string[]; // números de parte para cruzar con las líneas del contrato
+  codes: string[]; // números de parte para cruzar con las líneas del proceso
   lots: { id: string; remaining: number }[]; // unidades en la bodega, el lote más barato primero
   inStock: number;
   purchaseLineId?: string; // solo en líneas de factura
@@ -37,7 +37,7 @@ export type Current = {
 };
 
 // Estado del panel «Abastecimiento»: qué se eligió en la lista de la derecha y a qué línea de la tabla de la
-// izquierda se asigna. Lo comparten el panel y la tabla de líneas del contrato.
+// izquierda se asigna. Lo comparten el panel y la tabla de líneas del proceso.
 export function useReconcile(org: string, contractId: string) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -203,7 +203,7 @@ export function useReconcile(org: string, contractId: string) {
     ]);
   }
 
-  // Asigna lo elegido a una línea del contrato. Sin cantidad escrita toma lo que falte o lo que haya, el menor.
+  // Asigna lo elegido a una línea del proceso. Sin cantidad escrita toma lo que falte o lo que haya, el menor.
   // «bodega» usa unidades que ya están en la bodega (lote más barato primero); «llegar» reserva lo que viene en la
   // factura. Si algo falla a medias se deshace lo ya hecho.
   async function assignImpl(target: { id: string; open: number; description?: string }, how?: How, rename = true): Promise<boolean> {
@@ -261,7 +261,7 @@ export function useReconcile(org: string, contractId: string) {
     });
     setQty("");
 
-    // La línea del contrato queda servida: se suelta lo elegido y se vuelve a pedir lo que muestra el panel.
+    // La línea del proceso queda servida: se suelta lo elegido y se vuelve a pedir lo que muestra el panel.
     unpick();
     await refresh();
     setBusy(false);
@@ -277,7 +277,7 @@ export function useReconcile(org: string, contractId: string) {
       const r = await proposeMatches(org, contractId, invoiceId);
       if (request !== invoiceRequest.current) return;
       if (!r.proposals.length) {
-        toast.info("Ninguna línea de la factura coincide por número de parte con una línea pendiente del contrato.");
+        toast.info("Ninguna línea de la factura coincide por número de parte con una línea pendiente del proceso.");
         return;
       }
       setReview({ proposals: r.proposals, unmatched: r.unmatched, skipped: new Set() });

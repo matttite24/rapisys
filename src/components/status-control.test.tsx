@@ -26,7 +26,7 @@ describe("StatusControl: paso a En ejecución", () => {
     await user.click(screen.getByRole("button", { name: /En ejecución/ }));
 
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog.textContent).toContain("¿Pasar el contrato a En ejecución?");
+    expect(dialog.textContent).toContain("¿Pasar el proceso a En ejecución?");
     expect(dialog.textContent).toContain("CT-001");
     expect(dialog.textContent).toContain("$10,00");
     expect(dialog.textContent).toContain("05 nov 2026");

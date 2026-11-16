@@ -39,7 +39,7 @@ const TABS: { key: "all" | FileSource; label: string; origin: string }[] = [
   { key: "expense", label: "Gastos", origin: "gastos" },
 ];
 
-// Todos los archivos del contrato en un solo lugar: los propios y los de sus compras y gastos.
+// Todos los archivos del proceso en un solo lugar: los propios y los de sus compras y gastos.
 export function FilesBoard({
   org,
   contractId,
@@ -99,7 +99,7 @@ export function FilesBoard({
 
   return (
     <PageSection className={cn("p-0 transition-opacity", pending && "opacity-60")}>
-      <h1 className="sr-only">Archivos del contrato</h1>
+      <h1 className="sr-only">Archivos del proceso</h1>
       <HeaderAction icon={Upload01Icon} label="Cargar" onClick={() => setUploadOpen(true)} />
       <PageFigures figures={[{ label: "", value: String(counts.all), note: `${counts.all === 1 ? "archivo" : "archivos"} · ${formatBytes(bytes)}` }]} />
       <FilesUploadDialog org={org} contractId={contractId} open={uploadOpen} onOpenChange={setUploadOpen} />

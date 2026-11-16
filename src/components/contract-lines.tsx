@@ -26,7 +26,7 @@ import { LinesTableSkeleton } from "@/components/contract-lines-skeleton";
 import { LinesTable } from "@/components/contract-lines-table";
 import { LineForm } from "@/components/contract-line-form";
 
-// Las listas del contrato (una por activo). Solo llega la página abierta de la lista abierta:
+// Las listas del proceso (una por activo). Solo llega la página abierta de la lista abierta:
 // el resto se pide al servidor al cambiar de lista, de página o al buscar. La lista y su
 // formulario comparten estado: la línea aparece al instante y el servidor la confirma por detrás.
 export function ReferenceList({
@@ -127,7 +127,7 @@ export function ReferenceList({
   if (lists.length === 0 && !canAdd) {
     return (
       <PageSection label="0 líneas de referencia" className="p-0">
-        <p className="p-6 text-muted-foreground">Este contrato no tiene items.</p>
+        <p className="p-6 text-muted-foreground">Este proceso no tiene items.</p>
       </PageSection>
     );
   }

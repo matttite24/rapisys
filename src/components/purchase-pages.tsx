@@ -37,7 +37,7 @@ const NEW_BTN = (org: string, id: string) => (
   </Link>
 );
 
-// Lista de facturas de compra del contrato.
+// Lista de facturas de compra del proceso.
 async function List({ params }: { params: IdParams }) {
   await connection();
   const [{ org, id }, supabase] = await Promise.all([params, createClient()]);
@@ -98,7 +98,7 @@ async function List({ params }: { params: IdParams }) {
       {purchases.length === 0 ? (
         <div className="flex flex-col items-start gap-4 p-6">
           <p className="max-w-xl text-muted-foreground">
-            Aún no hay facturas de compra en este contrato. Cada factura es de un proveedor: primero se guarda
+            Aún no hay facturas de compra en este proceso. Cada factura es de un proveedor: primero se guarda
             como borrador mientras la revisas y, al completarla, se asigna a las líneas de las listas desde Abastecimiento.
           </p>
           {canAct && NEW_BTN(org, id)}
@@ -193,7 +193,7 @@ async function NewForm({ params }: { params: IdParams }) {
     return (
       <PageSection>
         <p className="max-w-xl text-muted-foreground">
-          Las compras se registran cuando el contrato está <strong className="text-foreground">En ejecución</strong>.
+          Las compras se registran cuando el proceso está <strong className="text-foreground">En ejecución</strong>.
         </p>
       </PageSection>
     );
@@ -214,7 +214,7 @@ export function PurchaseNewPage({ params }: { params: IdParams }) {
   );
 }
 
-// Detalle de una factura completa: sus líneas y la recepción de cada una. Asignarla a líneas del contrato se hace
+// Detalle de una factura completa: sus líneas y la recepción de cada una. Asignarla a líneas del proceso se hace
 // desde Abastecimiento, no aquí.
 const DETAIL_GRID = "grid grid-cols-2 items-center gap-1.5 lg:grid-cols-[1.5rem_8rem_minmax(14rem,1fr)_3.5rem_5.5rem_3rem_6rem_15rem]";
 
@@ -295,7 +295,7 @@ async function Detail({ params }: { params: PurchaseParams }) {
     : null;
   const hint = "caps text-muted-foreground lg:hidden";
 
-  // Pagos de la factura, anticipos disponibles de este proveedor en el contrato y cuentas de Bancos.
+  // Pagos de la factura, anticipos disponibles de este proveedor en el proceso y cuentas de Bancos.
   const [movRes, advRes, bankRes, orgRes] = await Promise.all([
     supabase
       .from("purchase_payments")
@@ -513,7 +513,7 @@ async function Edit({ params }: { params: PurchaseParams }) {
     return (
       <PageSection>
         <p className="max-w-xl text-muted-foreground">
-          Las compras se registran cuando el contrato está <strong className="text-foreground">En ejecución</strong>.
+          Las compras se registran cuando el proceso está <strong className="text-foreground">En ejecución</strong>.
         </p>
       </PageSection>
     );

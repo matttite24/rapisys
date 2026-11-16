@@ -113,7 +113,7 @@ export async function addLines(
   if (error) {
     if (error.message === "list_not_found") return { error: "No encontramos la lista." };
     if (error.message === "not_in_progress") {
-      return { error: "Los items se cargan cuando el contrato está En ejecución." };
+      return { error: "Los items se cargan cuando el proceso está En ejecución." };
     }
     if (error.message === "list_full") return { error: LIST_FULL };
     return { error: friendly(error) };
@@ -132,7 +132,7 @@ export async function addLine(
   if ("fields" in parsed) return { fields: parsed.fields };
   const v = parsed.values;
 
-  // Una sola llamada: la función valida que el contrato esté En ejecución y la inserta.
+  // Una sola llamada: la función valida que el proceso esté En ejecución y la inserta.
   const supabase = await createClient();
   const { error } = await supabase.rpc("add_contract_line", {
     p_list_id: listId,
@@ -145,7 +145,7 @@ export async function addLine(
   if (error) {
     if (error.message === "list_not_found") return { error: "No encontramos la lista." };
     if (error.message === "not_in_progress") {
-      return { error: "Los items se cargan cuando el contrato está En ejecución." };
+      return { error: "Los items se cargan cuando el proceso está En ejecución." };
     }
     if (error.message === "list_full") return { error: LIST_FULL };
     return { error: friendly(error) };
@@ -170,9 +170,9 @@ export async function updateLine(
     .select("status")
     .eq("id", contractId)
     .maybeSingle();
-  if (!contract) return { error: "No encontramos el contrato." };
+  if (!contract) return { error: "No encontramos el proceso." };
   if (contract.status !== "in_progress") {
-    return { error: "Los items se editan cuando el contrato está En ejecución." };
+    return { error: "Los items se editan cuando el proceso está En ejecución." };
   }
 
   const { data, error } = await supabase
@@ -195,6 +195,24 @@ export async function updateLine(
     if (error.code === "23514") return { fields: { quantity: "La cantidad es menor a lo ya recibido." } };
     return { error: friendly(error) };
   }
+  if (!data?.length) return { error: "No tienes permiso para editar esta línea." };
+  refresh(org, contractId);
+}
+
+// Cambia solo el nombre (descripción) de una línea, sin tocar cantidad ni precios.
+export async function renameLine(org: string, contractId: string, lineId: string, description: string): Promise<LineState> {
+  await requireUser();
+  const name = description.trim();
+  if (!name) return { error: "Escribe el nombre de la línea." };
+  if (name.length > 500) return { error: "El nombre es demasiado largo." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contract_items")
+    .update({ description: name })
+    .eq("id", lineId)
+    .eq("contract_id", contractId)
+    .select("id");
+  if (error) return { error: friendly(error) };
   if (!data?.length) return { error: "No tienes permiso para editar esta línea." };
   refresh(org, contractId);
 }
@@ -224,18 +242,18 @@ export async function setContractStatus(
     .select("status, kind")
     .eq("id", contractId)
     .maybeSingle();
-  if (!current) return { error: "No encontramos el contrato." };
+  if (!current) return { error: "No encontramos el proceso." };
   const credit = current.kind === "credit";
   const order = orderFor(current.kind);
   if (!order.includes(status)) return { error: "Estado no válido." };
 
-  // Un contrato con items no puede volver a Nuevo: ahí los items todavía no se trabajan.
+  // Un proceso con items no puede volver a Nuevo: ahí los items todavía no se trabajan.
   if (status === "new" && !credit) {
     const { count } = await supabase
       .from("contract_items")
       .select("id", { count: "exact", head: true })
       .eq("contract_id", contractId);
-    if (count) return { error: "Quita los items del contrato antes de volver a Nuevo." };
+    if (count) return { error: "Quita los items del proceso antes de volver a Nuevo." };
   }
 
   // Solo se avanza o retrocede un paso a la vez.

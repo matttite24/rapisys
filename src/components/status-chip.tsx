@@ -3,7 +3,7 @@ import { STATUS_TONE, statusText } from "@/lib/contracts";
 import { TONE_DOT } from "@/lib/state-tone";
 import { cn } from "@/lib/utils";
 
-// Fase del contrato: cuadro de color suave con un punto del mismo tono.
+// Fase del proceso: cuadro de color suave con un punto del mismo tono.
 export function StatusChip({ status, kind, deliveries, className }: { status: string; kind?: string; deliveries?: number; className?: string }) {
   const tone = kind === "credit" && status === "in_progress" && deliveries ? "partial" : (STATUS_TONE[status] ?? "pending");
   return (

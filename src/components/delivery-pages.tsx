@@ -37,7 +37,7 @@ type DeliveryRow = {
   voided_lines: { part_number: string | null; description: string; quantity: number; unit: string }[] | null;
 };
 
-// Lista de entregas del contrato.
+// Lista de entregas del proceso.
 async function List({ params }: { params: IdParams }) {
   await connection();
   const [{ org, id }, supabase] = await Promise.all([params, createClient()]);

@@ -63,7 +63,7 @@ export function AssignedView({
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
         <p className="text-sm font-medium">Esta línea aún no tiene nada asignado</p>
         <p className="max-w-xs text-sm text-muted-foreground">
-          {canAct ? "Búscalo en una factura del contrato o entre las existencias de la bodega." : "El contrato debe estar En ejecución para asignar productos."}
+          {canAct ? "Búscalo en una factura del proceso o entre las existencias de la bodega." : "El proceso debe estar En ejecución para asignar productos."}
         </p>
         {canAct && (
           <div className="flex gap-2">

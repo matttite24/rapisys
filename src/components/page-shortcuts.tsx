@@ -62,7 +62,7 @@ export function PagePagination({
   return null;
 }
 
-// Cifras de la página para la barra inferior (por ejemplo, el monto del contrato). `tone: "warn"` las resalta.
+// Cifras de la página para la barra inferior (por ejemplo, el monto del proceso). `tone: "warn"` las resalta.
 export type PageFigure = { label: string; value: string; tone?: "warn"; note?: string };
 export const PageFiguresContext = createContext<(figures: PageFigure[]) => void>(() => {});
 

@@ -1,5 +1,5 @@
 // Rentabilidad: utilidad por línea = precio referencial (total de la fila) − costo de compra;
-// utilidad del contrato = suma de las utilidades − gastos. Todo sin IVA, en centavos.
+// utilidad del proceso = suma de las utilidades − gastos. Todo sin IVA, en centavos.
 export type ProfitLine = {
   referenceCents: number | null;
   costCents: number;
@@ -25,7 +25,7 @@ export function lineProfit(l: ProfitLine): LineProfit {
   };
 }
 
-// Cifras de un grupo de líneas ya agregadas (la base las suma por lista) y gastos del contrato.
+// Cifras de un grupo de líneas ya agregadas (la base las suma por lista) y gastos del proceso.
 export type ProfitTotals = { reference: number; cost: number; pending: number; noPrice: number; partial: number };
 
 export function summarizeProfit(groups: ProfitTotals[], expensesCents: number) {

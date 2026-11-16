@@ -1,6 +1,6 @@
 import { PageSection } from "@/components/page-section";
 
-// Parte del contrato que aún no se construye: ocupa su lugar en el cambiador.
+// Parte del proceso que aún no se construye: ocupa su lugar en el cambiador.
 export function ComingSoon({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <PageSection label={title}>

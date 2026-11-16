@@ -65,7 +65,7 @@ export function ItemForm({
 }: {
   org: string;
   item?: ItemData;
-  // Datos de partida de un item nuevo (p. ej. venido de una línea del contrato).
+  // Datos de partida de un item nuevo (p. ej. venido de una línea del proceso).
   defaults?: { name?: string; part?: string };
   categories: Option[];
   suppliers: Option[];

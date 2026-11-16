@@ -1,6 +1,6 @@
 
 
-// Una lista de referencia del contrato: los datos del activo al que sirve.
+// Una lista de referencia del proceso: los datos del activo al que sirve.
 export type ListView = {
   id: string;
   assetId: string | null;

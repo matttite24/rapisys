@@ -39,13 +39,13 @@ export type NavModule = {
 // Primera columna = módulos; segunda columna = grupos del módulo activo.
 export const modules: NavModule[] = [
   {
-    title: "Contratos",
+    title: "Procesos",
     href: "/contratos",
     icon: ContractsIcon,
     groups: [
       {
         items: [
-          { title: "Todos los contratos", href: "/contratos", icon: File01Icon },
+          { title: "Todos", href: "/contratos", icon: File01Icon },
           { title: "Nuevos", href: "/contratos?estado=nuevos", icon: AddSquareIcon },
           { title: "En ejecución", href: "/contratos?estado=ejecucion", icon: PlayCircleIcon },
           { title: "Por cobrar", href: "/contratos?estado=cierre", icon: Wallet01Icon },
@@ -116,7 +116,7 @@ export const modules: NavModule[] = [
   },
 ];
 
-// Partes de un contrato: la columna de opciones las muestra dentro de un contrato.
+// Partes de un proceso: la columna de opciones las muestra dentro de un proceso.
 export const CONTRACT_SECTIONS = [
   { slug: "", title: "Detalle", icon: File01Icon },
   { slug: "items", title: "Listas", icon: LeftToRightListBulletIcon },

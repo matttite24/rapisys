@@ -22,7 +22,7 @@ import { orderFor, statusText } from "@/lib/contracts";
 const SUMMARY_LABEL =
   "mb-1 caps font-medium text-muted-foreground";
 
-// Estado del contrato: un paso adelante o atrás por vez.
+// Estado del proceso: un paso adelante o atrás por vez.
 export function StatusControl({
   org,
   contractId,
@@ -33,7 +33,7 @@ export function StatusControl({
   blocker,
   inHeader,
 }: {
-  // Tipo de contrato y entregas hechas: el crédito tiene su propio ciclo y nombres.
+  // Tipo de proceso y entregas hechas: el crédito tiene su propio ciclo y nombres.
   kind?: string;
   deliveries?: number;
   org: string;
@@ -41,7 +41,7 @@ export function StatusControl({
   status: string;
   // En el encabezado va en una sola línea y el error cuelga debajo de él.
   inHeader?: boolean;
-  // Datos del contrato, para confirmar el paso a En ejecución.
+  // Datos del proceso, para confirmar el paso a En ejecución.
   summary?: { code: string; total: string; delivery: string };
   // Motivo por el que el paso siguiente aún no se puede dar; con motivo, el botón queda inactivo.
   blocker?: string | null;
@@ -79,7 +79,7 @@ export function StatusControl({
           </Button>
         )}
         {next && (
-          // Pasar a En ejecución fija los datos del contrato: pide confirmación.
+          // Pasar a En ejecución fija los datos del proceso: pide confirmación.
           // Con motivo pendiente queda inactivo y el motivo se ve al pasar el cursor (el botón inactivo no recibe eventos).
           <span className={cn(inHeader && "flex")} title={blocker ?? undefined}>
             <Button
@@ -111,16 +111,16 @@ export function StatusControl({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="data-[size=default]:sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Pasar el contrato a En ejecución?</AlertDialogTitle>
+            <AlertDialogTitle>¿Pasar el proceso a En ejecución?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se habilita la carga de items. Los datos del contrato se pueden seguir corrigiendo desde &ldquo;Editar&rdquo;.
+              Se habilita la carga de items. Los datos del proceso se pueden seguir corrigiendo desde &ldquo;Editar&rdquo;.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           {summary && (
             <dl className="grid grid-cols-2 gap-px border bg-border [&>div]:bg-popover [&>div]:p-3">
               <div className="col-span-2">
-                <dt className={SUMMARY_LABEL}>Contrato</dt>
+                <dt className={SUMMARY_LABEL}>Proceso</dt>
                 <dd className="num break-all">{summary.code}</dd>
               </div>
               <div>

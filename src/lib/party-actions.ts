@@ -101,7 +101,7 @@ export async function deleteParty(
     return {
       error:
         error.code === "23503"
-          ? `No se puede eliminar: tiene contratos asociados.`
+          ? `No se puede eliminar: tiene procesos asociados.`
           : "No se pudo eliminar. Inténtalo de nuevo.",
     };
   }

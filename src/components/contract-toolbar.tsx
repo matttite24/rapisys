@@ -12,8 +12,8 @@ export function ContractToolbar({ q }: { q: string }) {
   return (
     <div className="sticky top-0 z-20 flex h-12 items-stretch border-b bg-popover">
       <SearchInput
-        label="Buscar contratos"
-        placeholder="Buscar por código o nombre del contrato"
+        label="Buscar procesos"
+        placeholder="Buscar por código o nombre del proceso"
         defaultValue={q}
         onSearch={(t) => {
           const next = new URLSearchParams(sp);

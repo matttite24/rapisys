@@ -17,7 +17,7 @@ export type InvoiceLine = {
   unitCostCents: number;
   quantity: number;
   received: number;
-  // Unidades ya tomadas por líneas del contrato (de la bodega o reservadas por llegar).
+  // Unidades ya tomadas por líneas del proceso (de la bodega o reservadas por llegar).
   assigned: number;
   // Por llegar y sin reservar.
   available: number;
@@ -28,7 +28,7 @@ export type InvoiceLine = {
   free: number;
 };
 
-// Líneas de una factura completa del contrato, en el orden de la factura, con lo que ya se asignó de cada una.
+// Líneas de una factura completa del proceso, en el orden de la factura, con lo que ya se asignó de cada una.
 export async function getInvoiceLines(org: string, contractId: string, invoiceId: string): Promise<InvoiceLine[]> {
   const orgId = await getOrgId(org);
   if (!orgId) return [];
@@ -130,9 +130,9 @@ export type Proposal = {
   lotId?: string;
 };
 
-// Cruza las líneas de la factura que aún tienen unidades por reservar con las líneas pendientes del contrato por
+// Cruza las líneas de la factura que aún tienen unidades por reservar con las líneas pendientes del proceso por
 // número de parte (sin importar mayúsculas, espacios ni guiones). Reparte en el orden de la factura y de las listas,
-// descontando lo que ya se propuso, así dos líneas con el mismo código no se pasan de lo que pide el contrato.
+// descontando lo que ya se propuso, así dos líneas con el mismo código no se pasan de lo que pide el proceso.
 export async function proposeMatches(
   org: string,
   contractId: string,
@@ -212,10 +212,10 @@ export async function proposeMatches(
 }
 
 function friendlyMany(message: string): string {
-  if (message === "over_covered") return "Alguna línea del contrato ya no necesita tantas unidades. Vuelve a proponer.";
+  if (message === "over_covered") return "Alguna línea del proceso ya no necesita tantas unidades. Vuelve a proponer.";
   if (message === "insufficient") return "Un lote ya no tiene tantas unidades. Vuelve a proponer.";
   if (message === "over_assigned") return "Alguna línea de la factura ya no tiene tantas unidades libres. Vuelve a proponer.";
-  if (message === "not_in_progress") return "El abastecimiento se trabaja cuando el contrato está En ejecución.";
+  if (message === "not_in_progress") return "El abastecimiento se trabaja cuando el proceso está En ejecución.";
   if (message === "forbidden") return "No tienes permiso para hacer esto.";
   if (message === "draft_purchase") return "La factura sigue en borrador: complétala primero.";
   return "No se pudo completar la acción. Inténtalo de nuevo.";

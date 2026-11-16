@@ -39,9 +39,9 @@ export async function createList(org: string, contractId: string, formData: Form
     .select("organization_id, status")
     .eq("id", contractId)
     .maybeSingle();
-  if (!contract) return { error: "No encontramos el contrato." };
+  if (!contract) return { error: "No encontramos el proceso." };
   if (contract.status !== "in_progress") {
-    return { error: "Las listas se crean cuando el contrato está En ejecución." };
+    return { error: "Las listas se crean cuando el proceso está En ejecución." };
   }
 
   const { data, error } = await supabase

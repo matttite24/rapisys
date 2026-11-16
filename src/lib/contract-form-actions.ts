@@ -42,9 +42,9 @@ function parseForm(fd: FormData): { fields: Record<string, string> } | { values:
   const managerChoice = text(fd, "manager_id");
 
   const fields: Record<string, string> = {};
-  if (!name) fields.name = "Escribe el nombre del contrato.";
+  if (!name) fields.name = "Escribe el nombre del proceso.";
   // Un proceso a crédito nuevo recibe su código interno (CR-0001…) al guardar.
-  if (!code && !(credit && !text(fd, "contract_id"))) fields.code = "Escribe el código del contrato.";
+  if (!code && !(credit && !text(fd, "contract_id"))) fields.code = "Escribe el código del proceso.";
   if (!clientChoice) fields.client_id = "Selecciona un cliente o crea uno nuevo.";
   if (clientChoice === NEW && !isClientType(text(fd, "client_type"))) fields.client_type = "Selecciona el tipo de cliente.";
   if (clientChoice === NEW && !text(fd, "client_name")) {
@@ -111,13 +111,13 @@ async function resolveParties(
 
 function saveError(scope: string, error: { code?: string; message?: string }): ContractState {
   if (error.code === "23505") {
-    return { fields: { code: "Ya existe un contrato con ese código. Usa otro." } };
+    return { fields: { code: "Ya existe un proceso con ese código. Usa otro." } };
   }
   logDbError(scope, error);
   if (isSchemaError(error)) return { error: SCHEMA_MESSAGE };
   return {
     error:
-      "No se pudo guardar el contrato. Revisa los datos e inténtalo de nuevo; lo que escribiste se conserva.",
+      "No se pudo guardar el proceso. Revisa los datos e inténtalo de nuevo; lo que escribiste se conserva.",
   };
 }
 
@@ -178,7 +178,7 @@ export async function createContract(_: ContractState, formData: FormData): Prom
   redirect(`/${org}/contratos`);
 }
 
-// Corregir los datos de un contrato, en cualquier estado: cambiar el nombre, el monto o el plazo
+// Corregir los datos de un proceso, en cualquier estado: cambiar el nombre, el monto o el plazo
 // no toca items, stock ni entregas, así que no es destructivo.
 export async function updateContract(
   org: string,
@@ -212,14 +212,14 @@ export async function updateContract(
     .eq("organization_id", organizationId)
     .select("id");
   if (error) return saveError("updateContract", error);
-  if (!data?.length) return { error: "No encontramos el contrato o no tienes permiso para editarlo." };
+  if (!data?.length) return { error: "No encontramos el proceso o no tienes permiso para editarlo." };
 
   revalidatePath(`/${org}/contratos/${contractId}`);
   revalidatePath(`/${org}/contratos`);
   return { saved: true };
 }
 
-// Datos para el formulario de edición del contrato (se piden al abrirlo, no en cada pantalla).
+// Datos para el formulario de edición del proceso (se piden al abrirlo, no en cada pantalla).
 export async function loadContractEdit(org: string, contractId: string) {
   await requireUser();
   const organizationId = await getOrgId(org);

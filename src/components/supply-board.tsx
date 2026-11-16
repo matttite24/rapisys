@@ -23,6 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { formatCents } from "@/lib/money";
+import { removeLine } from "@/lib/contract-actions";
+import { toast } from "sonner";
 import { SupplyAddLine } from "@/components/supply-add-line";
 import { unitLabel } from "@/lib/units";
 import { cn } from "@/lib/utils";
@@ -40,7 +42,7 @@ export type SupplyLine = {
   purchased: number;
   delivered: number;
   costCents: number | null;
-  // Precio referencial TOTAL de la línea (sin IVA): lo que paga el contrato por ella.
+  // Precio referencial TOTAL de la línea (sin IVA): lo que paga el proceso por ella.
   referenceCents: number | null;
   state: SupplyState;
   // Lo asignado a esta línea (productos de la bodega o reservados por llegar), en el orden en que se asignó.
@@ -84,11 +86,11 @@ export function SupplyBoard({
   estado: SupplyState | "";
   basePath: string;
   canAct: boolean;
-  // Contrato a crédito: permite agregar items directamente desde aquí.
+  // Proceso a crédito: permite agregar items directamente desde aquí.
   credit?: boolean;
-  // Entregas ya registradas en el contrato.
+  // Entregas ya registradas en el proceso.
   deliveries: number;
-  // Valor del contrato (con IVA) y costo de lo ya cubierto, para la barra de abajo.
+  // Valor del proceso (con IVA) y costo de lo ya cubierto, para la barra de abajo.
   money: { totalCents: number; vatRate: number; coveredCents: number; unknown: number } | null;
 }) {
   const router = useRouter();
@@ -141,6 +143,18 @@ export function SupplyBoard({
       setClosing(false);
     }, 200);
   }
+  // Proceso a crédito: la línea abierta se quita desde el pie del panel.
+  const [removing, startRemove] = useTransition();
+  function removeFocused() {
+    if (!focus) return;
+    const id = focus.id;
+    startRemove(async () => {
+      const res = await removeLine(org, contractId, id);
+      if (res?.error) return void toast.error(res.error);
+      closePanel();
+      router.refresh();
+    });
+  }
   // Abre o cierra el panel sin tocar una línea. En un proceso a crédito abre directo en Facturas: ahí se agregan items.
   function togglePanel() {
     if (panelShown) return closePanel();
@@ -171,7 +185,7 @@ export function SupplyBoard({
     return (
       <PageSection label="Sin listas">
         <p className="max-w-xl text-muted-foreground">
-          Este contrato aún no tiene listas de referencia. Crea una en <strong className="text-foreground">Listas</strong>{" "}
+          Este proceso aún no tiene listas de referencia. Crea una en <strong className="text-foreground">Listas</strong>{" "}
           para empezar a abastecer.
         </p>
       </PageSection>
@@ -184,7 +198,7 @@ export function SupplyBoard({
   const nextId = canAct ? lines.find((l) => l.reserved + l.purchased < l.quantity)?.id : undefined;
   const totalLines = counts.pending + counts.quoted + counts.partial + counts.purchased + counts.in_stock + counts.delivered;
 
-  // Valor del contrato sin IVA contra el costo de lo cubierto: cuánto falta por cubrir.
+  // Valor del proceso sin IVA contra el costo de lo cubierto: cuánto falta por cubrir.
   const figures: PageFigure[] = [];
   if (money) {
     const net = Math.round((money.totalCents * 100) / (100 + money.vatRate));
@@ -315,14 +329,14 @@ export function SupplyBoard({
                     <tr className="border-b">
                       <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
                       <th scope="col" className={TH}>Descripción</th>
-                      <th scope="col" className={`${TH} w-24 text-right`}>Cantidad</th>
-                      <th scope="col" className={`${TH} w-28 text-right`}>Precio ref.</th>
-                      <th scope="col" className={`${TH} w-24 text-right`}>Costo unit.</th>
-                      <th scope="col" className={`${TH} w-28 text-right`}>Costo total</th>
-                      <th scope="col" className={`${TH} w-72`}>Estado y avance</th>
+                      <th scope="col" className={`${TH} w-20 px-2 text-right`}>Cantidad</th>
+                      <th scope="col" className={`${TH} w-24 px-2 text-right`}>Precio ref.</th>
+                      <th scope="col" className={`${TH} w-20 px-2 text-right`}>Costo unit.</th>
+                      <th scope="col" className={`${TH} w-28 px-2 text-right`}>Costo total</th>
+                      <th scope="col" className={`${TH} w-56`}>Estado y avance</th>
                     </tr>
                   </thead>
-                  {/* Tabla jerárquica: cada línea del contrato es una fila con su resumen y, debajo, una fila por producto
+                  {/* Tabla jerárquica: cada línea del proceso es una fila con su resumen y, debajo, una fila por producto
                       asignado, sangrada, con las mismas columnas (cantidad asignada, costo unitario, total y de dónde viene).
                       Todas las filas tienen las mismas celdas, así las líneas y las columnas siempre se alinean. */}
                   {lines.map((l) => {
@@ -344,7 +358,7 @@ export function SupplyBoard({
                           rc.show();
                         }}
                         className={cn(
-                          "cursor-pointer border-b transition-colors hover:[&_td]:bg-accent [&>tr+tr>td]:border-t [&>tr+tr>td]:border-border/60",
+                          "cursor-pointer border-b transition-colors hover:[&_td]:bg-accent [&>tr:not(:first-child)>td]:bg-foreground/[0.07] hover:[&>tr:not(:first-child)>td]:bg-foreground/[0.1] [&>tr+tr>td]:border-t [&>tr+tr>td]:border-border/60",
                           total > LINES_PAGE_SIZE && "last:border-b-0",
                           selectedId === l.id && "[&_td]:bg-surface-strong/60 [&_tr>td:first-child]:shadow-[inset_4px_0_0_var(--primary)]",
                         )}
@@ -363,10 +377,10 @@ export function SupplyBoard({
                               </span>
                             )}
                           </td>
-                          <td className={cn(TD, "num whitespace-nowrap text-right")}>
+                          <td className={cn(TD, "px-2 num whitespace-nowrap text-right")}>
                             {l.quantity} <span className="font-sans text-xs text-muted-foreground">{unitLabel(l.unit)}</span>
                           </td>
-                          <td className={cn(TD, "num whitespace-nowrap text-right")}>
+                          <td className={cn(TD, "px-2 num whitespace-nowrap text-right")}>
                             {l.referenceCents === null ? (
                               <span className="text-muted-foreground">—</span>
                             ) : (
@@ -376,10 +390,10 @@ export function SupplyBoard({
                               </>
                             )}
                           </td>
-                          <td className={cn(TD, "whitespace-nowrap text-right text-muted-foreground")}>—</td>
-                          <td className={cn(TD, "num whitespace-nowrap text-right font-medium")}>
+                          <td className={cn(TD, "px-2 whitespace-nowrap text-right text-muted-foreground")}>—</td>
+                          <td className={cn(TD, "px-2 num whitespace-nowrap text-right font-medium")}>
                             {hasCost ? formatCents(lineTotal) : <span className="font-normal text-muted-foreground">—</span>}
-                            {/* Lo que queda del precio referencial, o cuánto se pasó: así no se compra más caro de lo que paga el contrato. */}
+                            {/* Lo que queda del precio referencial, o cuánto se pasó: así no se compra más caro de lo que paga el proceso. */}
                             {l.referenceCents !== null && hasCost && (
                               <span className={cn("block text-xs font-normal", lineTotal > l.referenceCents ? "font-medium text-destructive" : "text-muted-foreground")}>
                                 {lineTotal > l.referenceCents
@@ -412,23 +426,23 @@ export function SupplyBoard({
                           l.assigned.map((a, i) => (
                             <tr key={i} className="text-[0.8125rem]">
                               <td className={TD} />
-                              <td className={cn(TD, "max-w-0 py-1.5 pl-6")}>
+                              <td className={cn(TD, "max-w-0 py-1.5 pl-12")}>
                                 <span className="flex items-baseline gap-2">
-                                  <span aria-hidden className="shrink-0 text-muted-foreground">↳</span>
+                                  <span aria-hidden className="shrink-0 text-muted-foreground/70">↳</span>
                                   <span className="min-w-0">
                                     <span className="block truncate text-xs text-muted-foreground" title={a.name}>
                                       {a.name}
                                     </span>
-                                    <span className={cn("block truncate font-mono text-sm", !a.code && "text-muted-foreground")}>{a.code || "Sin código"}</span>
+                                    <span className={cn("block truncate font-mono text-xs", !a.code && "text-muted-foreground")}>{a.code || "Sin código"}</span>
                                   </span>
                                 </span>
                               </td>
-                              <td className={cn(TD, "num py-1.5 text-right")}>{a.quantity}</td>
+                              <td className={cn(TD, "px-2 num py-1.5 text-right")}>{a.quantity}</td>
                               <td className={TD} />
-                              <td className={cn(TD, "num py-1.5 text-right")}>
+                              <td className={cn(TD, "px-2 num py-1.5 text-right")}>
                                 {a.costCents === null ? <span className="text-muted-foreground">Sin costo</span> : formatCents(a.costCents)}
                               </td>
-                              <td className={cn(TD, "num py-1.5 text-right text-muted-foreground")}>
+                              <td className={cn(TD, "px-2 num py-1.5 text-right text-muted-foreground")}>
                                 {a.costCents === null ? "—" : formatCents(Math.round(a.costCents * a.quantity))}
                               </td>
                               <td className={cn(TD, "py-1.5")}>
@@ -466,6 +480,8 @@ export function SupplyBoard({
         canAct={canAct}
         closing={closing}
         addToListId={credit && loaded ? loaded.id : undefined}
+        onRemove={credit && canAct ? removeFocused : undefined}
+        removing={removing}
         onClose={closePanel}
       />
     )}
@@ -483,11 +499,11 @@ function SupplyTableSkeleton({ rows = 6 }: { rows?: number }) {
           <tr className="border-b">
             <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
             <th scope="col" className={TH}>Descripción</th>
-            <th scope="col" className={`${TH} w-24 text-right`}>Cantidad</th>
-            <th scope="col" className={`${TH} w-28 text-right`}>Precio ref.</th>
-            <th scope="col" className={`${TH} w-24 text-right`}>Costo unit.</th>
-            <th scope="col" className={`${TH} w-28 text-right`}>Costo total</th>
-            <th scope="col" className={`${TH} w-72`}>Estado y avance</th>
+            <th scope="col" className={`${TH} w-20 px-2 text-right`}>Cantidad</th>
+            <th scope="col" className={`${TH} w-24 px-2 text-right`}>Precio ref.</th>
+            <th scope="col" className={`${TH} w-20 px-2 text-right`}>Costo unit.</th>
+            <th scope="col" className={`${TH} w-28 px-2 text-right`}>Costo total</th>
+            <th scope="col" className={`${TH} w-56`}>Estado y avance</th>
           </tr>
         </thead>
         {/* Filas con la misma forma que las reales: descripción en dos líneas, y estado con su etiqueta y barra. */}

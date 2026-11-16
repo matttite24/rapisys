@@ -11,7 +11,7 @@ import { getContract } from "@/lib/contract-data";
 
 type IdParams = Promise<{ org: string; id: string }>;
 
-// Detalle del contrato. El cliente y el estado ya están en el encabezado (layout).
+// Detalle del proceso. El cliente y el estado ya están en el encabezado (layout).
 async function Detail({ params }: { params: IdParams }) {
   await connection();
   const { org, id } = await params;
@@ -19,7 +19,7 @@ async function Detail({ params }: { params: IdParams }) {
   if (!found) notFound();
   const { orgId, c } = found;
 
-  // En estado Nuevo se corrigen los datos del contrato; los items aún no se cargan.
+  // En estado Nuevo se corrigen los datos del proceso; los items aún no se cargan.
   if (c.status === "new") {
     const [clientName, managerName] = await Promise.all([
       partyName(orgId, "client", c.client_id),
@@ -30,7 +30,7 @@ async function Detail({ params }: { params: IdParams }) {
         <PageSection>
           <h1 className="text-lg leading-snug font-semibold">{c.name}</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            El contrato está en <strong className="text-foreground">Nuevo</strong>: corrige aquí sus datos
+            El proceso está en <strong className="text-foreground">Nuevo</strong>: corrige aquí sus datos
             cuando haga falta. Los items se cargan y se trabajan desde{" "}
             <strong className="text-foreground">En ejecución</strong>.
           </p>
@@ -81,7 +81,7 @@ function TableCardSkeleton() {
 
 export function ContractDetailSkeleton() {
   return (
-    <div role="status" aria-label="Cargando el contrato" className="flex flex-col">
+    <div role="status" aria-label="Cargando el proceso" className="flex flex-col">
       <section className="border-b bg-surface-strong">
         <div className="flex items-end justify-between gap-8 pl-6 pr-6 xl:pr-10">
           <div className="flex min-w-0 flex-1 flex-col gap-8 py-8">

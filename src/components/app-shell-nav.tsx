@@ -24,7 +24,7 @@ export function useActiveModule() {
 
 // La opción activa es la de ruta más larga que contiene la actual (p. ej.
 // /bodega/123 marca "Items", y /bodega/activos/nuevo marca "Activos").
-// Dentro de un contrato (/contratos/{id}[/parte]) la columna de opciones muestra
+// Dentro de un proceso (/contratos/{id}[/parte]) la columna de opciones muestra
 // sus partes en lugar de las opciones del módulo, más un regreso a la vista general.
 export function useContractNav(): { groups: NavGroup[]; back: { title: string; href: string } } | null {
   const { path } = useActiveModule();

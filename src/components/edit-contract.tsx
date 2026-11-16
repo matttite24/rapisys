@@ -12,8 +12,8 @@ import { loadContractEdit } from "@/lib/contract-form-actions";
 
 type Loaded = NonNullable<Awaited<ReturnType<typeof loadContractEdit>>>;
 
-// Editar los datos del contrato desde el encabezado (nombre, código, cliente, responsable, monto y plazo).
-// Los datos del formulario se piden al abrir, no en cada pantalla del contrato.
+// Editar los datos del proceso desde el encabezado (nombre, código, cliente, responsable, monto y plazo).
+// Los datos del formulario se piden al abrir, no en cada pantalla del proceso.
 export function EditContract({ org, contractId }: { org: string; contractId: string }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<Loaded | null>(null);
@@ -40,7 +40,7 @@ export function EditContract({ org, contractId }: { org: string; contractId: str
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-3xl">
           <SheetHeader>
-            <SheetTitle>Editar contrato</SheetTitle>
+            <SheetTitle>Editar proceso</SheetTitle>
             <SheetDescription className="sr-only">Corregir el nombre, el cliente, el responsable, el monto y el plazo.</SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -53,7 +53,7 @@ export function EditContract({ org, contractId }: { org: string; contractId: str
                 onDone={() => setOpen(false)}
               />
             ) : missing ? (
-              <p className="p-6 text-sm text-muted-foreground">No pudimos cargar el contrato.</p>
+              <p className="p-6 text-sm text-muted-foreground">No pudimos cargar el proceso.</p>
             ) : (
               <div role="status" aria-label="Cargando" className="flex flex-col gap-4 p-6">
                 <Skeleton className="h-10 w-full" />

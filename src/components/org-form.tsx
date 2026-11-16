@@ -15,7 +15,7 @@ export function OrgForm() {
       <CardHeader>
         <CardTitle role="heading" aria-level={1} className="text-xl normal-case tracking-normal">Crea tu organización</CardTitle>
         <CardDescription>
-          Todos los contratos, items y usuarios viven dentro de una organización.
+          Todos los procesos, items y usuarios viven dentro de una organización.
         </CardDescription>
       </CardHeader>
       <CardContent>

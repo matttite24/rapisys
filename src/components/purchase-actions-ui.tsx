@@ -52,7 +52,7 @@ export function DeletePurchase({
             <AlertDialogDescription>
               {draft
                 ? "Se descarta el borrador con todas sus líneas. No se crea ni se cambia ningún producto de la bodega. Esta acción no se puede deshacer."
-                : "Se quitan sus líneas y lo que se había reservado para líneas del contrato. Esta acción no se puede deshacer."}
+                : "Se quitan sus líneas y lo que se había reservado para líneas del proceso. Esta acción no se puede deshacer."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -2,8 +2,8 @@
 
 import { createContext, useContext, useEffect } from "react";
 
-// Contadores que el menú de opciones del contrato muestra a la derecha de una sección (por ejemplo, cuántas listas
-// tiene). Cada clave es el tramo de la ruta de la sección ("items"). El layout del contrato los registra.
+// Contadores que el menú de opciones del proceso muestra a la derecha de una sección (por ejemplo, cuántas listas
+// tiene). Cada clave es el tramo de la ruta de la sección ("items"). El layout del proceso los registra.
 export const NavBadgesContext = createContext<Record<string, number>>({});
 export const NavBadgesSetContext = createContext<(badges: Record<string, number>) => void>(() => {});
 

@@ -48,7 +48,7 @@ type View = {
   keys: { id: string; part: string | null; description: string }[];
 };
 
-// Items del contrato: una lista por activo. Solo se carga la lista abierta, por páginas; de las
+// Items del proceso: una lista por activo. Solo se carga la lista abierta, por páginas; de las
 // demás solo su conteo. Todo llega en una sola llamada a la base (`contract_items_view`).
 async function Items({ params, searchParams }: { params: IdParams; searchParams: Search }) {
   await connection();
@@ -73,8 +73,8 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
     return (
       <PageSection>
         <p className="max-w-xl text-muted-foreground">
-          Los items se cargan cuando el contrato pasa a <strong className="text-foreground">En ejecución</strong>.
-          Mientras tanto, corrige los datos del contrato en{" "}
+          Los items se cargan cuando el proceso pasa a <strong className="text-foreground">En ejecución</strong>.
+          Mientras tanto, corrige los datos del proceso en{" "}
           <Link href={`/${org}/contratos/${id}`} className="underline underline-offset-4">Detalle</Link>.
         </p>
       </PageSection>

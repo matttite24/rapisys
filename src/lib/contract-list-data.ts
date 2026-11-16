@@ -21,7 +21,7 @@ export async function loadContractList(org: string, search: string, selected: st
   if (filter === "credito") query = query.eq("kind", "credit");
   if (q) query = query.or(`code.ilike.%${q}%,name.ilike.%${q}%`);
   const { data, count, error } = await query;
-  if (error) { logDbError("listado de contratos", error); return { error: isSchemaError(error) ? SCHEMA_MESSAGE : "No se pudieron cargar los contratos. Inténtalo de nuevo." }; }
+  if (error) { logDbError("listado de procesos", error); return { error: isSchemaError(error) ? SCHEMA_MESSAGE : "No se pudieron cargar los procesos. Inténtalo de nuevo." }; }
   const rows = ((data ?? []) as unknown as ContractRow[]).map((row) => ({ ...row, total_cents: row.total_cents === null ? null : Number(row.total_cents), term_days: row.term_days === null ? null : Number(row.term_days) }));
   return { view: { rows, total: count ?? 0, filter, page, q } };
 }

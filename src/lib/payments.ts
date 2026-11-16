@@ -8,7 +8,7 @@ export const MOVEMENT_LABEL = { payment: "Pago", credit: "A crédito", advance: 
 export type MovementKind = keyof typeof MOVEMENT_LABEL;
 export const isMovementKind = (v: string): v is MovementKind => Object.hasOwn(MOVEMENT_LABEL, v);
 
-// Tipos de la lista de Pagos del contrato.
+// Tipos de la lista de Pagos del proceso.
 export const PAYMENT_KIND_LABEL = { expense: "Gasto", payment: "Pago de factura", credit: "Crédito", advance: "Anticipo" } as const;
 export type PaymentKind = keyof typeof PAYMENT_KIND_LABEL;
 export const isPaymentKind = (v: string): v is PaymentKind => Object.hasOwn(PAYMENT_KIND_LABEL, v);

@@ -22,7 +22,7 @@ import { addDaysIso, formatIso } from "@/lib/dates";
 import { centsToInput, formatCents, parseCents, splitVat } from "@/lib/money";
 
 
-// Datos de un contrato existente, para corregirlo mientras está en estado Nuevo.
+// Datos de un proceso existente, para corregirlo mientras está en estado Nuevo.
 export type ContractData = {
   id: string;
   name: string;
@@ -230,10 +230,10 @@ export function ContractForm({
 
       <PageSection index="01" label="Identificación" className="p-0">
         <CellGrid className="border-0 border-t-0 md:grid-cols-2">
-          <FormField name="name" label="Nombre del contrato" error={errors.name}>
+          <FormField name="name" label="Nombre del proceso" error={errors.name}>
             {(a11y) => <Input {...a11y} required autoFocus={!contract} defaultValue={contract?.name} />}
           </FormField>
-          <FormField name="code" label="Código del contrato" error={errors.code}>
+          <FormField name="code" label="Código del proceso" error={errors.code}>
             {(a11y) =>
               credit && !contract ? (
                 <Input {...a11y} disabled className="font-mono" placeholder="Se genera al guardar (CR-0001)" />
@@ -317,7 +317,7 @@ export function ContractForm({
           <Button type="submit" disabled={pending}>
             {pending
               ? contract ? "Guardando…" : "Creando…"
-              : contract ? "Guardar cambios" : "Crear contrato"}
+              : contract ? "Guardar cambios" : "Crear proceso"}
           </Button>
           {onDone ? (
             <Button type="button" variant="outline" onClick={onDone}>

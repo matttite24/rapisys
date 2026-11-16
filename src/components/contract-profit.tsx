@@ -64,7 +64,7 @@ const totalsOf = (l: ListSummary) => ({
 });
 
 // Revisión de rentabilidad. Las cifras llegan sumadas por la base y solo se piden los datos de la pestaña abierta
-// (una página de líneas de una lista, las facturas o los gastos), para que la pantalla no crezca con el contrato.
+// (una página de líneas de una lista, las facturas o los gastos), para que la pantalla no crezca con el proceso.
 async function Profit({ params, searchParams }: { params: IdParams; searchParams: Search }) {
   await connection();
   const [{ org, id }, sp, supabase] = await Promise.all([params, searchParams, createClient()]);
@@ -76,7 +76,7 @@ async function Profit({ params, searchParams }: { params: IdParams; searchParams
   ]);
   if (!contract) notFound();
   const credit = contract.c.kind === "credit";
-  // Proceso a crédito: el valor final del contrato es la suma del valor final de cada entrega revisada.
+  // Proceso a crédito: el valor final del proceso es la suma del valor final de cada entrega revisada.
   const billingRes = credit ? await supabase.rpc("contract_billing_totals", { p_contract_id: id }) : null;
   if (summaryRes.error || !summaryRes.data) {
     if (summaryRes.error) logDbError("revisión de rentabilidad", summaryRes.error);
@@ -116,7 +116,7 @@ async function Profit({ params, searchParams }: { params: IdParams; searchParams
     { label: "Costo c/IVA", value: formatCents(sum.cost), note: "Lo realmente pagado" },
     { label: "Utilidad de items", value: formatCents(sum.itemsProfit), negative: sum.itemsProfit < 0 },
     { label: "Gastos", value: formatCents(sum.expenses) },
-    { label: "Utilidad del contrato", value: formatCents(sum.profit), note: `Margen ${pct(sum.marginPct)}`, strong: true, negative: sum.profit < 0 },
+    { label: "Utilidad del proceso", value: formatCents(sum.profit), note: `Margen ${pct(sum.marginPct)}`, strong: true, negative: sum.profit < 0 },
   ];
 
   let panel: React.ReactNode;
@@ -173,7 +173,7 @@ async function Profit({ params, searchParams }: { params: IdParams; searchParams
       { label: "Gastos", value: String(nav.expenses ?? expenses.length) },
       { label: "Total", value: formatCents(sum.expenses) },
     ];
-    note = "Utilidad del contrato = suma de las utilidades de los items − gastos.";
+    note = "Utilidad del proceso = suma de las utilidades de los items − gastos.";
   } else {
     const purchases = await listPurchases(supabase, id);
     panel = <InvoicesPanel rows={purchases.rows} base={base} />;
@@ -183,7 +183,7 @@ async function Profit({ params, searchParams }: { params: IdParams; searchParams
       { label: "Total c/IVA", value: formatCents(purchases.total) },
       { label: "Por pagar", value: formatCents(purchases.owed), ...(purchases.owed > 0 ? { tone: "warn" as const } : {}) },
     ];
-    note = "Facturas de compra del contrato. El costo de cada item sale de lo asignado en Abastecimiento; los pagos no cambian la utilidad.";
+    note = "Facturas de compra del proceso. El costo de cada item sale de lo asignado en Abastecimiento; los pagos no cambian la utilidad.";
   }
 
   return (
@@ -192,7 +192,7 @@ async function Profit({ params, searchParams }: { params: IdParams; searchParams
       activeKey={active}
       figures={barFigures}
       note={note}
-      // Con una entrega abierta se oculta el resumen del contrato: solo quedan las cifras de esa entrega, para no confundirlas.
+      // Con una entrega abierta se oculta el resumen del proceso: solo quedan las cifras de esa entrega, para no confundirlas.
       top={
         delivery || active === "consolidado" ? undefined : (
         <PageSection label="Revisión de rentabilidad" meta="Sin IVA" className="p-0">

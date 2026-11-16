@@ -12,7 +12,7 @@ import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/d
 function friendly(error: DbError) {
   const m = error.message;
   if (error.code === "42501" || m === "forbidden") return "No tienes permiso para hacer esto.";
-  if (m === "not_in_progress") return "Las compras se registran cuando el contrato está En ejecución.";
+  if (m === "not_in_progress") return "Las compras se registran cuando el proceso está En ejecución.";
   if (m === "bad_supplier") return "Elige el proveedor.";
   if (m === "bad_invoice") return "Escribe el número y la fecha de la factura.";
   if (m === "no_lines") return "Agrega al menos una línea a la factura.";
@@ -20,11 +20,11 @@ function friendly(error: DbError) {
   if (m === "not_draft") return "Esta factura ya está completa y no se puede editar.";
   if (m === "draft_purchase") return "La factura sigue en borrador: complétala primero.";
   if (m === "bad_quantity") return "Revisa cantidades y costos: deben ser mayores a 0.";
-  if (error.code === "23505") return "Ese proveedor ya tiene una factura con ese número en este contrato.";
-  if (m === "duplicate_invoice") return "Ese proveedor ya tiene una factura con ese número en este contrato.";
+  if (error.code === "23505") return "Ese proveedor ya tiene una factura con ese número en este proceso.";
+  if (m === "duplicate_invoice") return "Ese proveedor ya tiene una factura con ese número en este proceso.";
   if (m === "over_assigned") return "No se puede reservar más de lo que trae la línea de la factura.";
-  if (m === "over_covered") return "Eso supera lo que pide la línea del contrato.";
-  if (m === "line_not_found") return "No encontramos la línea del contrato.";
+  if (m === "over_covered") return "Eso supera lo que pide la línea del proceso.";
+  if (m === "line_not_found") return "No encontramos la línea del proceso.";
   if (m === "over_received") return "No puedes recibir más de lo que falta de esa línea.";
   if (m === "not_credit") return "Esta función es solo para procesos a crédito.";
   if (m === "purchase_draft") return "La factura sigue en borrador: complétala primero.";
@@ -99,7 +99,7 @@ export type XmlLineMatch = {
 };
 
 // Empareja las líneas de una factura leída del XML: proveedor por RUC y productos por código (o por números
-// de parte que aparezcan en la descripción). Consulta por lotes. Asignar al contrato se hace después, en Abastecimiento.
+// de parte que aparezcan en la descripción). Consulta por lotes. Asignar al proceso se hace después, en Abastecimiento.
 export async function matchXmlLines(
   org: string,
   input: { supplierRuc: string; lines: { code: string; description: string }[] },
@@ -296,7 +296,7 @@ export async function deletePurchase(org: string, contractId: string, purchaseId
 
 export type ContractInvoice = { id: string; number: string; supplier: string };
 
-// Facturas completas del contrato, para filtrar la búsqueda de abastecimiento por una de ellas.
+// Facturas completas del proceso, para filtrar la búsqueda de abastecimiento por una de ellas.
 export async function listContractInvoices(contractId: string): Promise<ContractInvoice[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -328,7 +328,7 @@ export async function assignPurchase(
   const { data, error } = await supabase.rpc("purchase_assign", { p_purchase_line_id: purchaseLineId, p_line_id: lineId, p_qty: qty });
   if (error) return { error: friendly(error) };
   refresh(org, contractId);
-  // `id` es el tramo creado en la línea del contrato: sirve para deshacer.
+  // `id` es el tramo creado en la línea del proceso: sirve para deshacer.
   return { id: data as string };
 }
 

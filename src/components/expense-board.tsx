@@ -56,7 +56,7 @@ export function ExpenseBoard({ org, contractId, rows: serverRows, count: serverC
   return (
     <PageSection className="p-0">
       <HeaderAction icon={Add01Icon} label="Registrar gasto" onClick={openNew} />
-      <PageFigures figures={[{ label: "Gastos del contrato", value: formatCents(allTotalCents) }, ...(filtered ? [{ label: "Total de documentos mostrados", value: pending || categoryView.error ? "—" : formatCents(totalCents) }] : [])]} />
+      <PageFigures figures={[{ label: "Gastos del proceso", value: formatCents(allTotalCents) }, ...(filtered ? [{ label: "Total de documentos mostrados", value: pending || categoryView.error ? "—" : formatCents(totalCents) }] : [])]} />
       <PageFooterActions><span className="whitespace-nowrap text-sm text-muted-foreground"><span className="num">{pending ? "…" : categoryView.error ? "—" : filtered ? `${count} de ${allCount}` : allCount}</span> {allCount === 1 ? "documento" : "documentos"}</span></PageFooterActions>
       <SearchBar>
         <UrlSearch q={q} label="Buscar gastos" placeholder="Buscar por concepto, beneficiario o comprobante" />
@@ -73,7 +73,7 @@ export function ExpenseBoard({ org, contractId, rows: serverRows, count: serverC
         <div role="alert" className="space-y-3 p-6"><p className="text-sm text-destructive">{categoryView.error}</p><Button variant="outline" onClick={() => void categoryView.retry()}>Reintentar</Button></div>
       ) : allCount === 0 ? (
         <EmptyState image="image-Y9XTBPYYZden371yTkDUk5RakCVmX9" fill action={<Button onClick={openNew}>Registrar primer gasto</Button>}>
-          Este contrato aún no tiene gastos registrados.
+          Este proceso aún no tiene gastos registrados.
         </EmptyState>
       ) : rows.length === 0 ? (
         <EmptyState image="image-Y9XTBPYYZden371yTkDUk5RakCVmX9" fill>

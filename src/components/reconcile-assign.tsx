@@ -34,7 +34,7 @@ export function AssignTo({ rc, target }: { rc: Reconcile; target: Target }) {
       )}
       <div className="flex items-center justify-between gap-3">
       {target.open <= 0 ? (
-        <p className="text-xs text-muted-foreground">Esta línea del contrato ya está cubierta por completo.</p>
+        <p className="text-xs text-muted-foreground">Esta línea del proceso ya está cubierta por completo.</p>
       ) : !canStock && !canArrive ? (
         <p className="text-xs text-muted-foreground">Ya no queda nada de esto por cubrir.</p>
       ) : (

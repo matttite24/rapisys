@@ -56,7 +56,7 @@ export async function loadExpenses(org: string, contractId: string, q: string, c
     db.rpc("contract_expenses_view", { p_contract_id: contractId, p_q: cleanSearch(q).slice(0, 200), p_category: selected,
       p_offset: (currentPage - 1) * EXPENSE_PAGE_SIZE, p_limit: EXPENSE_PAGE_SIZE }),
   ]);
-  if (!contract) return { error: "No encontramos el contrato." };
+  if (!contract) return { error: "No encontramos el proceso." };
   if (error) return { error: friendly(error) };
   const result = data as { version?: number; rows: Expense[]; count: number; total_cents: number; all_count: number; all_total_cents: number } | null;
   if (!result || result.version !== 2) return { error: SCHEMA_MESSAGE };

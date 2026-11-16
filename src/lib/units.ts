@@ -1,4 +1,4 @@
-// Unidades de medida de una línea de contrato. Se guarda la clave, no la etiqueta.
+// Unidades de medida de una línea de proceso. Se guarda la clave, no la etiqueta.
 export const UNITS = {
   unit: "Unidad",
   set: "Juego",

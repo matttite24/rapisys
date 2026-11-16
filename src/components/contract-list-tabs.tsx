@@ -52,7 +52,7 @@ export function AllLists({
       </button>
       <SheetContent side="left" showCloseButton={false} className="gap-0 bg-background data-[side=left]:w-full data-[side=left]:sm:max-w-md">
         <SheetHeader className={cn(CELL_ROW, "flex-row justify-between gap-3 px-4 pr-4 shadow-bar")}>
-          <SheetTitle className="caps-md min-w-0 truncate font-medium">Listas del contrato</SheetTitle>
+          <SheetTitle className="caps-md min-w-0 truncate font-medium">Listas del proceso</SheetTitle>
           <SheetDescription className="sr-only">
             {lists.length} {lists.length === 1 ? "lista" : "listas"}. Elige una para abrirla.
           </SheetDescription>
@@ -117,7 +117,7 @@ export function ListTabs({
 }) {
   return (
     <FolderTabs
-      label="Listas del contrato"
+      label="Listas del proceso"
       tabs={lists.map((l) => ({ key: l.id, label: l.name, count: counts[l.id] ?? 0 }))}
       activeKey={activeId}
       onSelect={onSelect}

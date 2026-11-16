@@ -14,8 +14,8 @@ import { addDaysIso, formatIso } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 
-// Lo común a todas las partes del contrato: cliente y estado en el encabezado,
-// (las partes del contrato se cambian desde la columna de opciones).
+// Lo común a todas las partes del proceso: cliente y estado en el encabezado,
+// (las partes del proceso se cambian desde la columna de opciones).
 async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contratos/[id]">["params"] }) {
   await connection();
   const { org, id } = await params;
@@ -42,7 +42,7 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
 
   return (
     <>
-      {/* Cliente y nombre del contrato reemplazan el título del encabezado; estado y pasos van a su derecha. */}
+      {/* Cliente y nombre del proceso reemplazan el título del encabezado; estado y pasos van a su derecha. */}
       <HeaderTitle>
         <span>{client?.name}</span>
         <span aria-hidden className="mx-2 text-muted-foreground">/</span>
@@ -60,7 +60,7 @@ async function ContractChrome({ params }: { params: LayoutProps<"/[org]/contrato
           </div>
         </OnlyAtDetail>
       </HeaderSlot>
-      {/* En un contrato, la celda de la organización pasa a mostrar estado y fecha de entrega. */}
+      {/* En un proceso, la celda de la organización pasa a mostrar estado y fecha de entrega. */}
       {/* Contadores a la derecha de cada sección en el menú de opciones: listas, líneas, facturas y entregas. */}
       <NavBadges
         badges={{

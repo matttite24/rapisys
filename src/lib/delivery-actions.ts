@@ -107,7 +107,7 @@ export type DeliveryResult = { error?: string; id?: string } | undefined;
 
 function friendly(error: DbError) {
   if (error.code === "42501" || error.message === "forbidden") return "No tienes permiso para hacer esto.";
-  if (error.message === "not_in_progress") return "Las entregas se registran cuando el contrato está En ejecución.";
+  if (error.message === "not_in_progress") return "Las entregas se registran cuando el proceso está En ejecución.";
   if (error.message === "not_deliverable") return "Alguna línea ya no está lista para entregar (sin todo asignado de la bodega o ya entregada). Actualiza la pantalla.";
   if (error.message === "list_not_found") return "No encontramos la lista o alguna de sus líneas.";
   if (error.message === "duplicate_line") return "Una línea aparece repetida.";

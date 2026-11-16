@@ -54,7 +54,7 @@ type View = {
   }[];
 };
 
-// Abastecimiento del contrato: cada línea de la lista abierta, con cuánto está cubierto. Todo llega
+// Abastecimiento del proceso: cada línea de la lista abierta, con cuánto está cubierto. Todo llega
 // en una sola llamada a la base (`contract_supply_view`), por páginas.
 async function Supply({ params, searchParams }: { params: IdParams; searchParams: Search }) {
   await connection();
@@ -65,7 +65,7 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
   const page = readPage(sp);
   const [from] = pageRange(page, LINES_PAGE_SIZE);
 
-  // La lista, el contrato y el resumen de costos no dependen unos de otros.
+  // La lista, el proceso y el resumen de costos no dependen unos de otros.
   const [{ data }, contract, { data: costData }] = await Promise.all([
     supabase.rpc("contract_supply_view", {
       p_contract_id: id,
@@ -86,8 +86,8 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     return (
       <PageSection>
         <p className="max-w-xl text-muted-foreground">
-          El abastecimiento se trabaja cuando el contrato pasa a <strong className="text-foreground">En ejecución</strong>.
-          Mientras tanto, corrige los datos del contrato en{" "}
+          El abastecimiento se trabaja cuando el proceso pasa a <strong className="text-foreground">En ejecución</strong>.
+          Mientras tanto, corrige los datos del proceso en{" "}
           <Link href={`/${org}/contratos/${id}`} className="underline underline-offset-4">Detalle</Link>.
         </p>
       </PageSection>

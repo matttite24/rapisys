@@ -50,7 +50,7 @@ export function useContractFilter(org: string, initial: ContractListView) {
       });
       const result = await Promise.race([loadContractList(org, initial.q, filter, page), timeout]);
       if (lifecycle.current?.source !== source || !lifecycle.current?.active || request !== sequence.current) return;
-      if (!result.view) throw new Error(result.error || "No se pudieron cargar los contratos.");
+      if (!result.view) throw new Error(result.error || "No se pudieron cargar los procesos.");
       source.cache.set(`${filter}:${page}`, result.view);
       setSelection({ source, view: result.view, loading: false, error: "" });
     } catch (error) {

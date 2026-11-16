@@ -38,7 +38,7 @@ it("responsables y proveedores no reciben campo de tipo de cliente", async () =>
   await expect(saveParty("suppliers", "org", null, undefined, form())).rejects.toThrow("redirect:/org/proveedores");
   expect(state.payload).not.toHaveProperty("client_type");
 });
-it("sigue impidiendo eliminar registros con contratos asociados", async () => {
+it("sigue impidiendo eliminar registros con procesos asociados", async () => {
   state.error = { code: "23503", message: "foreign key" };
-  expect((await deleteParty("clients", "org", "client-id"))?.error).toContain("contratos asociados");
+  expect((await deleteParty("clients", "org", "client-id"))?.error).toContain("procesos asociados");
 });

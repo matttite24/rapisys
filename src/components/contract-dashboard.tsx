@@ -55,7 +55,7 @@ function Meter({ value, label }: { value: number; label: string }) {
   );
 }
 
-// Ícono discreto al lado de un rótulo: ayuda a reconocer la sección (los mismos íconos que el menú del contrato).
+// Ícono discreto al lado de un rótulo: ayuda a reconocer la sección (los mismos íconos que el menú del proceso).
 function Ico({ icon, className }: { icon: IconSvgElement; className?: string }) {
   return <HugeiconsIcon icon={icon} aria-hidden className={cn("size-4 shrink-0 text-muted-foreground", className)} />;
 }
@@ -69,7 +69,7 @@ function SeeAll({ href, children }: { href: string; children: React.ReactNode })
   );
 }
 
-// Dashboard del contrato: plazo, monto, abastecimiento, compras, entregas y listas, con lo principal de cada parte.
+// Dashboard del proceso: plazo, monto, abastecimiento, compras, entregas y listas, con lo principal de cada parte.
 export async function ContractDashboard({
   org,
   id,
@@ -112,7 +112,7 @@ export async function ContractDashboard({
   const remaining = end ? Math.round((isoMs(end) - isoMs(today)) / DAY) : null;
   const timePct = termDays > 0 ? (elapsed / termDays) * 100 : 0;
 
-  // Abastecimiento: el recuento es por líneas del contrato.
+  // Abastecimiento: el recuento es por líneas del proceso.
   const rows = (supplyRes.data ?? []) as { list_id: string; state: SupplyState; n: number }[];
   const counts: Record<SupplyState, number> = { pending: 0, quoted: 0, purchased: 0, partial: 0, in_stock: 0, delivered: 0 };
   const byList = new Map<string, { total: number; delivered: number }>();
@@ -178,7 +178,7 @@ export async function ContractDashboard({
         ]}
       />
       <PageRefresh stamp={new Date().toISOString()} />
-      {/* Hero a todo el ancho: identifica el contrato y reúne sus tres cifras. El montacargas se apoya en el borde inferior. */}
+      {/* Hero a todo el ancho: identifica el proceso y reúne sus tres cifras. El montacargas se apoya en el borde inferior. */}
       <section className="overflow-hidden border-b bg-surface-strong">
         <div className="flex items-end justify-between gap-8 pl-6 pr-6 xl:pr-10">
           <div className="flex min-w-0 flex-1 flex-col gap-8 py-8">
@@ -211,7 +211,7 @@ export async function ContractDashboard({
               ) : (
                 <>
               <div>
-                <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Wallet01Icon} className="size-3.5" />Monto del contrato (IVA incl.)</dt>
+                <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Wallet01Icon} className="size-3.5" />Monto del proceso (IVA incl.)</dt>
                 <dd className="text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl">{formatCents(contractTotal)}</dd>
                 <Meter value={contractTotal > 0 ? (spent / contractTotal) * 100 : 0} label="Comprado sobre el monto" />
                 <span className="text-xs text-muted-foreground">Comprado {formatCents(spent)} · {spentPct} %</span>
@@ -255,7 +255,7 @@ export async function ContractDashboard({
         <Card size="sm" className="xl:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Ico icon={PackageProcessIcon} />Abastecimiento</CardTitle>
-            <CardDescription>{totalLines} {totalLines === 1 ? "línea" : "líneas"} en el contrato</CardDescription>
+            <CardDescription>{totalLines} {totalLines === 1 ? "línea" : "líneas"} en el proceso</CardDescription>
             <CardAction>
               <SeeAll href={`${base}/abastecimiento`}>Ver abastecimiento</SeeAll>
             </CardAction>

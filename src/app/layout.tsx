@@ -18,7 +18,7 @@ const dmMono = DM_Mono({
 
 export const metadata: Metadata = {
   title: "Rapisys",
-  description: "Gestión de contratos de compra y venta de repuestos automotrices",
+  description: "Gestión de procesos de compra y venta de repuestos automotrices",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

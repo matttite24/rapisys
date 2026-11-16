@@ -91,7 +91,7 @@ export function PurchasePayments({
               size="sm"
               variant={mode === "advance" ? "secondary" : "outline"}
               disabled={advances.length === 0}
-              title={advances.length === 0 ? "No hay anticipos disponibles de este proveedor en el contrato" : undefined}
+              title={advances.length === 0 ? "No hay anticipos disponibles de este proveedor en el proceso" : undefined}
               onClick={() => setMode(mode === "advance" ? null : "advance")}
             >
               Aplicar anticipo

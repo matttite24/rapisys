@@ -114,7 +114,7 @@ export function LineRow({
               variant="ghost"
               size="icon"
               className="size-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
-              aria-label={`Quitar la línea ${n} del contrato`}
+              aria-label={`Quitar la línea ${n} del proceso`}
               hint="Toca otra vez para quitar"
               onConfirm={() => onRemove(l.id)}
             >

@@ -21,7 +21,7 @@ export type Quotation = {
 function friendly(error: DbError) {
   if (isSchemaError(error)) return SCHEMA_MESSAGE;
   if (error.code === "42501") return "No tienes permiso para registrar esta gestión.";
-  if (error.message === "not_in_progress") return "Solo puedes registrar gestiones en contratos En ejecución.";
+  if (error.message === "not_in_progress") return "Solo puedes registrar gestiones en procesos En ejecución.";
   logDbError("cotizaciones", error);
   return "No se pudo completar la acción. Inténtalo de nuevo.";
 }

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Datos del activo que no vienen en las vistas de las listas del contrato (año de fabricación, "otro" y placa), por activo.
+// Datos del activo que no vienen en las vistas de las listas del proceso (año de fabricación, "otro" y placa), por activo.
 export async function assetExtras(
   supabase: SupabaseClient,
   assetIds: (string | null)[],

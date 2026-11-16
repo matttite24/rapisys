@@ -19,7 +19,7 @@ function friendly(error: DbError) {
   if (error.code === "42501" || m === "forbidden") return "No tienes permiso para registrar pagos.";
   if (m === "over_paid") return "Eso supera el saldo de la factura: lo registrado no puede pasar de su total.";
   if (m === "over_advance") return "El monto supera lo que le queda disponible a ese anticipo.";
-  if (m === "bad_advance") return "Ese anticipo no es de este proveedor y contrato.";
+  if (m === "bad_advance") return "Ese anticipo no es de este proveedor y proceso.";
   if (m === "purchase_draft") return "La factura sigue en borrador: complétala primero.";
   if (error.code === "23503") return "No se puede eliminar: el anticipo ya se aplicó a una factura. Quita primero esa aplicación.";
   logDbError("pagos", error);
@@ -105,7 +105,7 @@ export async function addSupplierAdvance(org: string, contractId: string, form: 
   if (!orgId) return { error: "No encontramos la organización." };
   const supabase = await createClient();
   const { data: contract } = await supabase.from("contracts").select("id").eq("id", contractId).eq("organization_id", orgId).maybeSingle();
-  if (!contract) return { error: "No encontramos el contrato." };
+  if (!contract) return { error: "No encontramos el proceso." };
   const { error } = await supabase.from("supplier_advances").insert({
     organization_id: orgId,
     contract_id: contractId,

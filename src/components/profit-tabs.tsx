@@ -83,7 +83,7 @@ export function ProfitTabs({
       >
         <SheetContent side="left" showCloseButton={false} className="gap-0 bg-background data-[side=left]:w-full data-[side=left]:sm:max-w-md">
           <SheetHeader className={cn(CELL_ROW, "flex-row justify-between gap-3 px-4 pr-4 shadow-bar")}>
-            <SheetTitle className="caps-md min-w-0 truncate font-medium">Entregas del contrato</SheetTitle>
+            <SheetTitle className="caps-md min-w-0 truncate font-medium">Entregas del proceso</SheetTitle>
             <SheetDescription className="sr-only">Elige una entrega para ver su rentabilidad.</SheetDescription>
             <SheetClose render={<Button variant="ghost" size="icon" aria-label="Cerrar entregas" />}>
               <HugeiconsIcon icon={Cancel01Icon} className="size-5" />

@@ -1,10 +1,10 @@
 export const CONTRACT_FILTERS = {
-  "": { title: "Todos los contratos", statuses: [] as string[], empty: "Todavía no hay contratos." },
-  nuevos: { title: "Contratos nuevos", statuses: ["new"], empty: "No hay contratos nuevos." },
-  ejecucion: { title: "Contratos en ejecución", statuses: ["in_progress"], empty: "No hay contratos en ejecución." },
-  cierre: { title: "Por cobrar", statuses: ["finished", "invoiced", "pending_payment"], empty: "No hay contratos por cobrar." },
+  "": { title: "Procesos", statuses: [] as string[], empty: "Todavía no hay procesos." },
+  nuevos: { title: "Procesos nuevos", statuses: ["new"], empty: "No hay procesos nuevos." },
+  ejecucion: { title: "Procesos en ejecución", statuses: ["in_progress"], empty: "No hay procesos en ejecución." },
+  cierre: { title: "Por cobrar", statuses: ["finished", "invoiced", "pending_payment"], empty: "No hay procesos por cobrar." },
   credito: { title: "Procesos a crédito", statuses: [] as string[], empty: "No hay procesos a crédito." },
-  cobrados: { title: "Contratos cobrados", statuses: ["paid"], empty: "Todavía no hay contratos cobrados." },
+  cobrados: { title: "Procesos cobrados", statuses: ["paid"], empty: "Todavía no hay procesos cobrados." },
 } as const;
 export type ContractFilter = keyof typeof CONTRACT_FILTERS;
 export const contractFilter = (value: string): ContractFilter => Object.hasOwn(CONTRACT_FILTERS, value) ? value as ContractFilter : "";

@@ -14,7 +14,7 @@ export type FileResult = { error?: string; id?: string };
 const SOURCES: FileSource[] = ["contract", "purchase", "expense"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Valida lo que se va a subir y comprueba que el contrato (y la compra o el gasto, si se eligió) sean de esta organización.
+// Valida lo que se va a subir y comprueba que el proceso (y la compra o el gasto, si se eligió) sean de esta organización.
 async function check(org: string, contractId: string, meta: Meta) {
   await requireUser();
   const name = String(meta.name ?? "").trim();
@@ -31,7 +31,7 @@ async function check(org: string, contractId: string, meta: Meta) {
   if (!orgId) return { error: "No encontramos la organización." } as const;
   const supabase = await createClient();
   const { data: contract } = await supabase.from("contracts").select("id").eq("id", contractId).eq("organization_id", orgId).maybeSingle();
-  if (!contract) return { error: "No encontramos el contrato." } as const;
+  if (!contract) return { error: "No encontramos el proceso." } as const;
   if (meta.source !== "contract") {
     const table = meta.source === "purchase" ? "purchases" : "contract_expenses";
     const { data: owner } = await supabase.from(table).select("id").eq("id", meta.sourceId as string).eq("contract_id", contractId).maybeSingle();
@@ -59,7 +59,7 @@ export async function prepareUpload(org: string, contractId: string, meta: Meta)
   return { path, token: data.token, mime: c.mime };
 }
 
-// Paso 2: con el archivo ya subido, se registra. Se comprueba que el objeto exista y que la ruta sea de este contrato.
+// Paso 2: con el archivo ya subido, se registra. Se comprueba que el objeto exista y que la ruta sea de este proceso.
 export async function finishUpload(org: string, contractId: string, meta: Meta & { path: string; thumbPath?: string }): Promise<FileResult> {
   const c = await check(org, contractId, meta);
   if ("error" in c) return { error: c.error };
@@ -130,7 +130,7 @@ export async function deleteFile(org: string, contractId: string, fileId: string
 
 export type SourceOption = { id: string; label: string };
 
-// Compras y gastos del contrato a los que se puede adjuntar un archivo. Se piden al elegirlos en el cuadro de carga, no al abrir la lista.
+// Compras y gastos del proceso a los que se puede adjuntar un archivo. Se piden al elegirlos en el cuadro de carga, no al abrir la lista.
 export async function listFileSources(org: string, contractId: string): Promise<{ purchases: SourceOption[]; expenses: SourceOption[] }> {
   await requireUser();
   const orgId = await getOrgId(org);

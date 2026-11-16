@@ -2,8 +2,9 @@
 
 import { LineQuotations } from "@/components/line-quotations";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ConfirmTap } from "@/components/confirm-tap";
 import { PageShortcuts } from "@/components/page-shortcuts";
-import { Archive02Icon, Cancel01Icon, ClipboardCheckIcon, ClipboardPenLineIcon, Invoice01Icon } from "@hugeicons/core-free-icons";
+import { Archive02Icon, Cancel01Icon, Delete02Icon, ClipboardCheckIcon, ClipboardPenLineIcon, Invoice01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import type { SupplyLine } from "@/components/supply-board";
 import { NEW_LINE, type Reconcile } from "@/components/use-reconcile";
@@ -15,9 +16,10 @@ import { Target } from "@/components/reconcile-shared";
 import { PanelError } from "@/components/reconcile-parts";
 import { InvoiceMode } from "@/components/reconcile-invoices";
 import { StockMode } from "@/components/reconcile-stock";
+import { LineNameEditor } from "@/components/line-name-editor";
 import { AssignedView } from "@/components/reconcile-assigned";
 
-// Panel «Abastecimiento»: se abre a la derecha de la tabla al tocar una línea del contrato (esa línea es el destino).
+// Panel «Abastecimiento»: se abre a la derecha de la tabla al tocar una línea del proceso (esa línea es el destino).
 // De arriba abajo: el nombre de la línea, la fuente (Facturas o Bodega), la factura elegida, el buscador y la lista.
 // Al pie, la línea con lo ya cubierto (y Liberar) y el botón para cambiar de fuente.
 export function ReconcilePanel({
@@ -26,6 +28,8 @@ export function ReconcilePanel({
   contractId,
   focus,
   addToListId,
+  onRemove,
+  removing,
   canAct,
   closing,
   onClose,
@@ -36,6 +40,9 @@ export function ReconcilePanel({
   focus: SupplyLine | null;
   // Proceso a crédito: lista a la que se agregan líneas nuevas desde Facturas y Bodega (sin línea abierta).
   addToListId?: string;
+  // Proceso a crédito: la línea abierta se puede quitar desde el pie.
+  onRemove?: () => void;
+  removing?: boolean;
   canAct: boolean;
   closing: boolean;
   onClose: () => void;
@@ -201,11 +208,16 @@ export function ReconcilePanel({
       ) : focus && rc.source === "asignados" ? (
         activeSupply?.error ? (
           <PanelError message={activeSupply.error} onRetry={() => { setSupply(null); setSupplyRetry((n) => n + 1); }} />
-        ) : <AssignedView rc={rc} org={org} contractId={contractId} sources={sources} canAct={canAct} />
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            {canAct && <LineNameEditor key={`${focus.id}:${focus.description}`} org={org} contractId={contractId} lineId={focus.id} name={focus.description} />}
+            <AssignedView rc={rc} org={org} contractId={contractId} sources={sources} canAct={canAct} />
+          </div>
+        )
       ) : focus && rc.source === "cotizaciones" ? (
         <LineQuotations key={focus.id} org={org} contractId={contractId} lineId={focus.id} canAct={canAct} onSaved={rc.refresh} />
       ) : !focus && rc.source !== "facturas" && rc.source !== "bodega" ? null : !canAct ? (
-        <p className="p-6 text-sm text-muted-foreground">El abastecimiento se trabaja cuando el contrato está En ejecución.</p>
+        <p className="p-6 text-sm text-muted-foreground">El abastecimiento se trabaja cuando el proceso está En ejecución.</p>
       ) : rc.source === "facturas" ? (
         <InvoiceMode rc={rc} target={(target ?? addTarget)!} partNumber={focus?.partNumber ?? ""} />
       ) : (
@@ -214,7 +226,7 @@ export function ReconcilePanel({
 
       </div>
 
-      {/* Presupuesto de la línea, sobre el pie: el precio referencial contra el costo de lo asignado, para no pasarse de lo que paga el contrato. */}
+      {/* Presupuesto de la línea, sobre el pie: el precio referencial contra el costo de lo asignado, para no pasarse de lo que paga el proceso. */}
       {focus && (
         <div style={{ bottom: footerHeight ?? "var(--footer-height)" }} className="absolute inset-x-0 flex h-8 items-center gap-x-5 overflow-hidden border-t bg-background px-4 text-xs whitespace-nowrap" aria-live="polite">
           {focus.referenceCents === null ? (
@@ -253,12 +265,28 @@ export function ReconcilePanel({
       {/* Pie anclado al fondo y alineado con el borde superior real de la barra inferior. */}
       {focus && (
         <div style={{ height: footerHeight ?? "var(--footer-height)" }} className="absolute inset-x-0 bottom-0 flex flex-col justify-center border-t bg-surface-strong px-4">
-          <span className="truncate text-sm font-medium" title={focus.description}>
+          <span className={cn("truncate text-sm font-medium", onRemove && "pr-12")} title={focus.description}>
             {focus.description}
           </span>
-          <span className="truncate font-mono text-xs text-muted-foreground">
+          <span className={cn("truncate font-mono text-xs text-muted-foreground", onRemove && "pr-12")}>
             Línea {focus.n} · {focus.partNumber || "Sin n.º de parte"}
           </span>
+            {onRemove && (
+              <div className="absolute top-1/2 right-4 -translate-y-1/2">
+              <ConfirmTap
+                variant="ghost"
+                size="icon"
+                hintSide="top"
+                disabled={removing}
+                hint="Toca otra vez para quitar la línea"
+                className="size-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                aria-label={`Quitar la línea ${focus.n}`}
+                onConfirm={onRemove}
+              >
+                <HugeiconsIcon icon={Delete02Icon} className="size-4.5" />
+              </ConfirmTap>
+              </div>
+            )}
         </div>
       )}
 

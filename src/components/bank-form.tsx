@@ -13,7 +13,7 @@ import { deleteBank, saveBank } from "@/lib/bank-actions";
 import { ACCOUNT_TYPES, type BankAccount } from "@/lib/banks";
 import { centsToInput } from "@/lib/money";
 
-// Crear o editar una cuenta bancaria: banco, tipo, número, monto inicial y el responsable de contrato asociado.
+// Crear o editar una cuenta bancaria: banco, tipo, número, monto inicial y el responsable de proceso asociado.
 export function BankForm({
   org,
   account,
