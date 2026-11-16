@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
-import { DM_Sans, DM_Mono } from "next/font/google";
+import { Roboto, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const roboto = Roboto({
+  variable: "--font-roboto",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "700"],
 });
 
-const dmMono = DM_Mono({
-  variable: "--font-dm-mono",
+const robotoMono = Roboto_Mono({
+  variable: "--font-roboto-mono",
   subsets: ["latin"],
-  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -26,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="es"
       suppressHydrationWarning
-      className={cn("h-full", "antialiased", dmSans.variable, dmMono.variable, "font-sans")}
+      className={cn("h-full", "antialiased", roboto.variable, robotoMono.variable, "font-sans")}
     >
       <body className="min-h-full flex flex-col"><ThemeProvider>
           {children}
