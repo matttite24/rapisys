@@ -1,5 +1,6 @@
 "use server";
 
+import { isSchemaError, logDbError, SCHEMA_MESSAGE } from "@/lib/db-error";
 import { cleanSearch } from "@/lib/search";
 import { getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
@@ -17,8 +18,13 @@ export async function searchParties(org: string, kind: "client" | "manager", q: 
     .select("id, name, ruc")
     .eq("organization_id", orgId)
     .order("name")
+    .order("id")
     .limit(15);
   if (term) query = query.or(`name.ilike.%${term}%,ruc.ilike.%${term}%`);
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) {
+    logDbError("búsqueda de clientes y responsables", error);
+    throw new Error(isSchemaError(error) ? SCHEMA_MESSAGE : "No se pudieron buscar los clientes o responsables. Inténtalo de nuevo.");
+  }
   return (data ?? []) as PartyOption[];
 }

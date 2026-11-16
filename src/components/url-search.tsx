@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { SearchInput } from "@/components/search-input";
 import { cn } from "@/lib/utils";
 
@@ -15,14 +15,13 @@ export function SearchBar({ children, className }: { children: React.ReactNode; 
 export function UrlSearch({ q, label, placeholder }: { q: string; label: string; placeholder: string }) {
   const router = useRouter();
   const path = usePathname();
-  const sp = useSearchParams();
   return (
     <SearchInput
       label={label}
       placeholder={placeholder}
       defaultValue={q}
       onSearch={(t) => {
-        const next = new URLSearchParams(sp);
+        const next = new URLSearchParams(window.location.search);
         if (t) next.set("q", t);
         else next.delete("q");
         next.delete("page");

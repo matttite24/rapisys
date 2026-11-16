@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { SearchInput } from "@/components/search-input";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createList, quickCreateAsset, recentAssets, searchAssets, type AssetResult, type QuickAssetState } from "@/lib/contract-list-actions";
+import { useDebouncedSearch } from "@/lib/use-debounced-search";
 import { ASSET_KIND_LABEL } from "@/lib/items";
 
 export type Step = "search" | "asset" | "name";
@@ -30,11 +31,10 @@ export function NewListDialog({
   onOpenChange: (open: boolean) => void;
   onCreated: (id: string) => void;
 }) {
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const latest = useRef("");
   const [step, setStep] = useState<Step>("search");
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<AssetResult[] | null>(null);
+  const { results, error: searchError, run, clear } = useDebouncedSearch((text: string) => searchAssets(org, text));
+  const [recentError, setRecentError] = useState("");
   // Al abrir solo se piden los 5 recientes; la búsqueda empieza al escribir (2 letras o más).
   const [recents, setRecents] = useState<AssetResult[] | null>(null);
   const [saving, setSaving] = useState(false);
@@ -46,17 +46,18 @@ export function NewListDialog({
   useEffect(() => {
     if (!open) return;
     let alive = true;
-    void recentAssets(org).then((r) => alive && setRecents(r));
+    void recentAssets(org).then((r) => { if (alive) { setRecentError(""); setRecents(r); } }).catch(() => { if (alive) setRecentError("No se pudieron cargar los activos recientes."); });
     return () => {
       alive = false;
+      clear();
     };
-  }, [open, org]);
+  }, [open, org, clear]);
 
   function reset() {
     setStep("search");
     setQ("");
-    latest.current = "";
-    setResults(null);
+    clear();
+    setRecentError("");
     setRecents(null);
     setState(undefined);
     setSaving(false);
@@ -64,18 +65,13 @@ export function NewListDialog({
 
   const searching = q.trim().length >= 2;
   const shown = searching ? results : recents;
+  const queryError = searching ? searchError : recentError;
 
   function search(value: string) {
     setQ(value);
-    latest.current = value;
-    clearTimeout(timer.current);
-    if (value.trim().length < 2) return setResults(null);
-    setResults(null);
-    timer.current = setTimeout(async () => {
-      const found = await searchAssets(org, value);
-      // Si mientras tanto se siguió escribiendo, esta respuesta ya no vale.
-      if (latest.current === value) setResults(found);
-    }, 300);
+    if (value.trim().length < 2) clear();
+    else run(value);
+
   }
 
   // Crea la lista (con o sin activo) y la abre.
@@ -161,7 +157,8 @@ export function NewListDialog({
               {searching ? "Resultados" : "Recientes"}
             </p>
             <ul aria-label={searching ? "Resultados de la búsqueda" : "Activos recientes"} className="max-h-72 min-h-24 divide-y overflow-y-auto">
-              {shown === null && <li className="p-4 text-sm text-muted-foreground">{searching ? "Buscando…" : "Cargando…"}</li>}
+              {queryError && <li role="alert" className="p-4 text-sm text-destructive">{queryError}</li>}
+              {!queryError && shown === null && <li className="p-4 text-sm text-muted-foreground">{searching ? "Buscando…" : "Cargando…"}</li>}
               {shown?.length === 0 && (
                 <li className="p-4 text-sm text-muted-foreground">
                   {searching ? "Ningún activo coincide con la búsqueda." : "Aún no hay activos recientes. Escribe para buscar o crea uno."}

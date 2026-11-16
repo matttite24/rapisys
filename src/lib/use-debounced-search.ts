@@ -21,6 +21,7 @@ export function useDebouncedSearch<T>(fetcher: (q: string) => Promise<T>, delay 
     (q: string, wait = delay) => {
       clearTimeout(timer.current);
       const id = ++seq.current;
+      setResults(null);
       setLoading(true);
       setError(null);
       timer.current = setTimeout(async () => {

@@ -54,7 +54,7 @@ export const modules: NavModule[] = [
       },
       {
         items: [
-          { title: "Procesos a crédito", href: "/contratos?estado=credito", icon: CreditCardIcon },
+          { title: "Crédito", href: "/contratos?estado=credito", icon: CreditCardIcon },
         ],
       },
     ],

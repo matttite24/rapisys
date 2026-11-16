@@ -33,3 +33,26 @@ it("una respuesta atrasada no cambia resultados ni carga de la búsqueda nueva",
   expect(result.current.results).toEqual(["nuevo"]);
   expect(result.current.loading).toBe(false);
 });
+
+it("retira resultados anteriores desde la primera tecla de otra búsqueda", async () => {
+  const fetcher = vi.fn().mockResolvedValue(["producto anterior"]);
+  const { result } = renderHook(() => useDebouncedSearch(fetcher));
+  act(() => result.current.run("anterior"));
+  await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+  expect(result.current.results).toEqual(["producto anterior"]);
+  act(() => result.current.run("otro"));
+  expect(result.current.results).toBeNull();
+  expect(result.current.loading).toBe(true);
+});
+
+it("borrar descarta una petición que todavía no respondió", async () => {
+  let resolve!: (rows: string[]) => void;
+  const fetcher = vi.fn(() => new Promise<string[]>((done) => { resolve = done; }));
+  const { result } = renderHook(() => useDebouncedSearch(fetcher));
+  act(() => result.current.run("producto"));
+  await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+  act(() => result.current.clear());
+  await act(async () => { resolve(["viejo"]); });
+  expect(result.current.results).toBeNull();
+  expect(result.current.loading).toBe(false);
+});

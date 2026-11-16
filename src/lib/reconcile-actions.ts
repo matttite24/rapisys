@@ -34,48 +34,55 @@ export async function getInvoiceLines(org: string, contractId: string, invoiceId
   if (!orgId) return [];
   const supabase = await createClient();
 
-  const { data: pls, error: lineError } = await supabase
-    .from("purchase_lines")
-    .select(
-      "id, item_id, quantity, unit_cost_cents, received_qty, xml_code, new_part_number, purchases!inner(contract_id, status)",
-    )
-    .eq("purchase_id", invoiceId)
-    .eq("purchases.contract_id", contractId)
-    .eq("purchases.status", "complete")
-    .order("position")
-    .order("id")
-    .limit(1000);
-  if (lineError) { logDbError("productos de factura", lineError); throw new Error("No se pudieron cargar los productos."); }
-  const lines = (pls ?? []) as unknown as {
-    id: string;
-    item_id: string;
-    quantity: number;
-    unit_cost_cents: number;
-    received_qty: number;
-    xml_code: string | null;
-    new_part_number: string | null;
+  // Leer páginas completas: el buscador local debe incluir también las líneas posteriores a la 1000.
+  const pls: unknown[] = [];
+  const batchSize = 500;
+  for (let offset = 0; ; offset += batchSize) {
+    const { data, error } = await supabase.from("purchase_lines")
+      .select("id, item_id, quantity, unit_cost_cents, received_qty, xml_code, new_part_number, purchases!inner(contract_id, status)")
+      .eq("organization_id", orgId).eq("purchase_id", invoiceId)
+      .eq("purchases.contract_id", contractId).eq("purchases.status", "complete")
+      .order("position").order("id").range(offset, offset + batchSize - 1);
+    if (error) { logDbError("productos de factura", error); throw new Error("No se pudieron cargar los productos."); }
+    pls.push(...(data ?? []));
+    if ((data?.length ?? 0) < batchSize) break;
+  }
+  const lines = pls as {
+    id: string; item_id: string; quantity: number; unit_cost_cents: number;
+    received_qty: number; xml_code: string | null; new_part_number: string | null;
   }[];
   if (!lines.length) return [];
 
-  const [itemResult, sourceResult, lotResult] = await Promise.all([
-    supabase.from("items").select("id, name, tdr_name, sku, part_numbers").in("id", [...new Set(lines.map((l) => l.item_id))]),
-    supabase.from("supply_sources").select("purchase_line_id, kind, quantity").in("purchase_line_id", lines.map((l) => l.id)),
-    supabase
-      .from("stock_lots")
-      .select("id, purchase_line_id, remaining_qty, created_at")
-      .in("purchase_line_id", lines.map((l) => l.id))
-      .gt("remaining_qty", 0)
-      .order("created_at"),
-  ]);
-  for (const result of [itemResult, sourceResult, lotResult]) {
-    if (result.error) { logDbError("productos de factura", result.error); throw new Error("No se pudieron cargar los productos."); }
+  const items: unknown[] = [];
+  const sources: unknown[] = [];
+  const lotRows: unknown[] = [];
+  // Lotes y reservas también pueden superar el tope; lotes pequeños de IDs evitan URLs enormes.
+  for (let start = 0; start < lines.length; start += 100) {
+    const chunk = lines.slice(start, start + 100);
+    const itemResult = await supabase.from("items").select("id, name, tdr_name, sku, part_numbers").in("id", [...new Set(chunk.map((l) => l.item_id))]);
+    if (itemResult.error) { logDbError("productos de factura", itemResult.error); throw new Error("No se pudieron cargar los productos."); }
+    items.push(...(itemResult.data ?? []));
+    for (let offset = 0; ; offset += batchSize) {
+      const result = await supabase.from("supply_sources").select("purchase_line_id, kind, quantity")
+        .in("purchase_line_id", chunk.map((l) => l.id)).order("id").range(offset, offset + batchSize - 1);
+      if (result.error) { logDbError("productos de factura", result.error); throw new Error("No se pudieron cargar los productos."); }
+      sources.push(...(result.data ?? []));
+      if ((result.data?.length ?? 0) < batchSize) break;
+    }
+    for (let offset = 0; ; offset += batchSize) {
+      const result = await supabase.from("stock_lots").select("id, purchase_line_id, remaining_qty, created_at")
+        .in("purchase_line_id", chunk.map((l) => l.id)).gt("remaining_qty", 0)
+        .order("created_at").order("id").range(offset, offset + batchSize - 1);
+      if (result.error) { logDbError("productos de factura", result.error); throw new Error("No se pudieron cargar los productos."); }
+      lotRows.push(...(result.data ?? []));
+      if ((result.data?.length ?? 0) < batchSize) break;
+    }
   }
-  const items = itemResult.data;
-  const sources = sourceResult.data;
-  const lotRows = lotResult.data;
   const lotsByLine = new Map<string, { id: string; remaining: number }[]>();
   for (const r of (lotRows ?? []) as { id: string; purchase_line_id: string; remaining_qty: number }[]) {
-    lotsByLine.set(r.purchase_line_id, [...(lotsByLine.get(r.purchase_line_id) ?? []), { id: r.id, remaining: Number(r.remaining_qty) }]);
+    let lots = lotsByLine.get(r.purchase_line_id);
+    if (!lots) { lots = []; lotsByLine.set(r.purchase_line_id, lots); }
+    lots.push({ id: r.id, remaining: Number(r.remaining_qty) });
   }
   const itemById = new Map(
     ((items ?? []) as { id: string; name: string; tdr_name: string | null; sku: string | null; part_numbers: string[] }[]).map((i) => [i.id, i]),

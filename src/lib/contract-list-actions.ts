@@ -186,17 +186,18 @@ export async function recentAssets(org: string): Promise<AssetResult[]> {
 export async function searchAssets(org: string, q: string): Promise<AssetResult[]> {
   const orgId = await getOrgId(org);
   if (!orgId) return [];
-  const term = cleanSearch(q);
+  const term = cleanSearch(q).slice(0, 200);
 
   const supabase = await createClient();
   let query = supabase
     .from("assets")
     .select("id, name, brand, model, serial")
     .eq("organization_id", orgId)
-    .order("name")
+    .order("name").order("id")
     .limit(12); // el selector avisa cuando llega a este tope
   if (term) query = query.or(`name.ilike.%${term}%,brand.ilike.%${term}%,model.ilike.%${term}%,serial.ilike.%${term}%,identifier.ilike.%${term}%,plate.ilike.%${term}%`);
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) throw new Error(friendly(error));
   return (data ?? []) as AssetResult[];
 }
 

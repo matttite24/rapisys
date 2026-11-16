@@ -56,7 +56,7 @@ function PartyPicker({
   const [value, setValue] = useState(initial?.id ?? "");
   const [name, setName] = useState(initial?.name ?? "");
   const [q, setQ] = useState("");
-  const { results, loading, run, clear } = useDebouncedSearch((text: string) => searchParties(org, prefix, text));
+  const { results, loading, error, run, clear } = useDebouncedSearch((text: string) => searchParties(org, prefix, text));
   const field = `${prefix}_id`;
 
   return (
@@ -93,7 +93,7 @@ function PartyPicker({
                 }}
                 onKeyDown={(e) => e.key === "Escape" && clear()}
               />
-              {(results !== null || loading) && (
+              {(results !== null || loading || error) && (
                 <ul
                   aria-label={label}
                   aria-busy={loading}
@@ -103,7 +103,9 @@ function PartyPicker({
                     loading && results !== null && "opacity-60",
                   )}
                 >
-                  {results === null ? (
+                  {error ? (
+                    <li role="alert" className="px-3 py-2 text-sm text-destructive">{error}</li>
+                  ) : results === null ? (
                     <li className="px-3 py-2 text-sm text-muted-foreground">Buscando…</li>
                   ) : (
                     <>

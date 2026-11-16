@@ -122,24 +122,16 @@ export async function searchStock(
   const supabase = await createClient();
   let more = false;
   let rows: { id: string; sku: string | null; name: string; part_numbers: string[] }[];
-  let lotFilter: string[] | null = null; // con factura: solo los lotes que vienen de sus líneas
 
   if (invoiceId) {
-    const { data: pls } = await supabase.from("purchase_lines").select("id, item_id").eq("purchase_id", invoiceId).limit(1000);
-    const lines = (pls ?? []) as { id: string; item_id: string }[];
-    if (!lines.length) return { rows: [], more: false };
-    lotFilter = lines.map((l) => l.id);
-    const { data: itemRows } = await supabase
-      .from("items")
-      .select("id, sku, name, part_numbers")
-      .in("id", [...new Set(lines.map((l) => l.item_id))]);
-    rows = (itemRows ?? []) as typeof rows;
-    if (term) {
-      const t = term.toLowerCase();
-      rows = rows.filter((r) => [r.name, r.sku, ...(r.part_numbers ?? [])].some((v) => v && v.toLowerCase().includes(t)));
-    }
-    more = rows.length > SEARCH_PAGE;
-    rows = rows.slice(0, SEARCH_PAGE);
+    // El filtro y el límite se aplican juntos en SQL: nunca se recorta la factura antes de buscar.
+    const { data, error } = await supabase.rpc("search_invoice_items", {
+      p_org: orgId, p_invoice: invoiceId, p_q: term, p_limit: SEARCH_PAGE + 1,
+    });
+    if (error) throw new Error(friendly(error));
+    const found = (data ?? []) as typeof rows;
+    more = found.length > SEARCH_PAGE;
+    rows = found.slice(0, SEARCH_PAGE);
   } else {
     const found = await findItems(supabase, orgId, term, SEARCH_PAGE + 1);
     more = found.length > SEARCH_PAGE;
@@ -148,25 +140,34 @@ export async function searchStock(
   if (!rows.length) return { rows: [], more: false };
 
   // Nombre TDR de cada producto (la búsqueda no lo trae).
-  const { data: tdrRows } = await supabase.from("items").select("id, tdr_name").in("id", rows.map((r) => r.id));
+  const { data: tdrRows, error: tdrError } = await supabase.from("items").select("id, tdr_name").in("id", rows.map((r) => r.id));
+  if (tdrError) throw new Error(friendly(tdrError));
   const tdrById = new Map(((tdrRows ?? []) as { id: string; tdr_name: string | null }[]).map((r) => [r.id, r.tdr_name]));
 
-  let lotsQuery = supabase
-    .from("stock_lots")
-    .select("id, item_id, supplier_id, unit_cost_cents, remaining_qty, created_at")
-    .in("item_id", rows.map((r) => r.id))
-    .gt("remaining_qty", 0)
-    .order("created_at");
-  if (lotFilter) lotsQuery = lotsQuery.in("purchase_line_id", lotFilter);
-  const { data: lotRows, error: lotError } = await lotsQuery;
-  if (lotError) throw new Error(friendly(lotError));
-  const lots = (lotRows ?? []) as {
-    id: string;
-    item_id: string;
-    supplier_id: string | null;
-    unit_cost_cents: number | null;
-    remaining_qty: number;
-  }[];
+  type StockLot = {
+    id: string; item_id: string; supplier_id: string | null;
+    unit_cost_cents: number | null; remaining_qty: number;
+  };
+  const lots: StockLot[] = [];
+  // Una página de productos puede tener miles de lotes: no perder saldos por el tope de la API.
+  const batchSize = 500;
+  for (let offset = 0; ; offset += batchSize) {
+    let lotsQuery = supabase.from("stock_lots")
+      .select(invoiceId
+        ? "id, item_id, supplier_id, unit_cost_cents, remaining_qty, purchase_lines!inner(purchase_id)"
+        : "id, item_id, supplier_id, unit_cost_cents, remaining_qty")
+      .eq("organization_id", orgId)
+      .in("item_id", rows.map((r) => r.id))
+      .gt("remaining_qty", 0)
+      .order("created_at").order("id")
+      .range(offset, offset + batchSize - 1);
+    if (invoiceId) lotsQuery = lotsQuery.eq("purchase_lines.purchase_id", invoiceId);
+    const { data, error } = await lotsQuery;
+    if (error) throw new Error(friendly(error));
+    const batch = (data ?? []) as unknown as StockLot[];
+    lots.push(...batch);
+    if (batch.length < batchSize) break;
+  }
 
   const supplierIds = [...new Set(lots.map((l) => l.supplier_id).filter((x): x is string => !!x))];
   const { data: sups, error: supplierError } = supplierIds.length

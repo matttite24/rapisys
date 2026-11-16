@@ -28,7 +28,7 @@ export function ItemPicker({
   onRequestChange?: () => void;
 }) {
   const [q, setQ] = useState(initialQuery);
-  const { results, loading, run, clear } = useDebouncedSearch((text: string) => searchItems(org, text));
+  const { results, loading, error, run, clear } = useDebouncedSearch((text: string) => searchItems(org, text));
 
   useEffect(() => {
     if (initialQuery.trim()) run(initialQuery, 0);
@@ -74,7 +74,7 @@ export function ItemPicker({
         }}
         onKeyDown={(e) => e.key === "Escape" && clear()}
       />
-      {(results !== null || loading) && (
+      {(results !== null || loading || error) && (
         <ul
           aria-label="Productos"
           aria-busy={loading}
@@ -85,7 +85,9 @@ export function ItemPicker({
             loading && results !== null && "opacity-60",
           )}
         >
-          {results === null ? (
+          {error ? (
+            <li role="alert" className="px-3 py-2 text-sm text-destructive">{error}</li>
+          ) : results === null ? (
             <li className="px-3 py-2 text-sm text-muted-foreground">Buscando…</li>
           ) : results.length === 0 ? (
             <li className="flex flex-col gap-1 px-3 py-2 text-sm text-muted-foreground">
@@ -140,7 +142,7 @@ export function SupplierPicker({
   onClear: () => void;
 }) {
   const [q, setQ] = useState("");
-  const { results, loading, run, clear } = useDebouncedSearch((text: string) => searchSuppliers(org, text));
+  const { results, loading, error, run, clear } = useDebouncedSearch((text: string) => searchSuppliers(org, text));
 
   if (selected) {
     return (
@@ -173,7 +175,7 @@ export function SupplierPicker({
         }}
         onKeyDown={(e) => e.key === "Escape" && clear()}
       />
-      {(results !== null || loading) && (
+      {(results !== null || loading || error) && (
         <ul
           aria-label="Proveedores"
           aria-busy={loading}
@@ -183,7 +185,9 @@ export function SupplierPicker({
             loading && results !== null && "opacity-60",
           )}
         >
-          {results === null ? (
+          {error ? (
+            <li role="alert" className="px-3 py-2 text-sm text-destructive">{error}</li>
+          ) : results === null ? (
             <li className="px-3 py-2 text-sm text-muted-foreground">Buscando…</li>
           ) : results.length === 0 ? (
             <li className="px-3 py-2 text-sm text-muted-foreground">Ningún proveedor coincide. Usa + para crearlo.</li>

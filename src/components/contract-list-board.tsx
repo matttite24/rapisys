@@ -27,6 +27,7 @@ export function ContractListError({ message, onRetry }: { message: string; onRet
   return <div role="alert" className="space-y-3 p-6"><p className="text-sm text-destructive">{message}</p><Button variant="outline" onClick={onRetry ?? (() => router.refresh())}>Reintentar</Button></div>;
 }
 export function ContractListBoard({ org, initial }: { org: string; initial: ContractListView }) {
+  const router = useRouter();
   const { rows, total, page, q, filter, loading, error, retry } = useContractFilter(org, initial);
   const newHref = `/${org}/contratos/nuevo`;
   const basePath = "/contratos";
@@ -55,18 +56,33 @@ export function ContractListBoard({ org, initial }: { org: string; initial: Cont
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
+              <TableHead>Estado</TableHead>
               <TableHead>Código</TableHead>
               <TableHead>Proceso</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Responsable</TableHead>
               <TableHead className="text-right">Total (IVA incl.)</TableHead>
               <TableHead>Plazo</TableHead>
-              <TableHead>Estado</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
-              <TableRow key={r.id}>
+              <TableRow
+                key={r.id}
+                className="cursor-pointer"
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest("a, button, input, select, textarea") || window.getSelection()?.toString()) return;
+                  const href = `/${org}/contratos/${r.id}`;
+                  if (event.metaKey || event.ctrlKey) {
+                    window.open(href, "_blank", "noopener,noreferrer");
+                  } else {
+                    router.push(href);
+                  }
+                }}
+              >
+                <TableCell>
+                  <StatusChip status={r.status} kind={r.kind} />
+                </TableCell>
                 <TableCell className="num">{r.code}</TableCell>
                 <TableCell className="p-0">
                   <Link
@@ -85,9 +101,6 @@ export function ContractListBoard({ org, initial }: { org: string; initial: Cont
                   ) : (
                     <Deadline start={r.start_date} term={r.term_days} status={r.status} />
                   )}
-                </TableCell>
-                <TableCell>
-                  <StatusChip status={r.status} kind={r.kind} />
                 </TableCell>
               </TableRow>
             ))}
