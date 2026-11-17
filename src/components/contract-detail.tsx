@@ -28,7 +28,7 @@ async function Detail({ params }: { params: IdParams }) {
     return (
       <>
         <PageSection>
-          <h1 className="text-lg leading-snug font-semibold">{c.name}</h1>
+          <h1 className="text-xl leading-snug font-semibold">{c.name}</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             El proceso está en <strong className="text-foreground">Nuevo</strong>: corrige aquí sus datos
             cuando haga falta. Los items se cargan y se trabajan desde{" "}

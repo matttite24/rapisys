@@ -1,5 +1,6 @@
 "use client";
 
+import { PRODUCT_COL } from "@/components/product-cell";
 import { cn } from "@/lib/utils";
 import { Search01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -19,12 +20,10 @@ export function LinesTableSkeleton({ rows = 6 }: { rows?: number }) {
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className={`${TH} w-px text-right`}>N.º</TableHead>
-            <TableHead className={TH}>Part. num.</TableHead>
-            <TableHead className={TH}>Descripción</TableHead>
-            <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
-            <TableHead className={TH}>Unidad</TableHead>
-            <TableHead className={`${TH} text-right`}>Valor unit. ref.</TableHead>
-            <TableHead className={`${TH} text-right`}>Total ref.</TableHead>
+            <TableHead className={`${TH} ${PRODUCT_COL}`}>Producto</TableHead>
+            <TableHead className={`${TH} w-28 text-right`}>Cantidad</TableHead>
+            <TableHead className={`${TH} w-32 text-right`}>Valor unit. ref.</TableHead>
+            <TableHead className={`${TH} w-32 text-right`}>Total ref.</TableHead>
             <TableHead className={`${TH} w-px`}><span className="sr-only">Acciones</span></TableHead>
           </TableRow>
         </TableHeader>
@@ -32,10 +31,11 @@ export function LinesTableSkeleton({ rows = 6 }: { rows?: number }) {
           {Array.from({ length: rows }, (_, i) => (
             <TableRow key={i} className="hover:bg-transparent">
               <TableCell className={`${TD} w-px`}><Skeleton className="ml-auto h-4 w-5" /></TableCell>
-              <TableCell className={TD}><Skeleton className={cn("h-4", SKELETON_WIDTHS[i % 6])} /></TableCell>
-              <TableCell className={cn(TD, "w-1/2")}><Skeleton className={cn("h-4", SKELETON_WIDTHS[(i + 2) % 6])} /></TableCell>
-              <TableCell className={TD}><Skeleton className="ml-auto h-4 w-8" /></TableCell>
-              <TableCell className={TD}><Skeleton className="h-4 w-16" /></TableCell>
+              <TableCell className={TD}>
+                <Skeleton className={cn("h-4", SKELETON_WIDTHS[(i + 2) % 6])} />
+                <Skeleton className="mt-1.5 h-3 w-28" />
+              </TableCell>
+              <TableCell className={TD}><Skeleton className="ml-auto h-4 w-14" /></TableCell>
               <TableCell className={TD}><Skeleton className="ml-auto h-4 w-16" /></TableCell>
               <TableCell className={TD}><Skeleton className="ml-auto h-4 w-20" /></TableCell>
               <TableCell className={cn(TD, "p-1")}><Skeleton className="size-7" /></TableCell>

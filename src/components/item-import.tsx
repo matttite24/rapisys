@@ -96,8 +96,8 @@ export function ItemImport({ org }: { org: string }) {
                 Sube el CSV tal como lo exporta el sistema anterior y marca abajo las columnas que quieres cargar. Si el SKU ya existe no se importa nada.
               </p>
               <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" variant="outline" className="h-10" onClick={() => input.current?.click()}>Elegir archivo CSV</Button>
-                <Button type="button" variant="ghost" className="h-10" onClick={template}>Descargar plantilla</Button>
+                <Button type="button" variant="outline" className="h-9" onClick={() => input.current?.click()}>Elegir archivo CSV</Button>
+                <Button type="button" variant="ghost" className="h-9" onClick={template}>Descargar plantilla</Button>
                 {fileName && <span className="font-mono text-xs text-muted-foreground">{fileName}</span>}
                 <input ref={input} type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) void pick(f); }} />
               </div>

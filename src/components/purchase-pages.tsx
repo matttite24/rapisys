@@ -32,7 +32,7 @@ type IdParams = Promise<{ org: string; id: string }>;
 type PurchaseParams = Promise<{ org: string; id: string; purchaseId: string }>;
 
 const NEW_BTN = (org: string, id: string) => (
-  <Link href={`/${org}/contratos/${id}/compras/nueva`} className={cn(buttonVariants(), "h-10")}>
+  <Link href={`/${org}/contratos/${id}/compras/nueva`} className={cn(buttonVariants(), "h-9")}>
     Subir factura
   </Link>
 );

@@ -289,6 +289,9 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Texto base de la interfaz: 14 px / 1,5 (lo que no lleva tamaño propio ya no cae en los 16 px del navegador). */
+    font-size: 0.875rem;
+    line-height: 1.5;
   }
   html {
     @apply font-sans;
@@ -309,15 +312,15 @@
  */
 .caps {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-.caps-md {
-  font-family: var(--font-mono);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+.caps-md {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 /* Marca de cruce (+) en la intersección de dos líneas de la cuadrícula. Es una caja de 11 px cuyo trazo central (el píxel 5,

@@ -79,25 +79,40 @@ export function SearchInput({
     autoComplete: "off",
     autoFocus,
     value: text,
-    onKeyDown,
+    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+      onKeyDown?.(e);
+      // Esc borra la búsqueda (si hay algo escrito) sin salir del campo.
+      if (row && !e.defaultPrevented && e.key === "Escape" && text) {
+        e.preventDefault();
+        clear();
+      }
+    },
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => change(e.target.value),
   };
 
   return (
-    <div className={cn("relative flex min-w-0 flex-1 items-center", row && "h-full", className)}>
+    // En la variante de fila, todo el renglón (campo, lupa y «x») se aclara y se eleva con una sombra suave al enfocarlo:
+    // antes solo el campo se aclaraba y la «x» quedaba sobre otro fondo. La lupa lleva el color de acento.
+    <div
+      className={cn(
+        "group/search relative flex min-w-0 flex-1 items-center",
+        row && "h-full transition-[background-color,box-shadow] duration-150 focus-within:z-10 focus-within:bg-background focus-within:shadow-[0_4px_14px_-4px_rgb(0_0_0/0.18)]",
+        className,
+      )}
+    >
       <HugeiconsIcon
         icon={Search01Icon}
         aria-hidden
         className={cn(
-          "pointer-events-none absolute top-1/2 -translate-y-1/2 text-foreground",
-          row ? "left-6 size-5" : "left-3 size-4",
+          "pointer-events-none absolute top-1/2 -translate-y-1/2",
+          row ? "left-6 size-[1.125rem] text-state-running-solid" : "left-3 size-4 text-foreground",
         )}
       />
       {row ? (
         <input
           {...common}
           className={cn(
-            "h-full min-w-0 flex-1 bg-transparent pr-2 pl-14 text-sm outline-none placeholder:text-muted-foreground focus-visible:bg-background",
+            "h-full min-w-0 flex-1 bg-transparent pr-2 pl-14 text-sm outline-none placeholder:text-muted-foreground",
             inputClassName,
           )}
         />
@@ -112,7 +127,7 @@ export function SearchInput({
           aria-label="Borrar la búsqueda"
           onClick={clear}
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground",
+            "flex size-7 shrink-0 items-center justify-center rounded-full bg-transparent text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
             row ? (children ? "" : "mr-3") : "absolute top-1/2 right-1 -translate-y-1/2",
           )}
         >

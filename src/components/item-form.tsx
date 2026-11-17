@@ -341,7 +341,7 @@ export function ItemForm({
                   </label>
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className={ROW_LABEL}>Costo con IVA</span>
-                    <output className="num flex h-10 items-center justify-end border border-input px-2 text-sm" aria-label={`Costo con IVA ${i + 1}`}>
+                    <output className="num flex h-9 items-center justify-end border border-input px-2 text-sm" aria-label={`Costo con IVA ${i + 1}`}>
                       {cost.ok && vat !== null ? formatCents(withVatCents(cost.cents, vat)) : "—"}
                     </output>
                   </div>

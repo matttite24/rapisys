@@ -98,7 +98,7 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
   // El precio referencial no viene en la función de la lista: se piden aparte los de las líneas de esta página.
   const lineIds = view.lines.map((l) => l.id);
   const priceRes = lineIds.length
-    ? await supabase.from("contract_items").select("id, reference_price_cents, internal_code").in("id", lineIds)
+    ? await supabase.from("contract_items").select("id, reference_price_cents, internal_code, reference").in("id", lineIds)
     : { data: [] };
   const prices = new Map(
     ((priceRes.data ?? []) as { id: string; reference_price_cents: number | null; internal_code?: string | null }[]).map((r) => [
@@ -108,7 +108,7 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
   );
 
   const codes = new Map(
-    ((priceRes.data ?? []) as { id: string; internal_code?: string | null }[]).map((r) => [r.id, r.internal_code ?? ""]),
+    ((priceRes.data ?? []) as { id: string; internal_code?: string | null; reference?: string | null }[]).map((r) => [r.id, { code: r.internal_code ?? "", reference: r.reference ?? "" }]),
   );
 
   const lines: LineView[] = view.lines.map((l, i) => ({
@@ -120,7 +120,8 @@ async function Items({ params, searchParams }: { params: IdParams; searchParams:
     description: l.description,
     quantity: Number(l.quantity),
     unit: l.unit,
-    internalCode: codes.get(l.id) ?? "",
+    internalCode: codes.get(l.id)?.code ?? "",
+    reference: codes.get(l.id)?.reference ?? "",
     referencePriceCents: prices.get(l.id) ?? null,
   }));
 

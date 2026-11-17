@@ -21,7 +21,7 @@ export function VoidDelivery({ org, contractId, deliveryId, code }: { org: strin
 
   return (
     <>
-      <Button variant="outline" className="h-10 text-destructive hover:text-destructive" onClick={() => { setError(undefined); setOpen(true); }}>
+      <Button variant="outline" className="h-9 text-destructive hover:text-destructive" onClick={() => { setError(undefined); setOpen(true); }}>
         Anular entrega
       </Button>
       <AlertDialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>

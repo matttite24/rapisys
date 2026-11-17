@@ -62,7 +62,7 @@ export function DatePicker({
               variant="outline"
               {...a11y}
               className={cn(
-                "h-10! w-full justify-start gap-2 border-input px-2.5 normal-case tracking-normal",
+                "h-9! w-full justify-start gap-2 border-input px-2.5 normal-case tracking-normal",
                 !date && "text-muted-foreground",
                 className,
               )}

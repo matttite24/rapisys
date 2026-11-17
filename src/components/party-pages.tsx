@@ -164,7 +164,7 @@ export function PartyEditPage({ kind, params }: { kind: PartyKind; params: IdPar
   return (
     <>
       <PageSection>
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight">
           Editar {PARTIES[kind].singular}
         </h1>
       </PageSection>

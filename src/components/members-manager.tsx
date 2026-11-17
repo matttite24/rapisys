@@ -184,7 +184,7 @@ export function InviteForm({ org, days = 7, dialog = false }: { org: string; day
             </NativeSelect>
           )}
         </FormField>
-        <Button type="submit" disabled={pending} className={dialog ? "h-10 w-full" : "md:mt-[1.35rem]"}>
+        <Button type="submit" disabled={pending} className={dialog ? "h-9 w-full" : "md:mt-[1.35rem]"}>
           {pending ? "Creando…" : "Crear invitación"}
         </Button>
       </form>

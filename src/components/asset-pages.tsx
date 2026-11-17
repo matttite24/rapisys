@@ -20,7 +20,7 @@ export function AssetNewPage({ params }: { params: Params }) {
   return (
     <>
       <PageSection>
-        <h1 className="text-3xl font-semibold tracking-tight">Nuevo activo</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Nuevo activo</h1>
       </PageSection>
       <Suspense>
         <NewForm params={params} />
@@ -52,7 +52,7 @@ export function AssetEditPage({ params }: { params: IdParams }) {
   return (
     <>
       <PageSection>
-        <h1 className="text-3xl font-semibold tracking-tight">Editar activo</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Editar activo</h1>
       </PageSection>
       <Suspense>
         <EditForm params={params} />

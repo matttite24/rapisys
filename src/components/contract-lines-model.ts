@@ -18,6 +18,8 @@ export type LineView = {
   partNumber: string;
   // Segundo código de la línea (código interno de la empresa); se muestra como chip.
   internalCode: string;
+  // Medida, tipo u otro dato relevante de la línea: es interno.
+  reference: string;
   description: string;
   quantity: number;
   unit: string;

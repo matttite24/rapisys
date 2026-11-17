@@ -1,6 +1,6 @@
 "use client";
 
-import { CodeChip } from "@/components/code-chip";
+import { PRODUCT_COL, ProductCell } from "@/components/product-cell";
 import { ConfirmTap } from "@/components/confirm-tap";
 import { cn } from "@/lib/utils";
 import { Delete02Icon, Edit02Icon } from "@hugeicons/core-free-icons";
@@ -29,12 +29,10 @@ export function LinesTable({
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className={`${TH} w-px text-right`}>N.º</TableHead>
-            <TableHead className={TH}>Part. num. · Cód. interno</TableHead>
-            <TableHead className={TH}>Descripción</TableHead>
-            <TableHead className={`${TH} text-right`}>Cantidad</TableHead>
-            <TableHead className={TH}>Unidad</TableHead>
-            <TableHead className={`${TH} text-right`}>Valor unit. ref.</TableHead>
-            <TableHead className={`${TH} text-right`}>Total ref.</TableHead>
+            <TableHead className={`${TH} ${PRODUCT_COL}`}>Producto</TableHead>
+            <TableHead className={`${TH} w-28 text-right`}>Cantidad</TableHead>
+            <TableHead className={`${TH} w-32 text-right`}>Valor unit. ref.</TableHead>
+            <TableHead className={`${TH} w-32 text-right`}>Total ref.</TableHead>
             <TableHead className={`${TH} w-px`}><span className="sr-only">Acciones</span></TableHead>
           </TableRow>
         </TableHeader>
@@ -84,19 +82,21 @@ export function LineRow({
         editing && "bg-muted",
       )}
     >
-      <TableCell className={`${TD} num text-right text-muted-foreground`}>{n}</TableCell>
-      <TableCell className={`${TD} font-mono text-xs`}>
-        {l.partNumber || "—"}
-        {l.internalCode && <> <CodeChip code={l.internalCode} /></>}
-        {duplicateOf && (
-          <span className="block font-sans text-2xs font-medium text-destructive">Repetido: igual a la línea {duplicateOf}</span>
-        )}
+      <TableCell
+        className={cn(TD, "num text-right", duplicateOf ? "bg-destructive/10 font-medium text-destructive" : "text-muted-foreground")}
+        title={duplicateOf ? `Repetido: igual a la línea ${duplicateOf}` : undefined}
+      >
+        {n}
+        {duplicateOf && <span className="sr-only">. Repetido: igual a la línea {duplicateOf}</span>}
       </TableCell>
-      <TableCell className={`${TD} break-words`}>{l.description}</TableCell>
-      <TableCell className={`${TD} num text-right`}>{l.quantity}</TableCell>
-      <TableCell className={`${TD} whitespace-nowrap`}>{unitLabel(l.unit)}</TableCell>
+      <TableCell className={`${TD} break-words whitespace-normal`}>
+        <ProductCell description={l.description} partNumber={l.partNumber} internalCode={l.internalCode} reference={l.reference} />
+      </TableCell>
+      <TableCell className={`${TD} num whitespace-nowrap text-right`}>
+        {l.quantity} <span className="font-sans text-xs text-muted-foreground">{unitLabel(l.unit)}</span>
+      </TableCell>
       <TableCell className={`${TD} num whitespace-nowrap text-right`}>{l.referencePriceCents === null || l.quantity <= 0 ? "—" : formatCents(Math.round(l.referencePriceCents / l.quantity))}</TableCell>
-      <TableCell className={`${TD} num whitespace-nowrap text-right font-medium`}>{l.referencePriceCents === null ? "—" : formatCents(l.referencePriceCents)}</TableCell>
+      <TableCell className={`${TD} num whitespace-nowrap text-right`}>{l.referencePriceCents === null ? "—" : formatCents(l.referencePriceCents)}</TableCell>
       <TableCell className={cn(TD, "p-1 whitespace-nowrap")}>
         {saving ? null : (
           <span className="flex gap-1">

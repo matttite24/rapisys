@@ -187,11 +187,11 @@ export function NewListDialog({
             </ul>
             {state?.error && <div className="border-t p-4"><FieldError>{state.error}</FieldError></div>}
             <div className="flex flex-wrap gap-2 border-t p-4">
-              <Button type="button" className="h-10 gap-2" onClick={() => setStep("asset")}>
+              <Button type="button" className="h-9 gap-2" onClick={() => setStep("asset")}>
                 <HugeiconsIcon icon={Add01Icon} className="size-5" />
                 {q.trim() ? `Crear activo “${q.trim()}”` : "Crear activo nuevo"}
               </Button>
-              <Button type="button" variant="outline" className="h-10" onClick={() => setStep("name")}>
+              <Button type="button" variant="outline" className="h-9" onClick={() => setStep("name")}>
                 Lista sin activo
               </Button>
             </div>
@@ -250,10 +250,10 @@ export function NewListDialog({
               )}
             </div>
             <div className="flex gap-2 border-t p-4">
-              <Button type="submit" disabled={saving} className="h-10">
+              <Button type="submit" disabled={saving} className="h-9">
                 {saving ? "Creando…" : "Guardar activo y crear lista"}
               </Button>
-              <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={() => { setState(undefined); setStep("search"); }}>
+              <Button type="button" variant="outline" className="h-9" disabled={saving} onClick={() => { setState(undefined); setStep("search"); }}>
                 Volver
               </Button>
             </div>
@@ -273,10 +273,10 @@ export function NewListDialog({
               {state?.error && <FieldError>{state.error}</FieldError>}
             </div>
             <div className="flex gap-2 border-t p-4">
-              <Button type="submit" disabled={saving} className="h-10">
+              <Button type="submit" disabled={saving} className="h-9">
                 {saving ? "Creando…" : "Crear lista"}
               </Button>
-              <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={() => { setState(undefined); setStep("search"); }}>
+              <Button type="button" variant="outline" className="h-9" disabled={saving} onClick={() => { setState(undefined); setStep("search"); }}>
                 Volver
               </Button>
             </div>

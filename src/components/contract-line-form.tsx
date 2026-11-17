@@ -12,6 +12,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { addLine, updateLine, type LineState } from "@/lib/contract-actions";
 import { centsToInput, parseCents, parseDecimal } from "@/lib/money";
 import { UNITS, isUnit } from "@/lib/units";
+import { cn } from "@/lib/utils";
 import { LineView, TEMP_PREFIX } from "@/components/contract-lines-model";
 
 export const MESSAGES = {
@@ -30,6 +31,8 @@ export function LineForm({
   onAdded,
   onUpdate,
   onDone,
+  compact = false,
+  onCancel,
 }: {
   org: string;
   contractId: string;
@@ -39,6 +42,9 @@ export function LineForm({
   onAdded: () => void;
   onUpdate: (line: LineView) => void;
   onDone: () => void;
+  // En una columna angosta (el panel de Abastecimiento): dos columnas y botones Cancelar / Guardar.
+  compact?: boolean;
+  onCancel?: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [state, setState] = useState<LineState>();
@@ -59,6 +65,7 @@ export function LineForm({
     const data = new FormData(form);
     const partNumber = String(data.get("part_number") ?? "").trim();
     const internalCode = String(data.get("internal_code") ?? "").trim();
+    const reference = String(data.get("reference") ?? "").trim();
     const description = String(data.get("description") ?? "").trim();
     const quantity = parseDecimal(String(data.get("quantity") ?? ""));
     const unit = String(data.get("unit") ?? "");
@@ -81,7 +88,7 @@ export function LineForm({
     }
 
     setState(undefined);
-    const line = { listId, n: editing?.n ?? 0, partNumber, internalCode, description, quantity, unit, referencePriceCents };
+    const line = { listId, n: editing?.n ?? 0, partNumber, internalCode, reference, description, quantity, unit, referencePriceCents };
 
     if (editing) {
       // La fila cambia ya; el formulario sale de edición cuando el servidor confirma.
@@ -105,7 +112,7 @@ export function LineForm({
       const res = await addLine(org, contractId, listId, data);
       if (res?.error || res?.fields) {
         // No se guardó: se devuelve lo escrito para no perderlo.
-        for (const name of ["part_number", "internal_code", "description", "quantity", "unit", "reference_price"]) {
+        for (const name of ["part_number", "internal_code", "reference", "description", "quantity", "unit", "reference_price"]) {
           const el = form.elements.namedItem(name);
           if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) {
             el.value = String(data.get(name) ?? "");
@@ -130,20 +137,26 @@ export function LineForm({
           formRef.current?.requestSubmit();
         }
       }}
-      className="grid gap-4 md:grid-cols-[9rem_8rem_1fr_6.5rem_9rem_9rem_auto] md:items-start [&_input]:bg-background [&_select]:bg-background"
+      className={cn(
+        "grid gap-4 [&_input]:bg-background [&_select]:bg-background",
+        compact ? "grid-cols-2 items-start" : "md:grid-cols-[8rem_7rem_minmax(12rem,1fr)_9rem_4.5rem_7rem_6.5rem_auto] md:items-start",
+      )}
     >
       <FormField name="part_number" label="Part. num." error={errors.part_number}>
         {(a11y) => (
-          <Input {...a11y} autoComplete="off" maxLength={60} className="font-mono" defaultValue={editing?.partNumber} />
+          <Input {...a11y} autoComplete="off" maxLength={60} className="font-mono" placeholder="236-8228" defaultValue={editing?.partNumber} />
         )}
       </FormField>
       <FormField name="internal_code" label="Cód. interno" error={errors.internal_code}>
         {(a11y) => (
-          <Input {...a11y} autoComplete="off" maxLength={60} className="font-mono" defaultValue={editing?.internalCode} />
+          <Input {...a11y} autoComplete="off" maxLength={60} className="font-mono" placeholder="RP-0123" defaultValue={editing?.internalCode} />
         )}
       </FormField>
-      <FormField name="description" label="Descripción" error={errors.description}>
-        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={500} defaultValue={editing?.description} />}
+      <FormField name="description" label="Descripción" error={errors.description} className={cn(compact && "col-span-2")}>
+        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={500} placeholder="Descripción del ítem" defaultValue={editing?.description} />}
+      </FormField>
+      <FormField name="reference" label="Referencia" error={errors.reference} className={cn(compact && "col-span-2")}>
+        {(a11y) => <Input {...a11y} autoComplete="off" maxLength={200} placeholder="Medida, tipo…" defaultValue={editing?.reference} />}
       </FormField>
       <FormField name="quantity" label="Cantidad" error={errors.quantity}>
         {(a11y) => (
@@ -151,6 +164,7 @@ export function LineForm({
             {...a11y}
             kind="decimal"
             className="font-mono"
+            placeholder="1"
             defaultValue={editing ? String(editing.quantity) : "1"}
           />
         )}
@@ -166,7 +180,7 @@ export function LineForm({
           </NativeSelect>
         )}
       </FormField>
-      <FormField name="reference_price" label="Precio ref. (total)" error={errors.reference_price}>
+      <FormField name="reference_price" label="Precio ref." error={errors.reference_price} className={cn(compact && "col-span-2")}>
         {(a11y) => (
           <Input
             {...a11y}
@@ -179,14 +193,19 @@ export function LineForm({
           />
         )}
       </FormField>
-      {/* Etiqueta vacía del mismo alto que las demás: el botón queda a la altura de los campos. */}
+      {compact ? (
+        <div className="col-span-2 flex justify-end gap-2">
+          {onCancel && <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={saving}>Cancelar</Button>}
+          <Button type="submit" size="sm" disabled={saving}>{editing ? "Guardar" : "Añadir"}</Button>
+        </div>
+      ) : (
       <Field>
         <FieldLabel aria-hidden className="max-md:hidden">&nbsp;</FieldLabel>
         <Button
           type="submit"
           size="icon"
           disabled={saving}
-          className="h-10 gap-2 rounded-full px-5"
+          className="h-9 gap-2 rounded-full px-5"
           aria-label={editing ? "Guardar cambios" : "Agregar línea"}
           title={editing ? "Guardar cambios" : "Agregar línea"}
         >
@@ -194,8 +213,9 @@ export function LineForm({
           {editing ? "Guardar" : "Añadir"}
         </Button>
       </Field>
+      )}
       {state?.error && (
-        <div className="md:col-span-7">
+        <div className={compact ? "col-span-2" : "md:col-span-8"}>
           <FieldError>{state.error}</FieldError>
         </div>
       )}

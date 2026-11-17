@@ -39,7 +39,7 @@ export function DeletePurchase({
     <>
       <Button
         variant="ghost"
-        className="h-10 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        className="h-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
         onClick={() => setOpen(true)}
       >
         {draft ? "Eliminar borrador" : "Eliminar factura"}

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 // Pestañas de texto con contador: la activa en negrita, el resto en gris, el número en una etiqueta pequeña.
 export const TAB = (active: boolean) =>
   cn(
-    "-mb-px inline-flex items-center gap-2 border-b-[3px] pb-2.5 text-base transition-colors",
+    "-mb-px inline-flex items-center gap-2 border-b-[3px] pb-2.5 text-sm transition-colors",
     active ? "border-brand font-bold text-foreground" : "border-transparent font-medium text-muted-foreground hover:text-foreground",
   );
 

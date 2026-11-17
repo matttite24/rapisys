@@ -218,7 +218,7 @@ export function ReconcilePanel({
           </div>
         )
       ) : focus && rc.source === "cotizaciones" ? (
-        <LineQuotations key={focus.id} org={org} contractId={contractId} lineId={focus.id} canAct={canAct} onSaved={rc.refresh} vatRate={vatRate} quantity={focus.quantity} lineLabel={[focus.partNumber, focus.description].filter(Boolean).join(" — ")} />
+        <LineQuotations key={focus.id} org={org} contractId={contractId} lineId={focus.id} canAct={canAct} onSaved={rc.refresh} vatRate={vatRate} quantity={focus.quantity} internalCode={focus.internalCode} lineLabel={[focus.partNumber, focus.description].filter(Boolean).join(" — ")} />
       ) : !focus && rc.source !== "facturas" && rc.source !== "bodega" ? null : !canAct ? (
         <p className="p-6 text-sm text-muted-foreground">El abastecimiento se trabaja cuando el proceso está En ejecución.</p>
       ) : rc.source === "facturas" ? (

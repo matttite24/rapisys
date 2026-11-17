@@ -154,7 +154,7 @@ export function ReferenceList({
             <p className="max-w-xl text-muted-foreground">
               Cada lista reúne los items de un activo (o una lista general). Crea la primera para empezar a cargar items.
             </p>
-            <Button className="h-10 gap-2" onClick={() => setNewOpen(true)}>
+            <Button className="h-9 gap-2" onClick={() => setNewOpen(true)}>
               <HugeiconsIcon icon={Add01Icon} className="size-5" />
               Crear lista
             </Button>

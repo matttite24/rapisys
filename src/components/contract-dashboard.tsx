@@ -187,7 +187,7 @@ export async function ContractDashboard({
                 <StatusChip status={c.status} kind={c.kind} deliveries={deliveries.length} />
                 <span className="num text-sm text-muted-foreground">{c.code}</span>
               </div>
-              <h2 className="font-heading text-3xl leading-tight font-semibold text-balance xl:text-4xl">{c.name}</h2>
+              <h2 className="font-heading text-2xl leading-tight font-semibold text-balance xl:text-3xl">{c.name}</h2>
               <p className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <Ico icon={Building03Icon} />
@@ -205,20 +205,20 @@ export async function ContractDashboard({
               {credit ? (
               <div>
                 <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Wallet01Icon} className="size-3.5" />Comprado (IVA incl.)</dt>
-                <dd className="text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl">{formatCents(spent)}</dd>
+                <dd className="text-xl leading-none font-semibold tracking-tight tabular-nums xl:text-2xl">{formatCents(spent)}</dd>
                 <span className="text-xs text-muted-foreground">Proceso a crédito: sin monto ni plazo</span>
               </div>
               ) : (
                 <>
               <div>
                 <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Wallet01Icon} className="size-3.5" />Monto del proceso (IVA incl.)</dt>
-                <dd className="text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl">{formatCents(contractTotal)}</dd>
+                <dd className="text-xl leading-none font-semibold tracking-tight tabular-nums xl:text-2xl">{formatCents(contractTotal)}</dd>
                 <Meter value={contractTotal > 0 ? (spent / contractTotal) * 100 : 0} label="Comprado sobre el monto" />
                 <span className="text-xs text-muted-foreground">Comprado {formatCents(spent)} · {spentPct} %</span>
               </div>
               <div>
                 <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={Calendar03Icon} className="size-3.5" />Plazo restante</dt>
-                <dd className={cn("text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl", late && "text-destructive")}>
+                <dd className={cn("text-xl leading-none font-semibold tracking-tight tabular-nums xl:text-2xl", late && "text-destructive")}>
                   {remaining === null ? "—" : remaining >= 0 ? `${remaining} ${remaining === 1 ? "día" : "días"}` : `${-remaining} ${remaining === -1 ? "día" : "días"} de atraso`}
                 </dd>
                 <Meter value={timePct} label="Plazo transcurrido" />
@@ -230,8 +230,8 @@ export async function ContractDashboard({
               )}
               <div>
                 <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ico icon={DeliveryTruck01Icon} className="size-3.5" />Líneas entregadas</dt>
-                <dd className="text-2xl leading-none font-semibold tracking-tight tabular-nums xl:text-3xl">
-                  {counts.delivered} <span className="text-lg font-normal text-muted-foreground">de {totalLines}</span>
+                <dd className="text-xl leading-none font-semibold tracking-tight tabular-nums xl:text-2xl">
+                  {counts.delivered} <span className="text-base font-normal text-muted-foreground">de {totalLines}</span>
                 </dd>
                 <Meter value={pct(counts.delivered)} label="Líneas entregadas" />
                 <span className="text-xs text-muted-foreground">{counts.in_stock} en bodega listas para entregar</span>

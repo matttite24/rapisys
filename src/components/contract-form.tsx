@@ -64,7 +64,7 @@ function PartyPicker({
       <FormField name={field} label={label} error={errors[field]}>
         {() =>
           value ? (
-            <div id={field} className="flex h-10 min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-background px-2.5 text-base md:text-sm">
+            <div id={field} className="flex h-9 min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-background px-2.5 text-base md:text-sm">
               <span className="min-w-0 truncate">{value === NEW ? "Nuevo (se crea al guardar)" : name}</span>
               <Button type="button" variant="ghost" size="sm" className="h-[1.5rem]" onClick={() => setValue("")}>
                 Cambiar
@@ -300,7 +300,7 @@ export function ContractForm({
             <span className="caps font-medium text-muted-foreground">
               Fecha de entrega
             </span>
-            <span className="num flex h-10 items-center text-lg">{end && !credit ? formatIso(end) : "—"}</span>
+            <span className="num flex h-9 items-center text-lg">{end && !credit ? formatIso(end) : "—"}</span>
             <span className="font-mono text-xs text-muted-foreground">
               {credit ? "Sin plazo de entrega" : end ? `Inicio + ${termDays} días` : "Elige el inicio y el plazo"}
             </span>

@@ -214,10 +214,10 @@ export function FilesUploadDialog({
           {error && <FieldError>{error}</FieldError>}
         </div>
         <div className="flex gap-2 border-t p-4">
-          <Button type="button" variant="brand" className="h-10" disabled={uploading || picked.length === 0} onClick={() => void submit()}>
+          <Button type="button" variant="brand" className="h-9" disabled={uploading || picked.length === 0} onClick={() => void submit()}>
             {uploading ? `Subiendo ${progress.done + 1} de ${progress.total}…` : picked.length > 1 ? `Cargar ${picked.length} archivos` : "Cargar"}
           </Button>
-          <Button type="button" variant="outline" className="h-10" disabled={uploading} onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" className="h-9" disabled={uploading} onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
         </div>

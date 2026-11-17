@@ -75,7 +75,7 @@ export async function searchQuoteSuppliers(org: string, q: string): Promise<Quot
   return (data ?? []) as QuoteSupplier[];
 }
 
-export async function addQuotation(org: string, contractId: string, lineId: string, form: FormData): Promise<{ error?: string; id?: string }> {
+export async function addQuotation(org: string, contractId: string, lineId: string, form: FormData): Promise<{ error?: string; id?: string; warning?: string }> {
   const parsed = readQuotation(form);
   if (!parsed.values) return { error: parsed.error };
   const orgId = await getOrgId(org);
@@ -102,8 +102,18 @@ export async function addQuotation(org: string, contractId: string, lineId: stri
     p_availability: v.availability, p_lead_time: v.leadTime, p_proforma_url: v.proformaUrl, p_supplier_id: supplierId,
   });
   if (error) return { error: friendly(error) };
+  // El código interno se guarda en la línea: con él se busca al proveedor y después se usa en la factura.
+  let warning: string | undefined;
+  if (v.internalCode) {
+    const { data: updated, error: codeError } = await supabase.from("contract_items")
+      .update({ internal_code: v.internalCode }).eq("id", lineId).eq("contract_id", contractId).select("id");
+    if (codeError || !updated?.length) {
+      if (codeError) logDbError("código interno de cotización", codeError);
+      warning = "La gestión se guardó, pero no se pudo guardar el código interno en la línea.";
+    }
+  }
   revalidatePath(`/${org}/contratos/${contractId}`, "layout");
-  return { id: data as string };
+  return { id: data as string, warning };
 }
 
 type Meta = { name: string; size: number; type: string };

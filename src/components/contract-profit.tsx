@@ -200,7 +200,7 @@ async function Profit({ params, searchParams }: { params: IdParams; searchParams
             {figures.map((f) => (
               <div key={f.label} className={cn("flex min-w-0 flex-col gap-1", f.strong && "bg-surface-strong")}>
                 <dt className="caps text-muted-foreground">{f.label}</dt>
-                <dd className={cn("num font-mono text-xl", f.strong && "font-semibold", f.negative && "text-destructive")}>{f.value}</dd>
+                <dd className={cn("num font-mono text-lg", f.strong && "font-semibold", f.negative && "text-destructive")}>{f.value}</dd>
                 {f.note && <p className="text-xs text-muted-foreground">{f.note}</p>}
               </div>
             ))}

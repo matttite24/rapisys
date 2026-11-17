@@ -25,10 +25,12 @@ const date = (value: string) => new Date(value).toLocaleString("es-EC", {
   timeZone: "America/Guayaquil", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
 });
 
-export function LineQuotations({ org, contractId, lineId, canAct, onSaved, vatRate = 15, quantity = 1, lineLabel = "" }: {
+export function LineQuotations({ org, contractId, lineId, canAct, onSaved, vatRate = 15, quantity = 1, lineLabel = "", internalCode = "" }: {
   org: string; contractId: string; lineId: string; canAct: boolean; onSaved: () => Promise<void>;
   // IVA del proceso y cantidad de la línea, para calcular el precio con IVA; y el nombre de la línea para el mensaje.
   vatRate?: number; quantity?: number; lineLabel?: string;
+  // Código interno que ya tiene la línea; al registrar la gestión se puede poner o cambiar.
+  internalCode?: string;
 }) {
   const [rows, setRows] = useState<Quotation[] | null>(null);
   const [more, setMore] = useState(false);
@@ -124,6 +126,7 @@ export function LineQuotations({ org, contractId, lineId, canAct, onSaved, vatRa
       if (result.error) { if (mounted.current) setFormError(result.error); return; }
       const failed = result.id && files.length ? await uploadFiles(result.id) : 0;
       toast.success("Gestión guardada en el historial.");
+      if (result.warning) toast.error(result.warning);
       if (failed) toast.error(failed === 1 ? "No se pudo subir un archivo adjunto." : `No se pudieron subir ${failed} archivos adjuntos.`);
       if (mounted.current) {
         form.reset(); resetForm(); setEditing(false); setRows(null); setMore(false); setError(""); setRetry((n) => n + 1);
@@ -152,6 +155,9 @@ export function LineQuotations({ org, contractId, lineId, canAct, onSaved, vatRa
       {editing && canAct && (
         <form onSubmit={save} className="space-y-4 border-b bg-muted/20 p-4">
           <fieldset disabled={saving} className="space-y-4">
+            <FormField name="internalCode" label="Código interno" hint="Se guarda en la línea: es el código con el que se busca al proveedor y se usa en la factura.">
+              {(props) => <Input {...props} autoComplete="off" maxLength={60} className="font-mono" placeholder="RP-0123" defaultValue={internalCode} />}
+            </FormField>
             <FormField name="supplier" label="Proveedor" hint={supplierId ? "Del catálogo de proveedores" : undefined}>
               {() => <SupplierField org={org} name={supplier} linked={!!supplierId} onName={setSupplier} onPick={pick} onUnlink={() => setSupplierId("")} />}
             </FormField>

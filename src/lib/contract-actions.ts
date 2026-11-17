@@ -28,6 +28,7 @@ const LIST_FULL = `La lista llegó al máximo de ${MAX_LINES_PER_LIST.toLocaleSt
 type LineValues = {
   partNumber: string | null;
   internalCode: string | null;
+  reference: string | null;
   description: string;
   quantity: number;
   unit: string;
@@ -35,12 +36,13 @@ type LineValues = {
   referencePriceCents: number | null;
 };
 
-type RawLine = { partNumber: string; internalCode?: string; description: string; quantity: string; unit: string; referencePrice: string };
+type RawLine = { partNumber: string; internalCode?: string; reference?: string; description: string; quantity: string; unit: string; referencePrice: string };
 
 // Valida los campos de una línea; los mismos para agregar, editar y la carga masiva.
 function parseLineValues(raw: RawLine): { values: LineValues } | { fields: Record<string, string> } {
   const partNumber = raw.partNumber.trim();
   const internalCode = (raw.internalCode ?? "").trim();
+  const reference = (raw.reference ?? "").trim();
   const description = raw.description.trim();
   const unit = raw.unit.trim();
   const priceText = raw.referencePrice.trim();
@@ -49,6 +51,7 @@ function parseLineValues(raw: RawLine): { values: LineValues } | { fields: Recor
   const fields: Record<string, string> = {};
   if (partNumber.length > 60) fields.part_number = "Máximo 60 caracteres.";
   if (internalCode.length > 60) fields.internal_code = "Máximo 60 caracteres.";
+  if (reference.length > 200) fields.reference = "Máximo 200 caracteres.";
   if (!description) fields.description = "Escribe la descripción del item.";
   else if (description.length > 500) fields.description = "Máximo 500 caracteres.";
   if (quantity === null || quantity <= 0 || quantity > 10_000_000) {
@@ -65,7 +68,7 @@ function parseLineValues(raw: RawLine): { values: LineValues } | { fields: Recor
   if (Object.keys(fields).length || quantity === null) return { fields };
 
   return {
-    values: { partNumber: partNumber || null, internalCode: internalCode || null, description, quantity, unit, referencePriceCents },
+    values: { partNumber: partNumber || null, internalCode: internalCode || null, reference: reference || null, description, quantity, unit, referencePriceCents },
   };
 }
 
@@ -73,6 +76,7 @@ function parseLine(formData: FormData) {
   return parseLineValues({
     partNumber: text(formData, "part_number"),
     internalCode: text(formData, "internal_code"),
+    reference: text(formData, "reference"),
     description: text(formData, "description"),
     quantity: text(formData, "quantity"),
     unit: text(formData, "unit"),
@@ -105,6 +109,7 @@ export async function addLines(
     clean.push({
       part_number: v.partNumber ?? "",
       internal_code: v.internalCode ?? "",
+      reference: v.reference ?? "",
       description: v.description,
       quantity: v.quantity,
       unit: v.unit,
@@ -147,6 +152,7 @@ export async function addLine(
     p_unit: v.unit,
     p_reference_price_cents: v.referencePriceCents,
     p_internal_code: v.internalCode as string,
+    p_reference: v.reference as string,
   });
   if (error) {
     if (error.message === "list_not_found") return { error: "No encontramos la lista." };
@@ -186,6 +192,7 @@ export async function updateLine(
     .update({
       part_number: v.partNumber,
       internal_code: v.internalCode,
+      reference: v.reference,
       description: v.description,
       quantity: v.quantity,
       unit: v.unit,

@@ -146,7 +146,7 @@ export function SupplierPicker({
 
   if (selected) {
     return (
-      <div id={id} className="flex h-10 min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-input bg-background px-2.5 text-base md:text-sm">
+      <div id={id} className="flex h-9 min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-input bg-background px-2.5 text-base md:text-sm">
         <span className="min-w-0 truncate">{selected.name}</span>
         <Button type="button" variant="ghost" size="sm" className="h-[1.5rem]" onClick={onClear}>
           Cambiar

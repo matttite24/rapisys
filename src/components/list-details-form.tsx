@@ -96,12 +96,12 @@ export function ListDetailsForm({
       )}
       <Field className="md:col-span-4">
         <div className="flex gap-2">
-          <Button type="submit" disabled={saving} className="h-10 gap-2">
+          <Button type="submit" disabled={saving} className="h-9 gap-2">
             <HugeiconsIcon icon={Tick02Icon} className="size-5" strokeWidth={2} />
             {saving ? "Guardando…" : "Guardar"}
           </Button>
           {onCancel && (
-            <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={onCancel}>
+            <Button type="button" variant="outline" className="h-9" disabled={saving} onClick={onCancel}>
               Cancelar
             </Button>
           )}

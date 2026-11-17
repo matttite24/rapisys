@@ -6,11 +6,11 @@ export function readQuotation(form: FormData) {
     return typeof value === "string" ? value.trim() : "";
   };
   const values = {
-    supplier: text("supplier"), phone: text("phone"), email: text("email"), note: text("note"),
+    internalCode: text("internalCode"), supplier: text("supplier"), phone: text("phone"), email: text("email"), note: text("note"),
     availability: text("availability"), leadTime: text("leadTime"), proformaUrl: text("proformaUrl"),
   };
   if (!values.note) return { error: "Escribe el resultado de la gestión o el siguiente paso." };
-  const limits = { supplier: 200, phone: 50, email: 200, note: 5000, availability: 300, leadTime: 300, proformaUrl: 2000 };
+  const limits = { internalCode: 60, supplier: 200, phone: 50, email: 200, note: 5000, availability: 300, leadTime: 300, proformaUrl: 2000 };
   for (const key of Object.keys(limits) as (keyof typeof limits)[]) {
     if (values[key].length > limits[key]) return { error: `El campo supera el máximo de ${limits[key]} caracteres.` };
   }

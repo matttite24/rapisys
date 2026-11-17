@@ -16,18 +16,19 @@ import { DeliveryActions } from "@/components/delivery-sheet";
 import { ReconcilePanel } from "@/components/reconcile-panel";
 import { PageFigures, PageFooterActions, PagePagination, type PageFigure } from "@/components/page-shortcuts";
 import { useReconcile } from "@/components/use-reconcile";
-import { Progress, STATE, type SupplyState } from "@/components/supply-progress";
+import { MiniProgress, STATE, type SupplyState } from "@/components/supply-progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LINES_PAGE_SIZE } from "@/lib/contracts";
 import { formatCents } from "@/lib/money";
 import { removeLine } from "@/lib/contract-actions";
 import { toast } from "sonner";
-import { CodeChip } from "@/components/code-chip";
+import { PRODUCT_COL, ProductCell } from "@/components/product-cell";
+import { DEFAULT_SUPPLY_COLUMNS, SupplyColumnsMenu, useSupplyColumns, type SupplyColumn } from "@/components/supply-columns";
 import { AddLineButton, SupplyAddLine } from "@/components/supply-add-line";
 import { unitLabel } from "@/lib/units";
 import { cn } from "@/lib/utils";
-import { ArrowRight01Icon, PackageMovingIcon, Search01Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, PackageIcon, PackageMovingIcon, Search01Icon } from "@hugeicons/core-free-icons";
 
 export type SupplyLine = {
   id: string;
@@ -36,6 +37,8 @@ export type SupplyLine = {
   partNumber: string;
   // Código interno de la línea (segundo código); se muestra como chip.
   internalCode: string;
+  // Medida, tipo u otro dato interno de la línea.
+  reference: string;
   description: string;
   quantity: number;
   unit: string;
@@ -50,8 +53,10 @@ export type SupplyLine = {
   assigned: { name: string; code: string; quantity: number; kind: "bodega" | "compra"; costCents: number | null }[];
 };
 
-const TH = cn(TABLE_TH, "font-bold text-foreground");
-const TD = cn(TABLE_TD, "py-2 align-middle");
+const TH = TABLE_TH;
+const TD = cn(TABLE_TD, "py-1.5 align-middle");
+// Fila de una línea del proceso: con más aire que las de sus productos asignados.
+const PTD = cn(TABLE_TD, "py-3 align-middle");
 
 // Orden de los filtros: del ciclo de una línea, de nada asignado a entregado.
 const STATE_ORDER: SupplyState[] = ["pending", "quoted", "purchased", "partial", "in_stock", "delivered"];
@@ -120,6 +125,9 @@ export function SupplyBoard({
   const [searchReset, setSearchReset] = useState(0);
   // Líneas con sus productos asignados desplegados; por defecto todas contraídas.
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Columnas opcionales que la persona eligió ver (recordadas en su navegador).
+  const columns = useSupplyColumns();
+  const cols = columns.cols;
   function toggleExpanded(id: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -199,7 +207,6 @@ export function SupplyBoard({
   const listCounts: Record<string, number> = {};
   for (const l of lists) listCounts[l.id] = l.count;
   // La próxima línea por atender: la primera a la que aún le falta cubrir algo.
-  const nextId = canAct ? lines.find((l) => l.reserved + l.purchased < l.quantity)?.id : undefined;
   const totalLines = counts.pending + counts.quoted + counts.partial + counts.purchased + counts.in_stock + counts.delivered;
 
   // Valor del proceso sin IVA contra el costo de lo cubierto: cuánto falta por cubrir.
@@ -260,7 +267,7 @@ export function SupplyBoard({
             key={`${loaded?.id}:${searchReset}`}
             q={q}
             onSearch={(next) => go({ q: next })}
-            placeholder="Buscar por n.º de parte, descripción o producto asignado"
+            placeholder="Buscar por n.º de parte, código interno, descripción o producto asignado"
           />
           {/* Abre el panel de abastecimiento sin elegir una línea: con el proceso en ejecución, desde ahí se agregan items. */}
           <div className="flex shrink-0 items-stretch border-l">
@@ -292,6 +299,20 @@ export function SupplyBoard({
             </button>
           ))}
           </div>
+          {lines.some((l) => l.assigned.length > 0) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0"
+              onClick={() => {
+                const withProducts = lines.filter((l) => l.assigned.length > 0).map((l) => l.id);
+                const allOpen = withProducts.every((id) => expanded.has(id));
+                setExpanded(allOpen ? new Set() : new Set(withProducts));
+              }}
+            >
+              {lines.filter((l) => l.assigned.length > 0).every((l) => expanded.has(l.id)) ? "Contraer todo" : "Expandir todo"}
+            </Button>
+          )}
           {(q || estado) && (
             <Button
               variant="ghost"
@@ -326,7 +347,7 @@ export function SupplyBoard({
 
         {/* Las consultas al servidor muestran la estructura de la tabla; los filtros locales son inmediatos. */}
         {switching || navigating ? (
-          <SupplyTableSkeleton rows={Math.min(8, Math.max(3, switching ? (active?.count ?? 5) : lines.length))} />
+          <SupplyTableSkeleton cols={cols} rows={Math.min(8, Math.max(3, switching ? (active?.count ?? 5) : lines.length))} />
         ) : (
           <div className="relative flex min-h-0 flex-1 flex-col">
             {lines.length === 0 ? (
@@ -340,132 +361,175 @@ export function SupplyBoard({
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 z-10 bg-surface-strong [&_th]:shadow-[inset_0_-1px_0_var(--border)]">
                     <tr className="border-b">
-                      <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
-                      <th scope="col" className={TH}>Descripción</th>
-                      <th scope="col" className={`${TH} w-20 px-2 text-right`}>Cantidad</th>
-                      <th scope="col" className={`${TH} w-24 px-2 text-right`}>Precio ref.</th>
-                      <th scope="col" className={`${TH} w-20 px-2 text-right`}>Costo unit.</th>
-                      <th scope="col" className={`${TH} w-28 px-2 text-right`}>Costo total</th>
-                      <th scope="col" className={`${TH} w-56`}>Estado y avance</th>
+                      <th scope="col" className={`${TH} w-px pr-0`}><SupplyColumnsMenu {...columns} /></th>
+                      <th scope="col" className={`${TH} w-px pl-2 text-right`}>N.º</th>
+                      <th scope="col" className={`${TH} ${PRODUCT_COL}`}>Producto</th>
+                      {cols.has("quantity") && <th scope="col" className={`${TH} w-28 px-2 text-right`}>Cantidad</th>}
+                      {cols.has("reference") && <th scope="col" className={`${TH} w-28 px-2 text-right`}>Precio ref.</th>}
+                      {cols.has("cost") && <th scope="col" className={`${TH} w-28 px-2 text-right`}>Costo</th>}
+                      {cols.has("margin") && <th scope="col" className={`${TH} w-28 px-2 text-right`}>Margen</th>}
+                      {cols.has("state") && <th scope="col" className={`${TH} w-72`}>Estado</th>}
                     </tr>
                   </thead>
-                  {/* Tabla jerárquica: cada línea del proceso es una fila con su resumen y, debajo, una fila por producto
-                      asignado, sangrada, con las mismas columnas (cantidad asignada, costo unitario, total y de dónde viene).
-                      Todas las filas tienen las mismas celdas, así las líneas y las columnas siempre se alinean. */}
+                  {/* Tabla jerárquica: cada línea del proceso es una fila de un solo renglón de números y, debajo (al
+                      desplegarla con su botón), una fila por producto asignado con las mismas columnas. */}
                   {lines.map((l) => {
                     const lineTotal = l.assigned.reduce((sum, a) => sum + (a.costCents === null ? 0 : Math.round(a.costCents * a.quantity)), 0);
                     const hasCost = l.assigned.some((a) => a.costCents !== null);
+                    const margin = hasCost && l.referenceCents !== null ? l.referenceCents - lineTotal : null;
                     const children = l.assigned.length > 0;
                     const open = expanded.has(l.id);
+                    const unit = unitLabel(l.unit);
                     return (
                       <tbody
                         key={l.id}
-                        // Un clic selecciona la línea y abre el panel; otro clic sobre la seleccionada despliega sus productos.
+                        // Tocar la fila la selecciona y abre el panel. Los productos se despliegan con su propio botón.
                         onClick={() => {
-                          if (selectedId === l.id && rc.open) {
-                            if (children) toggleExpanded(l.id);
-                            return;
-                          }
+                          if (selectedId === l.id && rc.open) return;
                           rc.unpick();
                           setSelectedLine(l);
                           rc.show();
                         }}
                         className={cn(
-                          "cursor-pointer border-b transition-colors hover:[&_td]:bg-accent [&>tr:not(:first-child)>td]:bg-foreground/[0.07] hover:[&>tr:not(:first-child)>td]:bg-foreground/[0.1] [&>tr+tr>td]:border-t [&>tr+tr>td]:border-border/60",
+                          "cursor-pointer border-b transition-colors hover:[&>tr:first-child>td]:bg-accent [&>tr:not(:first-child)>td]:bg-foreground/[0.025] [&>tr+tr>td]:border-t [&>tr+tr>td]:border-border/50",
                           total > LINES_PAGE_SIZE && "last:border-b-0",
-                          selectedId === l.id && "[&_td]:bg-surface-strong/60 [&_tr>td:first-child]:shadow-[inset_4px_0_0_var(--primary)]",
+                          selectedId === l.id && "[&>tr:first-child>td]:bg-accent [&>tr:first-child>td:first-child]:shadow-[inset_3px_0_0_var(--primary)]",
                         )}
                       >
-                        <tr>
-                          <td className={cn(TD, "num text-right text-muted-foreground")}>{l.n}</td>
-                          <td className={cn(TD, "break-words")}>
-                            <span className="block text-xs text-muted-foreground">{l.description}</span>
-                            <span className={cn("mt-0.5 block font-mono text-sm font-medium", !l.partNumber && "font-normal text-muted-foreground")}>
-                              {l.partNumber || "Sin n.º de parte"}
-                              {l.internalCode && <> <CodeChip code={l.internalCode} /></>}
-                            </span>
-                            {children && (
-                              <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                                <HugeiconsIcon icon={ArrowRight01Icon} aria-hidden className={cn("size-3 transition-transform", open && "rotate-90")} />
-                                {l.assigned.length} {l.assigned.length === 1 ? "producto asignado" : "productos asignados"}
-                              </span>
-                            )}
-                          </td>
-                          <td className={cn(TD, "px-2 num whitespace-nowrap text-right")}>
-                            {l.quantity} <span className="font-sans text-xs text-muted-foreground">{unitLabel(l.unit)}</span>
-                          </td>
-                          <td className={cn(TD, "px-2 num whitespace-nowrap text-right")}>
-                            {l.referenceCents === null ? (
-                              <span className="text-muted-foreground">—</span>
-                            ) : (
-                              <>
-                                <span className="font-medium">{formatCents(l.referenceCents)}</span>
-                                <span className="block text-xs text-muted-foreground">{formatCents(Math.round(l.referenceCents / l.quantity))} c/u</span>
-                              </>
-                            )}
-                          </td>
-                          <td className={cn(TD, "px-2 whitespace-nowrap text-right text-muted-foreground")}>—</td>
-                          <td className={cn(TD, "px-2 num whitespace-nowrap text-right font-medium")}>
-                            {hasCost ? formatCents(lineTotal) : <span className="font-normal text-muted-foreground">—</span>}
-                            {/* Lo que queda del precio referencial, o cuánto se pasó: así no se compra más caro de lo que paga el proceso. */}
-                            {l.referenceCents !== null && hasCost && (
-                              <span className={cn("block text-xs font-normal", lineTotal > l.referenceCents ? "font-medium text-destructive" : "text-muted-foreground")}>
-                                {lineTotal > l.referenceCents
-                                  ? `Excede ${formatCents(lineTotal - l.referenceCents)}`
-                                  : `Disponible ${formatCents(l.referenceCents - lineTotal)}`}
-                              </span>
-                            )}
-                          </td>
-                          <td className={TD}>
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex flex-col items-start gap-1.5">
-                                <StateLabel tone={STATE[l.state].tone}>{STATE[l.state].label}</StateLabel>
-                                <Progress stock={l.reserved} purchased={l.purchased} delivered={l.delivered} total={l.quantity} />
-                              </div>
-                              {/* Tocar la fila abre el panel; el botón es el mismo gesto para el teclado. */}
-                              <Button
-                                variant={l.id === nextId ? "default" : "ghost"}
-                                size="icon"
-                                className={cn("size-8 shrink-0", l.id !== nextId && "text-muted-foreground")}
-                                aria-label={`${canAct ? "Abastecer" : "Ver"} la línea ${l.n}`}
-                                title={canAct ? "Abastecer esta línea" : "Ver esta línea"}
+                        <tr
+                          aria-selected={selectedId === l.id || undefined}
+                          // La fila se abre también con el teclado (Tab hasta ella y Enter o Espacio).
+                          tabIndex={0}
+                          aria-label={`Línea ${l.n}: ${l.description}. ${STATE[l.state].label}. Abrir en el panel`}
+                          onKeyDown={(e) => {
+                            if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+                            e.preventDefault();
+                            e.currentTarget.click();
+                          }}
+                          className="outline-none focus-visible:[&>td]:bg-accent focus-visible:[&>td:first-child]:shadow-[inset_3px_0_0_var(--ring)]"
+                        >
+                          <td className={cn(PTD, "w-px pr-0")}>
+                            {children ? (
+                              <button
+                                type="button"
+                                aria-expanded={open}
+                                aria-label={`${open ? "Ocultar" : "Mostrar"} ${l.assigned.length} ${l.assigned.length === 1 ? "producto asignado" : "productos asignados"} de la línea ${l.n}`}
+                                title={open ? "Ocultar productos asignados" : "Mostrar productos asignados"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExpanded(l.id);
+                                }}
+                                className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                               >
-                                <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
-                              </Button>
-                            </div>
+                                <HugeiconsIcon icon={ArrowRight01Icon} className={cn("size-4 transition-transform duration-150", open && "rotate-90")} />
+                              </button>
+                            ) : (
+                              <span className="block size-7" />
+                            )}
                           </td>
+                          <td className={cn(PTD, "num pl-2 text-right text-muted-foreground")}>{l.n}</td>
+                          <td className={cn(PTD, "break-words")}>
+                            <ProductCell
+                              description={l.description}
+                              partNumber={l.partNumber}
+                              internalCode={l.internalCode}
+                              reference={l.reference}
+                              extra={
+                                children ? (
+                                  // Chip de los productos asignados: se ve sin desplegar y, al tocarlo, despliega o pliega.
+                                  <button
+                                    type="button"
+                                    aria-expanded={open}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleExpanded(l.id);
+                                    }}
+                                    className="inline-flex h-5 items-center gap-1 rounded-full bg-state-stock/12 px-2 text-xs font-medium text-state-stock-ink transition-colors hover:bg-state-stock/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                  >
+                                    <HugeiconsIcon icon={PackageIcon} className="size-3.5" />
+                                    {l.assigned.length} {l.assigned.length === 1 ? "producto" : "productos"}
+                                  </button>
+                                ) : undefined
+                              }
+                            />
+                          </td>
+                          {cols.has("quantity") && (
+                          <td className={cn(PTD, "px-2 num whitespace-nowrap text-right")}>
+                            <span className="font-medium">{l.quantity}</span> <span className="font-sans text-xs text-muted-foreground">{unit}</span>
+                          </td>
+                          )}
+                          {cols.has("reference") && (
+                          <td
+                            className={cn(PTD, "px-2 num whitespace-nowrap text-right text-foreground/80")}
+                            title={l.referenceCents !== null && l.quantity > 0 ? `${formatCents(Math.round(l.referenceCents / l.quantity))} c/u` : undefined}
+                          >
+                            {l.referenceCents === null ? <span className="text-muted-foreground/40">—</span> : formatCents(l.referenceCents)}
+                          </td>
+                          )}
+                          {cols.has("cost") && (
+                          <td className={cn(PTD, "px-2 num whitespace-nowrap text-right")}>
+                            {hasCost ? <span className="font-medium">{formatCents(lineTotal)}</span> : <span className="text-muted-foreground/40">—</span>}
+                          </td>
+                          )}
+                          {/* Margen contra el precio referencial: en rojo si lo asignado cuesta más de lo que paga el proceso. */}
+                          {cols.has("margin") && (
+                          <td className={cn(PTD, "px-2 num whitespace-nowrap text-right")}>
+                            {margin === null ? (
+                              <span className="text-muted-foreground/40">—</span>
+                            ) : margin < 0 ? (
+                              <span className="font-medium text-destructive" title="Lo asignado cuesta más que el precio referencial">−{formatCents(-margin)}</span>
+                            ) : (
+                              <span className="text-state-stock-ink">+{formatCents(margin)}</span>
+                            )}
+                          </td>
+                          )}
+                          {cols.has("state") && (
+                          <td className={PTD}>
+                            <span className="flex w-full min-w-0 items-center gap-3 pr-2">
+                                <StateLabel tone={STATE[l.state].tone} className={cn("w-28 shrink-0 whitespace-nowrap", l.state === "pending" ? "font-normal text-muted-foreground" : "font-medium")}>{STATE[l.state].label}</StateLabel>
+                                <MiniProgress stock={l.reserved} purchased={l.purchased} delivered={l.delivered} total={l.quantity} className="flex-1" />
+                            </span>
+                          </td>
+                          )}
                         </tr>
                         {children &&
                           open &&
                           l.assigned.map((a, i) => (
-                            <tr key={i} className="text-[0.8125rem]">
-                              {/* El filo izquierdo toma el color del estado del producto: verde en bodega, el de «por llegar» si viene en una compra. */}
-                              <td className={TD} style={{ boxShadow: `inset 4px 0 0 var(--state-${a.kind === "compra" ? "arriving" : "stock"})` }} />
-                              <td className={cn(TD, "max-w-0 py-1.5 pl-12")}>
-                                <span className="flex items-baseline gap-2">
-                                  <span aria-hidden className="shrink-0 text-muted-foreground/70">↳</span>
-                                  <span className="min-w-0">
-                                    <span className="block truncate text-xs text-muted-foreground" title={a.name}>
-                                      {a.name}
-                                    </span>
-                                    <span className={cn("block truncate font-mono text-xs", !a.code && "text-muted-foreground")}>{a.code || "Sin código"}</span>
-                                  </span>
-                                </span>
-                              </td>
-                              <td className={cn(TD, "px-2 num py-1.5 text-right")}>{a.quantity}</td>
+                            <tr key={`${a.kind}-${a.code}-${i}`}>
+                              {/* Filo de 3 px con el color del origen: verde en bodega, azul si viene en una compra. */}
+                              <td className={TD} style={{ boxShadow: `inset 3px 0 0 var(--state-${a.kind === "compra" ? "arriving" : "stock"})` }} />
                               <td className={TD} />
-                              <td className={cn(TD, "px-2 num py-1.5 text-right")}>
-                                {a.costCents === null ? <span className="text-muted-foreground">Sin costo</span> : formatCents(a.costCents)}
+                              <td className={cn(TD, "max-w-0 pl-8")}>
+                                <span className="block truncate text-[0.8125rem] text-foreground/85" title={a.name}>{a.name}</span>
+                                <span className={cn("block truncate font-mono text-xs", a.code ? "text-muted-foreground" : "text-muted-foreground/70")}>{a.code || "Sin código"}</span>
                               </td>
-                              <td className={cn(TD, "px-2 num py-1.5 text-right text-muted-foreground")}>
-                                {a.costCents === null ? "—" : formatCents(Math.round(a.costCents * a.quantity))}
+                              {cols.has("quantity") && (
+                              <td className={cn(TD, "px-2 num whitespace-nowrap text-right text-[0.8125rem]")}>
+                                {a.quantity} <span className="font-sans text-xs text-muted-foreground">{unit}</span>
                               </td>
-                              <td className={cn(TD, "py-1.5")}>
-                                <span className="inline-flex items-center gap-1.5 caps-md text-muted-foreground">
-                                  <span aria-hidden className={cn("size-2 rounded-full", a.kind === "compra" ? STATE.purchased.dot : STATE.in_stock.dot)} />
+                              )}
+                              {cols.has("reference") && (
+                              <td className={TD} />
+                              )}
+                              {cols.has("cost") && (
+                              <td
+                                className={cn(TD, "px-2 num whitespace-nowrap text-right text-[0.8125rem]")}
+                                title={a.costCents === null ? undefined : `${formatCents(a.costCents)} c/u`}
+                              >
+                                {a.costCents === null ? <span className="text-muted-foreground">Sin costo</span> : formatCents(Math.round(a.costCents * a.quantity))}
+                              </td>
+                              )}
+                              {cols.has("margin") && (
+                              <td className={TD} />
+                              )}
+                              {cols.has("state") && (
+                              <td className={TD}>
+                                <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span aria-hidden className={cn("size-1.5 rounded-full", a.kind === "compra" ? STATE.purchased.dot : STATE.in_stock.dot)} />
                                   {a.kind === "compra" ? "Por llegar" : "En bodega"}
                                 </span>
                               </td>
+                              )}
                             </tr>
                           ))}
                       </tbody>
@@ -500,48 +564,37 @@ export function SupplyBoard({
 
 const WIDTHS = ["w-4/5", "w-3/5", "w-11/12", "w-2/3", "w-3/4", "w-1/2"];
 
-function SupplyTableSkeleton({ rows = 6 }: { rows?: number }) {
+function SupplyTableSkeleton({ rows = 6, cols = DEFAULT_SUPPLY_COLUMNS }: { rows?: number; cols?: Set<SupplyColumn> }) {
   return (
     <div role="status" aria-label="Cargando líneas" aria-busy="true" className="min-h-0 flex-1 overflow-auto">
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-surface-strong">
           <tr className="border-b">
-            <th scope="col" className={`${TH} w-px text-right`}>N.º</th>
-            <th scope="col" className={TH}>Descripción</th>
-            <th scope="col" className={`${TH} w-20 px-2 text-right`}>Cantidad</th>
-            <th scope="col" className={`${TH} w-24 px-2 text-right`}>Precio ref.</th>
-            <th scope="col" className={`${TH} w-20 px-2 text-right`}>Costo unit.</th>
-            <th scope="col" className={`${TH} w-28 px-2 text-right`}>Costo total</th>
-            <th scope="col" className={`${TH} w-56`}>Estado y avance</th>
+            <th scope="col" className={`${TH} w-px pr-0`}><span className="sr-only">Productos asignados</span></th>
+            <th scope="col" className={`${TH} w-px pl-2 text-right`}>N.º</th>
+            <th scope="col" className={`${TH} ${PRODUCT_COL}`}>Producto</th>
+            {cols.has("quantity") && <th scope="col" className={`${TH} w-28 px-2 text-right`}>Cantidad</th>}
+            {cols.has("reference") && <th scope="col" className={`${TH} w-28 px-2 text-right`}>Precio ref.</th>}
+            {cols.has("cost") && <th scope="col" className={`${TH} w-28 px-2 text-right`}>Costo</th>}
+            {cols.has("margin") && <th scope="col" className={`${TH} w-28 px-2 text-right`}>Margen</th>}
+            {cols.has("state") && <th scope="col" className={`${TH} w-72`}>Estado</th>}
           </tr>
         </thead>
-        {/* Filas con la misma forma que las reales: descripción en dos líneas, y estado con su etiqueta y barra. */}
+        {/* Filas con la misma forma que las reales: descripción y códigos, números en un renglón, estado con su barra. */}
         <tbody>
           {Array.from({ length: rows }, (_, i) => (
             <tr key={i} className="border-b last:border-b-0">
-              <td className={`${TD} w-px`}>
-                <Skeleton className="ml-auto h-4 w-5" />
-              </td>
-              <td className={TD}>
+              <td className={cn(PTD, "w-px pr-0")}><span className="block size-7" /></td>
+              <td className={cn(PTD, "w-px pl-2")}><Skeleton className="ml-auto h-4 w-5" /></td>
+              <td className={PTD}>
                 <Skeleton className={cn("h-4", WIDTHS[(i + 2) % 6])} />
-                <Skeleton className="mt-1.5 h-3 w-24" />
+                <Skeleton className="mt-1.5 h-3 w-28" />
               </td>
-              <td className={TD}>
-                <Skeleton className="ml-auto h-4 w-12" />
-              </td>
-              <td className={TD}>
-                <Skeleton className="ml-auto h-4 w-14" />
-              </td>
-              <td className={TD}>
-                <Skeleton className="ml-auto h-4 w-12" />
-              </td>
-              <td className={TD}>
-                <Skeleton className="ml-auto h-4 w-14" />
-              </td>
-              <td className={TD}>
-                <Skeleton className="h-5 w-24" />
-                <Skeleton className="mt-1.5 h-2 w-36" />
-              </td>
+              {cols.has("quantity") && <td className={PTD}><Skeleton className="ml-auto h-4 w-14" /></td>}
+              {cols.has("reference") && <td className={PTD}><Skeleton className="ml-auto h-4 w-16" /></td>}
+              {cols.has("cost") && <td className={PTD}><Skeleton className="ml-auto h-4 w-16" /></td>}
+              {cols.has("margin") && <td className={PTD}><Skeleton className="ml-auto h-4 w-14" /></td>}
+              {cols.has("state") && <td className={PTD}><Skeleton className="h-4 w-40" /></td>}
             </tr>
           ))}
         </tbody>

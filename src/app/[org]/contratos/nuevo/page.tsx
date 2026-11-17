@@ -16,7 +16,7 @@ export default function NewContractPage({ params }: PageProps<"/[org]/contratos/
   return (
     <>
       <PageSection>
-        <h1 className="text-3xl font-semibold tracking-tight">Nuevo proceso</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Nuevo proceso</h1>
       </PageSection>
       <Suspense>
         <Form params={params} />

@@ -166,7 +166,7 @@ export function BankEditPage({ params }: { params: IdParams }) {
   return (
     <>
       <PageSection>
-        <h1 className="text-3xl font-semibold tracking-tight">Editar cuenta</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Editar cuenta</h1>
       </PageSection>
       <Suspense>
         <EditForm params={params} />

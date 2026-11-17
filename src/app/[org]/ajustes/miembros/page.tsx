@@ -90,7 +90,7 @@ export default function MembersPage({ params }: PageProps<"/[org]/ajustes/miembr
   return (
     <>
       <PageSection>
-        <h1 className="text-3xl font-semibold tracking-tight">Miembros</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Miembros</h1>
       </PageSection>
       <Suspense>
         <Members params={params} />

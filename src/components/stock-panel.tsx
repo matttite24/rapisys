@@ -55,7 +55,7 @@ export function StockPanel({
         className="p-0"
       >
         <div className="flex items-baseline gap-3 border-b px-6 py-4">
-          <span className="num text-3xl font-medium">{total}</span>
+          <span className="num text-2xl font-medium">{total}</span>
           <span className="caps-md text-muted-foreground">
             {total === 0 ? "sin existencias" : total === 1 ? "unidad disponible" : "unidades disponibles"}
           </span>
@@ -183,7 +183,7 @@ function EntryForm({
       </FormField>
       <div className="flex flex-col gap-2">
         <span aria-hidden className="max-md:hidden font-mono text-2xs leading-4">&nbsp;</span>
-        <Button type="submit" disabled={saving} className="h-10 gap-2">
+        <Button type="submit" disabled={saving} className="h-9 gap-2">
           <HugeiconsIcon icon={Add01Icon} className="size-5" />
           {saving ? "Guardando…" : "Registrar entrada"}
         </Button>
@@ -261,10 +261,10 @@ function AdjustDialog({
               {state?.error && <FieldError>{state.error}</FieldError>}
             </div>
             <div className="flex gap-2 border-t p-4">
-              <Button type="submit" disabled={saving} className="h-10">
+              <Button type="submit" disabled={saving} className="h-9">
                 {saving ? "Guardando…" : "Aplicar ajuste"}
               </Button>
-              <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={close}>
+              <Button type="button" variant="outline" className="h-9" disabled={saving} onClick={close}>
                 Cancelar
               </Button>
             </div>
