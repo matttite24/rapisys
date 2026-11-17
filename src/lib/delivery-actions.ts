@@ -156,3 +156,25 @@ export async function voidDelivery(org: string, contractId: string, deliveryId: 
   revalidatePath(`/${org}/contratos/${contractId}`, "layout");
   return { id: deliveryId };
 }
+
+// Corrige fecha, quién recibe y notas de una entrega ya registrada (p. ej. se reprograma si no la recibieron).
+export async function updateDelivery(
+  org: string,
+  contractId: string,
+  deliveryId: string,
+  input: { date: string; receivedBy: string; notes: string },
+): Promise<DeliveryResult> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: "Elige la fecha de la entrega." };
+  if (input.receivedBy.length > 200) return { error: "Quien recibe: máximo 200 caracteres." };
+  if (input.notes.length > 500) return { error: "Las notas admiten máximo 500 caracteres." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delivery_update", {
+    p_delivery_id: deliveryId,
+    p_date: input.date,
+    p_received_by: input.receivedBy,
+    p_notes: input.notes,
+  });
+  if (error) return { error: friendly(error) };
+  revalidatePath(`/${org}/contratos/${contractId}`, "layout");
+  return { id: deliveryId };
+}

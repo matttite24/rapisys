@@ -2,8 +2,8 @@
 export const FILES_BUCKET = "contract-files";
 export const MAX_FILE_BYTES = 15 * 1024 * 1024;
 
-export type FileSource = "contract" | "purchase" | "expense";
-export const SOURCE_LABEL: Record<FileSource, string> = { contract: "Contrato", purchase: "Compra", expense: "Gasto" };
+export type FileSource = "contract" | "purchase" | "expense" | "delivery";
+export const SOURCE_LABEL: Record<FileSource, string> = { contract: "Contrato", purchase: "Compra", expense: "Gasto", delivery: "Entrega" };
 
 // Tipos permitidos (los mismos que acepta el bucket). El navegador a veces no informa el tipo de un .xml o un .csv:
 // por eso se completa con la extensión.

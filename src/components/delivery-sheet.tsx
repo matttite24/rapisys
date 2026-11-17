@@ -263,10 +263,10 @@ function DeliveryBody({
           </div>
         )}
         <div className="flex flex-wrap items-center gap-3 p-4">
-          <Button className="h-10" disabled={saving || selected.length === 0 || selected.some((row) => row.products.length === 0)} onClick={submit}>
+          <Button className="h-9" disabled={saving || selected.length === 0 || selected.some((row) => row.products.length === 0)} onClick={submit}>
             {saving ? "Generando…" : "Generar entrega y reporte"}
           </Button>
-          <Button variant="outline" className="h-10" disabled={saving} onClick={onClose}>
+          <Button variant="outline" className="h-9" disabled={saving} onClick={onClose}>
             Cancelar
           </Button>
           <span className="num text-sm text-muted-foreground">

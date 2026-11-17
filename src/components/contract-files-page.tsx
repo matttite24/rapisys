@@ -13,7 +13,7 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 
 // Archivos por página: solo se piden (y se firman las miniaturas de) los que se ven.
 export const FILES_PAGE_SIZE = 25;
-const ORIGINS: Record<string, FileSource> = { contrato: "contract", compras: "purchase", gastos: "expense" };
+const ORIGINS: Record<string, FileSource> = { contrato: "contract", compras: "purchase", gastos: "expense", entregas: "delivery" };
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 async function Files({ params, searchParams }: { params: IdParams; searchParams: Search }) {
@@ -25,9 +25,9 @@ async function Files({ params, searchParams }: { params: IdParams; searchParams:
   const origin = first(sp.origen) ?? "";
   const source = ORIGINS[origin];
   const countsRes = await supabase.rpc("contract_files_counts", { p_contract_id: id });
-  const c = (countsRes.data ?? {}) as { contract?: number; purchase?: number; expense?: number; bytes?: number };
-  const counts = { contract: Number(c.contract ?? 0), purchase: Number(c.purchase ?? 0), expense: Number(c.expense ?? 0) };
-  const all = counts.contract + counts.purchase + counts.expense;
+  const c = (countsRes.data ?? {}) as { contract?: number; purchase?: number; expense?: number; delivery?: number; bytes?: number };
+  const counts = { contract: Number(c.contract ?? 0), purchase: Number(c.purchase ?? 0), expense: Number(c.expense ?? 0), delivery: Number(c.delivery ?? 0) };
+  const all = counts.contract + counts.purchase + counts.expense + counts.delivery;
   const total = source ? counts[source] : all;
 
   // Si la página pedida ya no existe (se borraron archivos), se muestra la última.
@@ -55,21 +55,24 @@ async function Files({ params, searchParams }: { params: IdParams; searchParams:
   // Nombre de la compra o del gasto de cada archivo de esta página, y miniaturas firmadas en una sola llamada.
   const purchaseIds = [...new Set(rows.filter((f) => f.source === "purchase" && f.source_id).map((f) => f.source_id as string))];
   const expenseIds = [...new Set(rows.filter((f) => f.source === "expense" && f.source_id).map((f) => f.source_id as string))];
+  const deliveryIds = [...new Set(rows.filter((f) => f.source === "delivery" && f.source_id).map((f) => f.source_id as string))];
   const thumbPaths = rows.map((f) => f.thumb_path).filter((p): p is string => !!p);
-  const [purchases, expenses, signed] = await Promise.all([
+  const [purchases, expenses, deliveries, signed] = await Promise.all([
     purchaseIds.length ? supabase.from("purchases").select("id, number").in("id", purchaseIds) : Promise.resolve({ data: [] }),
     expenseIds.length ? supabase.from("contract_expenses").select("id, concept").in("id", expenseIds) : Promise.resolve({ data: [] }),
+    deliveryIds.length ? supabase.from("deliveries").select("id, number").in("id", deliveryIds) : Promise.resolve({ data: [] }),
     thumbPaths.length ? supabase.storage.from(FILES_BUCKET).createSignedUrls(thumbPaths, 3600) : Promise.resolve(null),
   ]);
   const purchaseName = new Map(((purchases.data ?? []) as { id: string; number: string | null }[]).map((p) => [p.id, p.number ?? "Sin número"]));
   const expenseName = new Map(((expenses.data ?? []) as { id: string; concept: string }[]).map((e) => [e.id, e.concept]));
+  const deliveryName = new Map(((deliveries.data ?? []) as { id: string; number: number }[]).map((d) => [d.id, `ENT-${String(d.number).padStart(3, "0")}`]));
   const thumbUrl = new Map((signed?.data ?? []).map((s) => [s.path, s.signedUrl]));
 
   const files: FileRow[] = rows.map((f) => ({
     id: f.id,
     name: f.name,
     source: f.source,
-    sourceLabel: f.source === "contract" ? undefined : ((f.source === "purchase" ? purchaseName : expenseName).get(f.source_id ?? "") ?? "(eliminado)"),
+    sourceLabel: f.source === "contract" ? undefined : ((f.source === "purchase" ? purchaseName : f.source === "delivery" ? deliveryName : expenseName).get(f.source_id ?? "") ?? "(eliminado)"),
     mime: f.mime_type,
     size: Number(f.size_bytes),
     createdAt: f.created_at,

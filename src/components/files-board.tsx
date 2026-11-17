@@ -37,6 +37,7 @@ const TABS: { key: "all" | FileSource; label: string; origin: string }[] = [
   { key: "contract", label: "Contrato", origin: "contrato" },
   { key: "purchase", label: "Compras", origin: "compras" },
   { key: "expense", label: "Gastos", origin: "gastos" },
+  { key: "delivery", label: "Entregas", origin: "entregas" },
 ];
 
 // Todos los archivos del proceso en un solo lugar: los propios y los de sus compras y gastos.
