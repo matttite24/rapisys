@@ -29,11 +29,12 @@ import { findDuplicates } from "@/lib/duplicates";
 import { gridFromImage } from "@/lib/ocr-engine";
 import { readSheet } from "@/lib/sheet-actions";
 import { splitCsv } from "@/lib/item-csv";
+import { openPdf, parsePageRange, type PdfHandle } from "@/lib/pdf-table";
 import { FIELDS, applyMapping, guessMapping, looksLikeHeader, normalizeGrid, type Field, type Grid, type Mapping } from "@/lib/table-map";
 import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 
-type Step = "start" | "reading" | "map" | "review";
+type Step = "start" | "pages" | "reading" | "map" | "review";
 
 type Row = {
   id: number;
@@ -143,6 +144,13 @@ export function BulkImport({
   // Lo que la lista ya tiene (se pide al abrir), para avisar de repetidos.
   const [existing, setExisting] = useState<{ part: string; description: string }[]>([]);
   const [reviewPage, setReviewPage] = useState(0);
+  // PDF abierto: se elige qué páginas se leen (no todas son listas).
+  const pdf = useRef<PdfHandle | null>(null);
+  const [pdfPages, setPdfPages] = useState<{ count: number; list: number[] }>({ count: 0, list: [] });
+  const [pickedPages, setPickedPages] = useState<Set<number>>(new Set());
+  const [thumbs, setThumbs] = useState<Record<number, string>>({});
+  const [rangeText, setRangeText] = useState("");
+  const [rangeError, setRangeError] = useState(false);
   const nextId = useRef(1);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -152,7 +160,38 @@ export function BulkImport({
     return () => URL.revokeObjectURL(imageUrl);
   }, [imageUrl]);
 
+  function closePdf() {
+    void pdf.current?.close();
+    pdf.current = null;
+    setPdfPages({ count: 0, list: [] });
+    setPickedPages(new Set());
+    setThumbs({});
+    setRangeText("");
+    setRangeError(false);
+  }
+
+  // Miniaturas de las páginas, una a una, mientras se ve la selección.
+  useEffect(() => {
+    if (step !== "pages" || !pdf.current) return;
+    const handle = pdf.current;
+    let alive = true;
+    (async () => {
+      for (let n = 1; n <= handle.numPages && alive; n++) {
+        try {
+          const url = await handle.thumbnail(n);
+          if (alive) setThumbs((t) => ({ ...t, [n]: url }));
+        } catch {
+          /* sin miniatura: se ve solo el número */
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [step]);
+
   function reset() {
+    closePdf();
     setStep("start");
     setImageUrl(undefined);
     setProgress(0);
@@ -178,9 +217,32 @@ export function BulkImport({
     const isImage = file.type.startsWith("image/");
     const isCsv = /\.csv$/i.test(file.name) || file.type === "text/csv";
     const isXlsx = /\.xlsx$/i.test(file.name);
-    if (!isImage && !isCsv && !isXlsx) return setError("Usa una imagen, un CSV o un Excel (.xlsx).");
+    const isPdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
+    if (!isImage && !isCsv && !isXlsx && !isPdf) return setError("Usa un PDF, una imagen, un CSV o un Excel (.xlsx).");
     if (isImage) setImageUrl(URL.createObjectURL(file));
     setProgress(0);
+    if (isPdf) {
+      setStep("reading");
+      try {
+        const handle = await openPdf(file);
+        if (!handle.hasText) {
+          await handle.close();
+          throw new Error("Este PDF no tiene texto (parece un escaneo). Sube una captura de la tabla para leerla con OCR.");
+        }
+        closePdf();
+        pdf.current = handle;
+        setPdfPages({ count: handle.numPages, list: handle.listPages });
+        // Se proponen las páginas que parecen listas; si ninguna lo parece, se elige a mano.
+        setPickedPages(new Set(handle.listPages));
+        setRangeText("");
+        setStep("pages");
+      } catch (e) {
+        console.error("Carga masiva (PDF)", e);
+        setError(e instanceof Error && e.message ? e.message : "No se pudo abrir el PDF. Inténtalo de nuevo.");
+        setStep("start");
+      }
+      return;
+    }
     setStep("reading");
     try {
       let table: Grid;
@@ -211,9 +273,49 @@ export function BulkImport({
     }
   }
 
+  // Lee solo las páginas elegidas del PDF y pasa al mapeo de columnas.
+  async function readPickedPages() {
+    const handle = pdf.current;
+    if (!handle || pickedPages.size === 0) return;
+    setError(undefined);
+    setProgress(0);
+    setStep("reading");
+    try {
+      const table = normalizeGrid(await handle.read([...pickedPages].sort((a, b) => a - b), setProgress));
+      if (table.length === 0) throw new Error("No se encontró ninguna tabla en las páginas elegidas.");
+      const header = looksLikeHeader(table[0]);
+      setGrid(table);
+      setHasHeader(header);
+      setMapping(header ? guessMapping(table[0]) : table[0].map(() => null));
+      setSkipRows(new Set());
+      setStep("map");
+    } catch (e) {
+      console.error("Carga masiva (PDF)", e);
+      setError(e instanceof Error && e.message ? e.message : "No se pudo leer el PDF. Inténtalo de nuevo.");
+      setStep("pages");
+    }
+  }
+
+  function togglePage(n: number) {
+    setPickedPages((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+  }
+
+  function applyRange(text: string) {
+    setRangeText(text);
+    if (!text.trim()) return setRangeError(false);
+    const pages = parsePageRange(text, pdfPages.count);
+    setRangeError(!pages);
+    if (pages) setPickedPages(new Set(pages));
+  }
+
   // Del mapeo a las filas editables de la revisión.
   function applyColumns() {
-    const mapped = applyMapping(grid, mapping, (i) => !(hasHeader && i === 0) && !skipRows.has(i));
+    const mapped = applyMapping(grid, mapping, (i) => !(hasHeader && i === 0) && !skipRows.has(i), { fixCodes: !!imageUrl });
     setSkipped(grid.length - mapped.length);
     setRows(mapped.map((r) => ({ id: nextId.current++, part: r.part, description: r.description, quantity: r.quantity, unit: r.unit, price: r.price, raw: r.raw, review: r.review })));
     setRowErrors({});
@@ -341,7 +443,7 @@ export function BulkImport({
           <SheetHeader>
             <SheetTitle>Carga masiva en «{listName}»</SheetTitle>
             <SheetDescription className="sr-only">
-              Sube un Excel, un CSV o una captura, elige qué columna es cada dato, revisa y cárgalo a la lista.
+              Sube un PDF, un Excel, un CSV o una captura, elige qué columna es cada dato, revisa y cárgalo a la lista.
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -349,7 +451,7 @@ export function BulkImport({
           {step === "start" && (
             <div className="p-6">
               <p className="pb-4 text-sm text-muted-foreground">
-                Sube un Excel (.xlsx), un CSV o una captura de la tabla. Después eliges qué columna es cada dato. Las capturas se leen en tu navegador: la imagen no sale de tu equipo.
+                Sube un PDF con texto, un Excel (.xlsx), un CSV o una captura de la tabla. Después eliges qué columna es cada dato. Los PDF y las capturas se leen en tu navegador: el archivo no sale de tu equipo.
               </p>
               <div
                 onDragOver={(e) => {
@@ -371,15 +473,15 @@ export function BulkImport({
                 <HugeiconsIcon icon={ImageUploadIcon} className="size-10 text-muted-foreground" />
                 <div className="flex flex-col gap-1">
                   <p className="font-medium">Pega una captura con Ctrl + V</p>
-                  <p className="text-sm text-muted-foreground">o arrastra aquí un Excel, un CSV o una imagen</p>
+                  <p className="text-sm text-muted-foreground">o arrastra aquí un PDF, un Excel, un CSV o una imagen</p>
                 </div>
-                <Button type="button" variant="outline" className="h-10" onClick={() => fileInput.current?.click()}>
+                <Button type="button" variant="outline" className="h-9" onClick={() => fileInput.current?.click()}>
                   Elegir archivo
                 </Button>
                 <input
                   ref={fileInput}
                   type="file"
-                  accept="image/*,.csv,.xlsx,text/csv"
+                  accept="image/*,.pdf,application/pdf,.csv,.xlsx,text/csv"
                   aria-label="Elegir el archivo o la captura"
                   className="sr-only"
                   tabIndex={-1}
@@ -391,6 +493,80 @@ export function BulkImport({
                 />
               </div>
               {error && <div className="pt-4"><FieldError>{error}</FieldError></div>}
+            </div>
+          )}
+
+          {step === "pages" && (
+            <div className="flex flex-col gap-4 p-4">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-mono">{fileName}</span> tiene {pdfPages.count} {pdfPages.count === 1 ? "página" : "páginas"}. Elige las que tienen listas
+                de ítems; solo esas se leen.
+                {pdfPages.list.length > 0 && " Marqué las que parecen listas (traen descripción y cantidad)."}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  aria-label="Páginas a leer"
+                  aria-invalid={rangeError || undefined}
+                  placeholder="Ej.: 3-7, 12"
+                  className="h-9 w-44 font-mono"
+                  value={rangeText}
+                  onChange={(e) => applyRange(e.target.value)}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => { setRangeText(""); setPickedPages(new Set(Array.from({ length: pdfPages.count }, (_, i) => i + 1))); }}>
+                  Todas
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => { setRangeText(""); setPickedPages(new Set()); }}>
+                  Ninguna
+                </Button>
+                {pdfPages.list.length > 0 && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setRangeText(""); setPickedPages(new Set(pdfPages.list)); }}>
+                    Solo las que parecen listas
+                  </Button>
+                )}
+                {rangeError && <span role="alert" className="text-xs text-destructive">Escribe páginas entre 1 y {pdfPages.count}, como 3-7, 12.</span>}
+              </div>
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                {Array.from({ length: pdfPages.count }, (_, i) => i + 1).map((n) => {
+                  const on = pickedPages.has(n);
+                  return (
+                    <li key={n}>
+                      <button
+                        type="button"
+                        aria-pressed={on}
+                        aria-label={`Página ${n}`}
+                        onClick={() => togglePage(n)}
+                        className={cn(
+                          "relative flex aspect-[3/4] w-full items-center justify-center overflow-hidden border bg-muted/40 transition-colors hover:border-foreground/40",
+                          on && "border-primary shadow-[inset_0_0_0_2px_var(--primary)]",
+                        )}
+                      >
+                        {thumbs[n] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={thumbs[n]} alt="" className="size-full object-cover object-top" />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Cargando…</span>
+                        )}
+                        <span className={cn("absolute top-1.5 left-1.5 grid size-5 place-items-center border bg-background text-xs", on && "border-primary bg-primary text-primary-foreground")}>
+                          {on ? "✓" : ""}
+                        </span>
+                        <span className="num absolute right-0 bottom-0 bg-background/90 px-1.5 py-0.5 font-mono text-xs">
+                          {n}
+                          {pdfPages.list.includes(n) && <span className="ml-1 text-state-stock-ink">· lista</span>}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {error && <FieldError>{error}</FieldError>}
+              <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t bg-background py-3">
+                <Button type="button" variant="ghost" onClick={() => { reset(); }}>
+                  Cambiar archivo
+                </Button>
+                <Button type="button" disabled={pickedPages.size === 0} onClick={() => void readPickedPages()}>
+                  Leer {pickedPages.size} {pickedPages.size === 1 ? "página" : "páginas"}
+                </Button>
+              </div>
             </div>
           )}
 
@@ -486,19 +662,19 @@ export function BulkImport({
                   <dl className="grid grid-cols-4 gap-4 font-mono">
                     <div>
                       <dt className="caps text-muted-foreground">Leídas</dt>
-                      <dd className="num text-2xl">{rows.length}</dd>
+                      <dd className="num text-xl">{rows.length}</dd>
                     </div>
                     <div>
                       <dt className="caps text-muted-foreground">Por revisar</dt>
-                      <dd className={cn("num text-2xl", toReview > 0 && "text-destructive")}>{toReview}</dd>
+                      <dd className={cn("num text-xl", toReview > 0 && "text-destructive")}>{toReview}</dd>
                     </div>
                     <div>
                       <dt className="caps text-muted-foreground">Duplicados</dt>
-                      <dd className={cn("num text-2xl", dupCount > 0 && "text-destructive")}>{dupCount}</dd>
+                      <dd className={cn("num text-xl", dupCount > 0 && "text-destructive")}>{dupCount}</dd>
                     </div>
                     <div>
                       <dt className="caps text-muted-foreground">Descartados</dt>
-                      <dd className="num text-2xl text-muted-foreground">{skipped}</dd>
+                      <dd className="num text-xl text-muted-foreground">{skipped}</dd>
                     </div>
                   </dl>
                   <p className="text-sm text-muted-foreground">
@@ -589,10 +765,10 @@ export function BulkImport({
             <div className="relative z-10 shrink-0 border-t bg-popover [box-shadow:0_-8px_16px_-10px_color-mix(in_oklch,var(--foreground)_30%,transparent)]">
               {error && <div className="border-b p-4"><FieldError>{error}</FieldError></div>}
               <div className="flex flex-wrap items-center gap-2 p-4">
-                <Button type="button" className="h-10" disabled={!mapping.includes("description") || !mapping.includes("quantity") || grid.length - skipRows.size - (hasHeader ? 1 : 0) <= 0} onClick={applyColumns}>
+                <Button type="button" className="h-9" disabled={!mapping.includes("description") || !mapping.includes("quantity") || grid.length - skipRows.size - (hasHeader ? 1 : 0) <= 0} onClick={applyColumns}>
                   Continuar
                 </Button>
-                <Button type="button" variant="outline" className="h-10" onClick={reset}>Otro archivo</Button>
+                <Button type="button" variant="outline" className="h-9" onClick={reset}>Otro archivo</Button>
                 {(!mapping.includes("description") || !mapping.includes("quantity")) && (
                   <span className="text-sm text-muted-foreground">Elige al menos la columna de Descripción y la de Cantidad.</span>
                 )}
@@ -612,13 +788,13 @@ export function BulkImport({
               )}
               {error && <div className="border-b p-4"><FieldError>{error}</FieldError></div>}
               <div className="flex flex-wrap gap-2 p-4">
-                <Button type="button" className="h-10" disabled={saving || rows.length === 0 || overBy > 0} onClick={load}>
+                <Button type="button" className="h-9" disabled={saving || rows.length === 0 || overBy > 0} onClick={load}>
                   {saving ? "Cargando…" : `Cargar ${rows.length} ${rows.length === 1 ? "línea" : "líneas"}`}
                 </Button>
-                <Button type="button" variant="outline" className="h-10" disabled={saving || grid.length === 0} onClick={() => setStep("map")}>
+                <Button type="button" variant="outline" className="h-9" disabled={saving || grid.length === 0} onClick={() => setStep("map")}>
                   Cambiar columnas
                 </Button>
-                <Button type="button" variant="outline" className="h-10" disabled={saving} onClick={reset}>
+                <Button type="button" variant="outline" className="h-9" disabled={saving} onClick={reset}>
                   Otro archivo
                 </Button>
               </div>

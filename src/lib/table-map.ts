@@ -83,15 +83,40 @@ export function cleanNumber(text: string): string {
 
 export type MappedRow = { part: string; description: string; quantity: string; unit: string; price: string; raw: string; review: boolean };
 
+// El OCR confunde la Z con el 7 y con el 2. Se corrige por contexto, segmento a segmento (los separados por guion, punto o espacio):
+//  · un 7 o un 2 entre letras ("AB7CD", "AB2CD") es una Z;
+//  · una Z en un segmento que por lo demás es solo números ("23Z4") es un 7.
+// Lo dudoso (un 7 al borde de una palabra, "CAT7") se deja como está para que la persona lo revise.
+export function fixZ7(code: string): string {
+  return code
+    .split(/([^A-Za-z0-9]+)/)
+    .map((seg) => {
+      if (seg.length < 3 || !/^[A-Za-z0-9]+$/.test(seg)) return seg;
+      const chars = [...seg];
+      return chars
+        .map((c, i) => {
+          const others = chars.filter((_, j) => j !== i);
+          if (c === "7" || c === "2") {
+            const interior = i > 0 && i < chars.length - 1 && /[A-Za-z]/.test(chars[i - 1]) && /[A-Za-z]/.test(chars[i + 1]);
+            return interior && others.filter((x) => /[A-Za-z]/.test(x)).length >= 2 && !others.some((x) => /\d/.test(x)) ? "Z" : c;
+          }
+          if (c === "Z" || c === "z") return others.every((x) => /\d/.test(x)) ? "7" : c;
+          return c;
+        })
+        .join("");
+    })
+    .join("");
+}
+
 // Aplica el mapeo a las filas elegidas. `review` marca las que les falta algo esencial.
-export function applyMapping(grid: Grid, mapping: Mapping, include: (rowIndex: number) => boolean): MappedRow[] {
+export function applyMapping(grid: Grid, mapping: Mapping, include: (rowIndex: number) => boolean, opts: { fixCodes?: boolean } = {}): MappedRow[] {
   const out: MappedRow[] = [];
   grid.forEach((cells, i) => {
     if (!include(i)) return;
     const pick = (f: Field) => cells.filter((_, c) => mapping[c] === f).join(" ").trim();
     const quantity = cleanNumber(pick("quantity"));
     const row: MappedRow = {
-      part: pick("part"),
+      part: opts.fixCodes ? fixZ7(pick("part")) : pick("part"),
       description: pick("description"),
       quantity,
       unit: unitKey(pick("unit")),

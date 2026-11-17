@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { applyMapping, cleanNumber, gridFromWords, guessMapping, looksLikeHeader, normalizeGrid, unitKey } from "@/lib/table-map";
+import { applyMapping, fixZ7, cleanNumber, gridFromWords, guessMapping, looksLikeHeader, normalizeGrid, unitKey } from "@/lib/table-map";
 
 it("reconoce encabezados y sugiere el mapeo sin repetir campos", () => {
   const head = ["ITEM", "PART. NUM", "DESCRIPCIÓN", "CANTID.", "P. TOTAL", "Cantidad"];
@@ -33,4 +33,15 @@ it("arma la tabla desde palabras con posición, por líneas verticales o por hue
   expect(byGaps[1]).toEqual(["A-1", "Filtro de aceite", "2"]);
   const byBorders = gridFromWords(words, [5, 90, 280, 400]);
   expect(byBorders[1].filter(Boolean)).toContain("Filtro de aceite");
+});
+
+it("fixZ7 cambia el 7 entre letras por Z y la Z entre números por 7", () => {
+  expect(fixZ7("AB7CD")).toBe("ABZCD");
+  expect(fixZ7("AB2CD")).toBe("ABZCD");
+  expect(fixZ7("23Z4")).toBe("2374");
+  expect(fixZ7("236-8Z28")).toBe("236-8728");
+  expect(fixZ7("1R-0716")).toBe("1R-0716");
+  expect(fixZ7("CAT7")).toBe("CAT7");
+  expect(fixZ7("CAT42F")).toBe("CAT42F");
+  expect(fixZ7("3N-4968")).toBe("3N-4968");
 });
