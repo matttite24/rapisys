@@ -13,7 +13,7 @@ import { formatCents } from "@/lib/money";
 import type { InvoiceLine } from "@/lib/reconcile-actions";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
-import { Target, covered, normCode } from "@/components/reconcile-shared";
+import { Target, covered, lineMatches, normCode } from "@/components/reconcile-shared";
 import { PanelError, SearchRow } from "@/components/reconcile-parts";
 import { useEnterToAssign } from "@/components/use-enter-to-assign";
 import { GroupBar } from "@/components/reconcile-group-bar";
@@ -27,10 +27,8 @@ export function InvoiceMode({ rc, target, partNumber }: { rc: Reconcile; target:
 
   const invoice = rc.invoices?.find((i) => i.id === rc.invoiceId) ?? null;
   // El campo responde al instante; la lista (hasta cientos de líneas) se refiltra cuando se deja de escribir.
-  const term = useDebouncedValue(filter).trim().toLowerCase();
-  const matching = (rc.lines ?? []).filter(
-    (l) => !term || [l.name, l.code, l.sku, ...l.partNumbers].some((v) => v && v.toLowerCase().includes(term)),
-  );
+  const term = useDebouncedValue(filter).trim();
+  const matching = (rc.lines ?? []).filter((l) => lineMatches(l, term));
   // Tres grupos: las que coinciden con el número de parte de la línea abierta, el resto por asignar, y las ya cubiertas
   // (plegadas). El teclado recorre las filas en el mismo orden en que se ven.
   const sameCode = (l: InvoiceLine) => !!partNumber && [l.code, l.sku, ...l.partNumbers].some((c) => c && normCode(c) === normCode(partNumber));

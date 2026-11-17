@@ -53,31 +53,34 @@ export async function getInvoiceLines(org: string, contractId: string, invoiceId
   }[];
   if (!lines.length) return [];
 
-  const items: unknown[] = [];
-  const sources: unknown[] = [];
-  const lotRows: unknown[] = [];
-  // Lotes y reservas también pueden superar el tope; lotes pequeños de IDs evitan URLs enormes.
-  for (let start = 0; start < lines.length; start += 100) {
-    const chunk = lines.slice(start, start + 100);
-    const itemResult = await supabase.from("items").select("id, name, tdr_name, sku, part_numbers").in("id", [...new Set(chunk.map((l) => l.item_id))]);
-    if (itemResult.error) { logDbError("productos de factura", itemResult.error); throw new Error("No se pudieron cargar los productos."); }
-    items.push(...(itemResult.data ?? []));
+  // Lotes de IDs pequeños (evitan URLs enormes). Los lotes se piden a la vez, y dentro de cada uno los productos, las
+  // reservas y los lotes de stock también: antes eran decenas de consultas una tras otra.
+  const fail = (error: unknown): never => { logDbError("productos de factura", error as never); throw new Error("No se pudieron cargar los productos."); };
+  const pages = async (read: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: unknown }>) => {
+    const out: unknown[] = [];
     for (let offset = 0; ; offset += batchSize) {
-      const result = await supabase.from("supply_sources").select("purchase_line_id, kind, quantity")
-        .in("purchase_line_id", chunk.map((l) => l.id)).order("id").range(offset, offset + batchSize - 1);
-      if (result.error) { logDbError("productos de factura", result.error); throw new Error("No se pudieron cargar los productos."); }
-      sources.push(...(result.data ?? []));
-      if ((result.data?.length ?? 0) < batchSize) break;
+      const { data, error } = await read(offset, offset + batchSize - 1);
+      if (error) fail(error);
+      out.push(...(data ?? []));
+      if ((data?.length ?? 0) < batchSize) break;
     }
-    for (let offset = 0; ; offset += batchSize) {
-      const result = await supabase.from("stock_lots").select("id, purchase_line_id, remaining_qty, created_at")
-        .in("purchase_line_id", chunk.map((l) => l.id)).gt("remaining_qty", 0)
-        .order("created_at").order("id").range(offset, offset + batchSize - 1);
-      if (result.error) { logDbError("productos de factura", result.error); throw new Error("No se pudieron cargar los productos."); }
-      lotRows.push(...(result.data ?? []));
-      if ((result.data?.length ?? 0) < batchSize) break;
-    }
-  }
+    return out;
+  };
+  const chunks: (typeof lines)[] = [];
+  for (let start = 0; start < lines.length; start += 100) chunks.push(lines.slice(start, start + 100));
+  const parts = await Promise.all(chunks.map(async (chunk) => {
+    const ids = chunk.map((l) => l.id);
+    const [itemResult, sources, lotRows] = await Promise.all([
+      supabase.from("items").select("id, name, tdr_name, sku, part_numbers").in("id", [...new Set(chunk.map((l) => l.item_id))]),
+      pages((from, to) => supabase.from("supply_sources").select("purchase_line_id, kind, quantity").in("purchase_line_id", ids).order("id").range(from, to)),
+      pages((from, to) => supabase.from("stock_lots").select("id, purchase_line_id, remaining_qty, created_at").in("purchase_line_id", ids).gt("remaining_qty", 0).order("created_at").order("id").range(from, to)),
+    ]);
+    if (itemResult.error) fail(itemResult.error);
+    return { items: itemResult.data ?? [], sources, lotRows };
+  }));
+  const items: unknown[] = parts.flatMap((p) => p.items);
+  const sources: unknown[] = parts.flatMap((p) => p.sources);
+  const lotRows: unknown[] = parts.flatMap((p) => p.lotRows);
   const lotsByLine = new Map<string, { id: string; remaining: number }[]>();
   for (const r of (lotRows ?? []) as { id: string; purchase_line_id: string; remaining_qty: number }[]) {
     let lots = lotsByLine.get(r.purchase_line_id);

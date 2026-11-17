@@ -139,35 +139,38 @@ export async function searchStock(
   }
   if (!rows.length) return { rows: [], more: false };
 
-  // Nombre TDR de cada producto (la búsqueda no lo trae).
-  const { data: tdrRows, error: tdrError } = await supabase.from("items").select("id, tdr_name").in("id", rows.map((r) => r.id));
-  if (tdrError) throw new Error(friendly(tdrError));
-  const tdrById = new Map(((tdrRows ?? []) as { id: string; tdr_name: string | null }[]).map((r) => [r.id, r.tdr_name]));
-
+  // Nombre TDR de cada producto (la búsqueda no lo trae) y sus lotes con existencias, a la vez.
+  const ids = rows.map((r) => r.id);
   type StockLot = {
     id: string; item_id: string; supplier_id: string | null;
     unit_cost_cents: number | null; remaining_qty: number;
   };
-  const lots: StockLot[] = [];
-  // Una página de productos puede tener miles de lotes: no perder saldos por el tope de la API.
-  const batchSize = 500;
-  for (let offset = 0; ; offset += batchSize) {
-    let lotsQuery = supabase.from("stock_lots")
-      .select(invoiceId
-        ? "id, item_id, supplier_id, unit_cost_cents, remaining_qty, purchase_lines!inner(purchase_id)"
-        : "id, item_id, supplier_id, unit_cost_cents, remaining_qty")
-      .eq("organization_id", orgId)
-      .in("item_id", rows.map((r) => r.id))
-      .gt("remaining_qty", 0)
-      .order("created_at").order("id")
-      .range(offset, offset + batchSize - 1);
-    if (invoiceId) lotsQuery = lotsQuery.eq("purchase_lines.purchase_id", invoiceId);
-    const { data, error } = await lotsQuery;
-    if (error) throw new Error(friendly(error));
-    const batch = (data ?? []) as unknown as StockLot[];
-    lots.push(...batch);
-    if (batch.length < batchSize) break;
-  }
+  const loadLots = async () => {
+    const out: StockLot[] = [];
+    // Una página de productos puede tener miles de lotes: no perder saldos por el tope de la API.
+    const batchSize = 500;
+    for (let offset = 0; ; offset += batchSize) {
+      let lotsQuery = supabase.from("stock_lots")
+        .select(invoiceId
+          ? "id, item_id, supplier_id, unit_cost_cents, remaining_qty, purchase_lines!inner(purchase_id)"
+          : "id, item_id, supplier_id, unit_cost_cents, remaining_qty")
+        .eq("organization_id", orgId)
+        .in("item_id", ids)
+        .gt("remaining_qty", 0)
+        .order("created_at").order("id")
+        .range(offset, offset + batchSize - 1);
+      if (invoiceId) lotsQuery = lotsQuery.eq("purchase_lines.purchase_id", invoiceId);
+      const { data, error } = await lotsQuery;
+      if (error) throw new Error(friendly(error));
+      const batch = (data ?? []) as unknown as StockLot[];
+      out.push(...batch);
+      if (batch.length < batchSize) break;
+    }
+    return out;
+  };
+  const [tdrResult, lots] = await Promise.all([supabase.from("items").select("id, tdr_name").in("id", ids), loadLots()]);
+  if (tdrResult.error) throw new Error(friendly(tdrResult.error));
+  const tdrById = new Map(((tdrResult.data ?? []) as { id: string; tdr_name: string | null }[]).map((r) => [r.id, r.tdr_name]));
 
   const supplierIds = [...new Set(lots.map((l) => l.supplier_id).filter((x): x is string => !!x))];
   const { data: sups, error: supplierError } = supplierIds.length

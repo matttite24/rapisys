@@ -103,17 +103,18 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
   }
 
   const lineIds = view.lines.map((l) => l.id);
-  const [extras, { data: priceRows }, { data: srcRows }] = await Promise.all([
+  const [extras, { data: priceRows }, srcResult] = await Promise.all([
     assetExtras(supabase, view.lists.map((l) => l.asset_id)),
     // Precio referencial (total de la fila) de las líneas de esta página.
     lineIds.length
-      ? supabase.from("contract_items").select("id, reference_price_cents, internal_code").in("id", lineIds)
+      ? supabase.from("contract_items").select("id, reference_price_cents, internal_code, reference").in("id", lineIds)
       : Promise.resolve({ data: [] }),
+    // Lo asignado ya trae el producto (una sola consulta); si la relación no se resuelve, se pide aparte más abajo.
     lineIds.length
       ? supabase.from("supply_sources")
-          .select("contract_item_id, item_id, quantity, kind, unit_cost_cents")
+          .select("contract_item_id, item_id, quantity, kind, unit_cost_cents, items(id, name, sku, part_numbers)")
           .in("contract_item_id", lineIds).order("created_at")
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
   ]);
   const lists: ListView[] = view.lists.map((l) => ({
     id: l.id,
@@ -132,19 +133,35 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
   }));
 
   // Lo asignado ya llegó junto con los datos adicionales de los activos.
+  type Product = { id: string; name: string; sku: string | null; part_numbers: string[] };
+  let srcRows = srcResult.data as unknown[] | null;
+  if (srcResult.error && lineIds.length) {
+    const retry = await supabase.from("supply_sources")
+      .select("contract_item_id, item_id, quantity, kind, unit_cost_cents")
+      .in("contract_item_id", lineIds).order("created_at");
+    srcRows = retry.data;
+  }
   const sources = (srcRows ?? []) as {
     contract_item_id: string;
     item_id: string;
     quantity: number;
     kind: "bodega" | "compra";
     unit_cost_cents: number | null;
+    items?: Product | Product[] | null;
   }[];
-  const { data: itemRows } = sources.length
-    ? await supabase.from("items").select("id, name, sku, part_numbers").in("id", [...new Set(sources.map((x) => x.item_id))])
-    : { data: [] };
-  const itemById = new Map(
-    ((itemRows ?? []) as { id: string; name: string; sku: string | null; part_numbers: string[] }[]).map((i) => [i.id, i]),
-  );
+  const itemById = new Map<string, Product>();
+  for (const x of sources) {
+    const embedded = Array.isArray(x.items) ? x.items[0] : x.items;
+    if (embedded) itemById.set(x.item_id, embedded);
+  }
+  // Sin la relación embebida (o con productos que no llegaron), se piden los que faltan.
+  const missing = [...new Set(sources.map((x) => x.item_id))].filter((id) => !itemById.has(id));
+  if (missing.length) {
+    const { data: itemRows } = await supabase.from("items").select("id, name, sku, part_numbers").in("id", missing);
+    for (const i of (itemRows ?? []) as Product[]) itemById.set(i.id, i);
+  }
+  const sourcesByLine = new Map<string, typeof sources>();
+  for (const x of sources) sourcesByLine.set(x.contract_item_id, [...(sourcesByLine.get(x.contract_item_id) ?? []), x]);
 
   const refById = new Map(
     ((priceRows ?? []) as { id: string; reference_price_cents: number | null }[]).map((r) => [
@@ -154,7 +171,7 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
   );
 
   const codeById = new Map(
-    ((priceRows ?? []) as { id: string; internal_code?: string | null }[]).map((r) => [r.id, r.internal_code ?? ""]),
+    ((priceRows ?? []) as { id: string; internal_code?: string | null; reference?: string | null }[]).map((r) => [r.id, { code: r.internal_code ?? "", reference: r.reference ?? "" }]),
   );
 
   const lines: SupplyLine[] = view.lines.map((l) => ({
@@ -163,7 +180,8 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     listId: l.list_id,
     n: Number(l.n),
     partNumber: l.part_number ?? "",
-    internalCode: codeById.get(l.id) ?? "",
+    internalCode: codeById.get(l.id)?.code ?? "",
+    reference: codeById.get(l.id)?.reference ?? "",
     description: l.description,
     quantity: Number(l.quantity),
     unit: l.unit,
@@ -172,8 +190,7 @@ async function Supply({ params, searchParams }: { params: IdParams; searchParams
     delivered: Number(l.delivered),
     costCents: l.cost_cents === null ? null : Number(l.cost_cents),
     state: l.state,
-    assigned: sources
-      .filter((x) => x.contract_item_id === l.id)
+    assigned: (sourcesByLine.get(l.id) ?? [])
       .map((x) => {
         const item = itemById.get(x.item_id);
         return {
