@@ -6,10 +6,11 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { contractSection, contractSubsection } from "@/components/nav-config";
 import { type PageFigure, type PagePaginationState, type PageShortcut } from "@/components/page-shortcuts";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ShortcutBar } from "@/components/shortcut-bar";
 import { cn } from "@/lib/utils";
 import { useRightPanelOpen } from "@/components/use-side-panel";
-import { useActiveModule } from "@/components/app-shell-nav";
+import { useActiveModule, useCurrentNavItem } from "@/components/app-shell-nav";
 
 // Separador de las migas: ">" (la "/" se queda para "cliente / proceso").
 function Chevron() {
@@ -29,6 +30,7 @@ export function SectionHeader({
   panelOpen: boolean;
 }) {
   const { active, path, to } = useActiveModule();
+  const currentItem = useCurrentNavItem();
   // Gastos cuelga de Pagos.
   const section = contractSection(path.replace(/^(\/contratos\/[^/]+)\/gastos(?=\/|$)/, "$1/pagos"));
   const sub = contractSubsection(path);
@@ -49,14 +51,17 @@ export function SectionHeader({
       )}
     </span>
   ) : null;
+  // Fuera de un proceso: solo la opción que se está viendo (Todos, En ejecución, Crédito…); el módulo ya está en el título de
+  // la columna de opciones. Sin opción que coincida, el nombre del módulo.
+  const sectionTitle = currentItem?.title ?? active.title;
   // Con la columna de opciones oculta su tarjeta no se ve: arriba van cliente y proceso, y debajo las migas.
   const showProcess = Boolean(section) && !panelOpen;
   return (
     <CellHeader
       // Por encima de las filas fijas de las pantallas (buscadores y pestañas, z-20) para que su sombra siempre se vea, y por
       // debajo de las columnas laterales y los cajones (z-30 y más).
-      className="crosshair-start relative z-[25] shadow-bar print:hidden"
-      title={showProcess ? title : (crumbs ?? title ?? active.title)}
+      className="relative z-[25] shadow-bar print:hidden"
+      title={showProcess ? (title ?? <Skeleton className="h-4 w-56" />) : (crumbs ?? title ?? sectionTitle)}
       subtitle={showProcess ? crumbs : undefined}
       leading={leading}
       action={<div ref={setSlot} className="flex items-center gap-1 self-stretch" />}
@@ -93,7 +98,7 @@ export function Footer({
     <div data-layout-footer className="absolute inset-x-0 bottom-0 z-[24] hidden h-(--footer-height) print:hidden md:flex">
       {/* La celda de la cuenta es la continuación de la columna de módulos: mismo fondo, mismo borde y el ícono con el
           color y el resalte de los demás íconos de la columna. */}
-      <div className="w-16 shrink-0 border-t border-r border-foreground/10 bg-layer-1 [&_button]:size-full! [&_button]:rounded-none! [&_button]:bg-transparent! [&_button]:text-muted-foreground! [&_button]:transition-colors [&_button:hover]:bg-foreground/[0.08]! [&_button:hover]:text-foreground!">
+      <div className="w-[4.0625rem] shrink-0 border-t border-r border-foreground/10 bg-layer-1 [&_button]:size-full! [&_button]:rounded-none! [&_button]:bg-transparent! [&_button]:text-muted-foreground! [&_button]:transition-colors [&_button:hover]:bg-foreground/[0.08]! [&_button:hover]:text-foreground!">
         {account}
       </div>
       {/* Bajo las opciones: el selector de organización (el botón para plegarlas está en el encabezado de la columna).
@@ -108,11 +113,6 @@ export function Footer({
         <div className="h-full w-60">{orgMenu}</div>
       </div>
       <div className={cn("relative flex min-w-0 flex-1 border-t transition-[padding] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none", rightOpen && "lg:pr-[32rem]")}>
-        {/* Cruz sobre el cruce de la línea del pie (y de 0 a 1) y la vertical de la columna anterior (x de -1 a 0). */}
-        <span aria-hidden className="pointer-events-none absolute -top-[5px] -left-[6px] z-30 size-[11px]">
-          <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-foreground" />
-          <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-foreground" />
-        </span>
         <ShortcutBar pageShortcuts={pageShortcuts} pageFigures={rightOpen ? [] : pageFigures} pagePagination={pagePagination} setActionsSlot={setActionsSlot} setContextSlot={setContextSlot} newLabel={newLabel} leading={panelOpen ? null : (
           <div className="w-52 shrink-0 border-r">{orgMenu}</div>
         )} />

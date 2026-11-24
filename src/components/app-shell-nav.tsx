@@ -1,12 +1,13 @@
 "use client";
 
 import { ListFilterLink as Link } from "@/components/list-filter-navigation";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { createContext, useContext } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Home01Icon } from "@hugeicons/core-free-icons";
 import { NavBadgesContext } from "@/components/nav-badges";
 import { CONTRACT_SECTIONS, modules, type NavGroup } from "@/components/nav-config";
+import { activeNavigationHref } from "@/lib/contract-filters";
 import { cn } from "@/lib/utils";
 
 // Las rutas viven bajo /[org]; la config de navegación usa rutas sin prefijo.
@@ -20,6 +21,16 @@ export function useActiveModule() {
     modules.find((m) => path === m.href || path.startsWith(m.href + "/")) ??
     modules[0];
   return { org, path, active, to: (href: string) => `/${org}${href}` };
+}
+
+// Opción del módulo que corresponde a la pantalla actual (la que la columna de opciones marca): «Todos», «En ejecución»,
+// «Crédito»… Sirve para rotular el encabezado de contenido sin repetir el título de la columna.
+export function useCurrentNavItem() {
+  const { path, active } = useActiveModule();
+  const search = useSearchParams();
+  const items = active.groups.flatMap((g) => g.items);
+  const href = activeNavigationHref(path, items.map((i) => i.href), search);
+  return items.find((i) => i.href === href);
 }
 
 // La opción activa es la de ruta más larga que contiene la actual (p. ej.

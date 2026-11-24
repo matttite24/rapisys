@@ -9,6 +9,7 @@ import { Pending } from "@/components/nav-pending";
 import { CELL_ROW as ROW } from "@/components/cell-header";
 import { type NavModule } from "@/components/nav-config";
 import { type PanelCardParts } from "@/components/panel-slots";
+import { ProcessCardSkeleton, ProcessHeadSkeleton } from "@/components/process-card";
 import { cn } from "@/lib/utils";
 import { useActiveModule, useContractNav } from "@/components/app-shell-nav";
 
@@ -29,6 +30,10 @@ export function Panel({
   const groups = preview ? preview.groups : (contract?.groups ?? active.groups);
   const search = useSearchParams();
   // La pantalla de Gastos cuelga de Pagos: allí también se marca esa opción.
+  // Dentro de un proceso la tarjeta llega del servidor un momento después: mientras tanto se ve su esqueleto, del mismo alto.
+  const inContract = Boolean(contract) && !preview;
+  // Al pasar de un módulo a un proceso (o a otro) el contenido cambia de golpe: se renueva con una entrada suave.
+  const view = preview ? preview.href : (path.match(/^\/contratos\/[0-9a-f-]{36}/i)?.[0] ?? active.href);
   const current = activeNavigationHref(path.replace(/^(\/contratos\/[^/]+)\/gastos(?=\/|$)/, "$1/pagos"), groups.flatMap((g) => g.items.map((i) => i.href)), search);
 
   return (
@@ -36,16 +41,16 @@ export function Panel({
       {/* Dentro de un proceso, la fila lleva tipo y monto (misma altura que el encabezado de contenido) y debajo va la
           tarjeta con los demás datos. */}
       <div className={cn(ROW, "border-foreground/10")}>
-        {card && !preview ? (
-          <div className="h-full min-w-0 flex-1">{card.head}</div>
+        {inContract ? (
+          <div className="h-full min-w-0 flex-1">{card ? card.head : <ProcessHeadSkeleton />}</div>
         ) : (
           <h2 className="min-w-0 flex-1 truncate pl-5 text-base font-semibold">{(preview ?? active).title}</h2>
         )}
       </div>
 
-      {card && !preview && <div className="shrink-0">{card.body}</div>}
+      {inContract && <div className="shrink-0">{card ? card.body : <ProcessCardSkeleton />}</div>}
 
-      <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-3">
+      <nav key={view} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-2 motion-safe:duration-200">
         {groups.map((g, i) => (
           <div key={i} className="flex flex-col gap-0.5">
             {/* Entre grupos, una línea fina (sin encabezado). */}
