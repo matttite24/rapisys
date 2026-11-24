@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { searchParties } from "./party-search-actions";
 const state = vi.hoisted(() => ({ from: vi.fn(), eq: vi.fn(), or: vi.fn(), order: vi.fn(), limit: vi.fn(), result: { data: [] as unknown[], error: null as null | { code: string } } }));
+vi.mock("@/lib/auth", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/orgs", () => ({ getOrgId: async () => "org-id" }));
 vi.mock("@/lib/db-error", () => ({ isSchemaError: () => false, logDbError: vi.fn(), SCHEMA_MESSAGE: "schema" }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: (table: string) => {

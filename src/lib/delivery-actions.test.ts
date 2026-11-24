@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDeliverable } from "./delivery-actions";
 
+vi.mock("@/lib/auth", () => ({ requireUser: vi.fn() }));
 const state = vi.hoisted(() => ({ rows: {} as Record<string, { data: unknown; error: unknown }[]>, queries: [] as { table: string; eq: unknown[][]; in: unknown[][]; range: unknown[][] }[] }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/db-error", () => ({ logDbError: vi.fn(), isSchemaError: () => false, SCHEMA_MESSAGE: "schema" }));

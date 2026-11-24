@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { getInvoiceLines } from "./reconcile-actions";
 const state = vi.hoisted(() => ({ ranges: [] as number[][] }));
+vi.mock("@/lib/auth", () => ({ requireUser: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/orgs", () => ({ getOrgId: async () => "org-id" }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: (table: string) => {

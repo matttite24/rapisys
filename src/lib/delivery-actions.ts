@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
 
@@ -28,6 +29,7 @@ export type Deliverable = {
 
 // Líneas de una lista listas para entregar: todas sus unidades están en stock y aún no se entregaron.
 export async function getDeliverable(contractId: string, listId: string): Promise<Deliverable[]> {
+  await requireUser();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contract_item_supply")
@@ -126,6 +128,7 @@ export async function createDelivery(
   listId: string,
   input: DeliveryInput,
 ): Promise<DeliveryResult> {
+  await requireUser();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: "Elige la fecha de la entrega." };
   if (input.receivedBy.length > 200) return { error: "Quien recibe: máximo 200 caracteres." };
   if (input.notes.length > 500) return { error: "Las notas admiten máximo 500 caracteres." };
@@ -149,6 +152,7 @@ export async function createDelivery(
 
 // Anula una entrega: sus líneas vuelven a la bodega (listas para entregar otra vez). Queda en el historial como anulada.
 export async function voidDelivery(org: string, contractId: string, deliveryId: string, reason: string): Promise<DeliveryResult> {
+  await requireUser();
   if (reason.length > 300) return { error: "El motivo admite máximo 300 caracteres." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("delivery_void", { p_delivery_id: deliveryId, p_reason: reason });
@@ -164,6 +168,7 @@ export async function updateDelivery(
   deliveryId: string,
   input: { date: string; receivedBy: string; notes: string },
 ): Promise<DeliveryResult> {
+  await requireUser();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: "Elige la fecha de la entrega." };
   if (input.receivedBy.length > 200) return { error: "Quien recibe: máximo 200 caracteres." };
   if (input.notes.length > 500) return { error: "Las notas admiten máximo 500 caracteres." };

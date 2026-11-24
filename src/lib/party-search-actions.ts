@@ -3,12 +3,14 @@
 import { isSchemaError, logDbError, SCHEMA_MESSAGE } from "@/lib/db-error";
 import { cleanSearch } from "@/lib/search";
 import { getOrgId } from "@/lib/orgs";
+import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export type PartyOption = { id: string; name: string; ruc: string | null };
 
 // Busca clientes o responsables por nombre o RUC (hasta 15). Reemplaza al selector que cargaba todos los registros.
 export async function searchParties(org: string, kind: "client" | "manager", q: string): Promise<PartyOption[]> {
+  await requireUser();
   const orgId = await getOrgId(org);
   if (!orgId) return [];
   const term = cleanSearch(q).slice(0, 100);

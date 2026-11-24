@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { searchStock } from "./supply-actions";
 const state = vi.hoisted(() => ({ rpc: vi.fn(), ranges: [] as number[][], eqs: [] as unknown[][], lotError: false }));
+vi.mock("@/lib/auth", () => ({ requireUser: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/orgs", () => ({ getOrgId: async () => "org-id" }));
 vi.mock("@/lib/db-error", () => ({ logDbError: vi.fn(), isSchemaError: () => false, SCHEMA_MESSAGE: "schema" }));

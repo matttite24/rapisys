@@ -6,6 +6,7 @@ import { getOrgId } from "@/lib/orgs";
 import { findItems } from "@/lib/item-search";
 import { codesInText } from "@/lib/sri-xml";
 import { cleanSearch } from "@/lib/search";
+import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
 
@@ -52,6 +53,7 @@ export type ItemOption = {
 
 // Productos de la bodega para elegir en una línea de factura.
 export async function searchItems(org: string, q: string): Promise<ItemOption[]> {
+  await requireUser();
   const orgId = await getOrgId(org);
   if (!orgId) return [];
   const term = cleanSearch(q);
@@ -82,6 +84,7 @@ export type SupplierOption = { id: string; name: string; ruc: string | null };
 
 // Proveedores de la organización que coinciden con el texto, por nombre o RUC (máx. 15).
 export async function searchSuppliers(org: string, q: string): Promise<SupplierOption[]> {
+  await requireUser();
   const orgId = await getOrgId(org);
   if (!orgId) return [];
   const term = cleanSearch(q).slice(0, 100);
@@ -108,6 +111,7 @@ export async function matchXmlLines(
   org: string,
   input: { supplierRuc: string; lines: { code: string; description: string }[] },
 ): Promise<{ supplier: { id: string; name: string } | null; lines: XmlLineMatch[] } | undefined> {
+  await requireUser();
   const orgId = await getOrgId(org);
   if (!orgId || input.lines.length > 1000) return undefined;
   const supabase = await createClient();
@@ -218,6 +222,7 @@ export async function savePurchaseDraft(
   draftId: string | null,
   input: PurchaseInput,
 ): Promise<PurchaseResult> {
+  await requireUser();
   if (input.number.length > 60) return { error: "El número de la factura admite máximo 60 caracteres." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: "Elige la fecha de la factura." };
   if (input.notes.length > 500) return { error: "Las notas admiten máximo 500 caracteres." };
@@ -283,6 +288,7 @@ export async function savePurchaseDraft(
 
 // Pasa el borrador a factura completa: exige proveedor, número y producto en todas las líneas.
 export async function completePurchase(org: string, contractId: string, purchaseId: string): Promise<PurchaseResult> {
+  await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.rpc("purchase_complete", { p_purchase_id: purchaseId });
   if (error) return { error: friendly(error) };
@@ -291,6 +297,7 @@ export async function completePurchase(org: string, contractId: string, purchase
 }
 
 export async function deletePurchase(org: string, contractId: string, purchaseId: string): Promise<PurchaseResult> {
+  await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.rpc("purchase_delete", { p_purchase_id: purchaseId });
   if (error) return { error: friendly(error) };
@@ -304,6 +311,7 @@ export type ContractInvoice = { id: string; number: string; supplier: string; it
 
 // Facturas completas del proceso, para filtrar la búsqueda de abastecimiento por una de ellas.
 export async function listContractInvoices(contractId: string): Promise<ContractInvoice[]> {
+  await requireUser();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("purchases")
@@ -370,6 +378,7 @@ export async function assignPurchase(
   lineId: string,
   rawQty: string,
 ): Promise<PurchaseResult> {
+  await requireUser();
   const qty = parseDecimal(rawQty);
   if (qty === null || qty <= 0) return { error: "Escribe una cantidad mayor a 0, con máximo 2 decimales." };
   const supabase = await createClient();
@@ -387,6 +396,7 @@ export async function receivePurchaseLine(
   purchaseLineId: string,
   rawQty: string,
 ): Promise<PurchaseResult> {
+  await requireUser();
   const qty = parseDecimal(rawQty);
   if (qty === null || qty <= 0) return { error: "Escribe una cantidad mayor a 0, con máximo 2 decimales." };
   const supabase = await createClient();
@@ -398,6 +408,7 @@ export async function receivePurchaseLine(
 
 // Recibir todo lo que falta de una factura.
 export async function receiveAllPurchase(org: string, contractId: string, purchaseId: string): Promise<PurchaseResult> {
+  await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.rpc("purchase_receive_all", { p_purchase_id: purchaseId });
   if (error) return { error: friendly(error) };
@@ -407,6 +418,7 @@ export async function receiveAllPurchase(org: string, contractId: string, purcha
 
 // Proceso a crédito: crea una lista con todas las líneas de la factura recibida (cantidades y precios) y las abastece.
 export async function createListFromPurchase(org: string, contractId: string, purchaseId: string): Promise<PurchaseResult & { listId?: string }> {
+  await requireUser();
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("purchase_create_list", { p_purchase_id: purchaseId });
   if (error) return { error: friendly(error) };

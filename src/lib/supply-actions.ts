@@ -5,6 +5,7 @@ import { parseDecimal } from "@/lib/money";
 import { getOrgId } from "@/lib/orgs";
 import { findItems } from "@/lib/item-search";
 import { cleanSearch } from "@/lib/search";
+import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
 
@@ -42,6 +43,7 @@ export type SourceView = {
 
 // Lo reservado hasta ahora para una línea, con el producto y el lote de cada tramo.
 export async function getLineSupply(lineId: string): Promise<SourceView[]> {
+  await requireUser();
   const supabase = await createClient();
   const { data: rows, error: sourceError } = await supabase
     .from("supply_sources")
@@ -115,6 +117,7 @@ export async function searchStock(
   q: string,
   invoiceId?: string,
 ): Promise<{ rows: StockResult[]; more: boolean }> {
+  await requireUser();
   const orgId = await getOrgId(org);
   const term = cleanSearch(q);
   if (!orgId || (!term && !invoiceId)) return { rows: [], more: false };
@@ -210,6 +213,7 @@ export async function searchStock(
 
 // Cuántos productos tienen existencias en la bodega y cuántas unidades hay en total.
 export async function getStockSummary(org: string): Promise<{ products: number; units: number } | null> {
+  await requireUser();
   const orgId = await getOrgId(org);
   if (!orgId) return null;
   const supabase = await createClient();
@@ -226,6 +230,7 @@ export async function reserveStock(
   lotId: string,
   rawQty: string,
 ): Promise<SupplyState> {
+  await requireUser();
   const qty = parseDecimal(rawQty);
   if (qty === null || qty <= 0) return { error: "Escribe una cantidad mayor a 0, con máximo 2 decimales." };
 
@@ -243,6 +248,7 @@ export async function reserveStock(
 }
 
 export async function releaseSource(org: string, contractId: string, sourceId: string): Promise<SupplyState> {
+  await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.rpc("supply_release", { p_source_id: sourceId, p_note: "" });
   if (error) return { error: friendly(error) };
@@ -252,6 +258,7 @@ export async function releaseSource(org: string, contractId: string, sourceId: s
 
 // Cambia la descripción de una línea de la lista (al asignarle un producto con otro nombre, p. ej. su Nombre TDR).
 export async function renameLine(org: string, contractId: string, lineId: string, rawDescription: string): Promise<SupplyState> {
+  await requireUser();
   const description = rawDescription.trim();
   if (!description) return { error: "Escribe el nombre de la línea." };
   if (description.length > 500) return { error: "Máximo 500 caracteres." };
@@ -275,6 +282,7 @@ export async function addLineForProduct(
   listId: string,
   input: { partNumber: string; description: string; quantity: number },
 ): Promise<{ error?: string; id?: string }> {
+  await requireUser();
   const description = input.description.trim();
   const partNumber = input.partNumber.trim();
   if (!description) return { error: "Escribe el nombre de la línea." };

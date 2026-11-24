@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getOrgId } from "@/lib/orgs";
 import { logDbError } from "@/lib/db-error";
+import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export type InvoiceLine = {
@@ -30,6 +31,7 @@ export type InvoiceLine = {
 
 // Líneas de una factura completa del proceso, en el orden de la factura, con lo que ya se asignó de cada una.
 export async function getInvoiceLines(org: string, contractId: string, invoiceId: string): Promise<InvoiceLine[]> {
+  await requireUser();
   const orgId = await getOrgId(org);
   if (!orgId) return [];
   const supabase = await createClient();
@@ -148,6 +150,7 @@ export async function proposeMatches(
   contractId: string,
   invoiceId: string,
 ): Promise<{ proposals: Proposal[]; unmatched: number }> {
+  await requireUser();
   const lines = (await getInvoiceLines(org, contractId, invoiceId)).filter((l) => l.free > 0);
   if (!lines.length) return { proposals: [], unmatched: 0 };
 
@@ -237,6 +240,7 @@ export async function applyMatches(
   contractId: string,
   items: { purchaseLineId: string; targetId: string; qty: number; lotId?: string }[],
 ): Promise<{ ids?: string[]; error?: string }> {
+  await requireUser();
   if (!items.length || items.length > 500) return { error: "Elige entre 1 y 500 reservas." };
   if (items.some((i) => !(i.qty > 0) || i.qty > 10_000_000)) return { error: "Hay una cantidad inválida." };
   const supabase = await createClient();
@@ -253,6 +257,7 @@ export async function applyMatches(
 
 // Deshace una reserva en bloque.
 export async function undoMatches(org: string, contractId: string, ids: string[]): Promise<{ error?: string }> {
+  await requireUser();
   if (!ids.length) return {};
   const supabase = await createClient();
   const { error } = await supabase.rpc("supply_release_many", { p_ids: ids });

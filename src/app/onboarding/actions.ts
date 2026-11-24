@@ -3,12 +3,14 @@
 import { redirect } from "next/navigation";
 import type { AuthState } from "@/app/(auth)/actions";
 import { slugify, withSuffix } from "@/lib/slug";
+import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createOrganization(
   _: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
+  await requireUser();
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Ingresa el nombre de la organización." };
 

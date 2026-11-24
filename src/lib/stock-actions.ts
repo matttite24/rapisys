@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { MAX_CENTS, parseCents, parseDecimal } from "@/lib/money";
+import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
 
@@ -26,6 +27,7 @@ const refresh = (org: string, itemId: string) => {
 
 // Entrada manual de existencias (inventario inicial o reposición sin factura): crea un lote.
 export async function addStock(org: string, itemId: string, formData: FormData): Promise<StockState> {
+  await requireUser();
   const qty = parseDecimal(text(formData, "quantity"));
   const costRaw = text(formData, "unit_cost");
   const cost = costRaw ? parseCents(costRaw) : null;
@@ -52,6 +54,7 @@ export async function addStock(org: string, itemId: string, formData: FormData):
 
 // Ajuste de un lote: suma o resta unidades (merma, conteo, corrección).
 export async function adjustLot(org: string, itemId: string, lotId: string, formData: FormData): Promise<StockState> {
+  await requireUser();
   const qty = parseDecimal(text(formData, "quantity"));
   const sign = text(formData, "mode") === "remove" ? -1 : 1;
   const note = text(formData, "note");
