@@ -1,36 +1,63 @@
 "use client";
 
-import { HugeiconsIcon } from "@hugeicons/react";
-import { SidebarLeftIcon, SidebarRightIcon } from "@hugeicons/core-free-icons";
 import { CellHeader } from "@/components/cell-header";
-import { CONTRACT_SECTIONS } from "@/components/nav-config";
-import { useModKey, type PageFigure, type PagePaginationState, type PageShortcut } from "@/components/page-shortcuts";
-import { Kbd } from "@/components/ui/kbd";
+import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { contractSection, contractSubsection } from "@/components/nav-config";
+import { type PageFigure, type PagePaginationState, type PageShortcut } from "@/components/page-shortcuts";
 import { ShortcutBar } from "@/components/shortcut-bar";
 import { cn } from "@/lib/utils";
 import { useRightPanelOpen } from "@/components/use-side-panel";
 import { useActiveModule } from "@/components/app-shell-nav";
 
+// Separador de las migas: ">" (la "/" se queda para "cliente / proceso").
+function Chevron() {
+  return <HugeiconsIcon icon={ArrowRight01Icon} className="mx-1 inline size-3.5 align-middle text-muted-foreground" aria-hidden />;
+}
+
 export function SectionHeader({
   leading,
   setSlot,
   title,
+  panelOpen,
 }: {
   leading: React.ReactNode;
   setSlot: (el: HTMLElement | null) => void;
   title: React.ReactNode;
+  // Con la columna de opciones oculta, su tarjeta no se ve: el encabezado muestra cliente y proceso.
+  panelOpen: boolean;
 }) {
-  const { active, path } = useActiveModule();
-  // Dentro de un proceso: arriba la sección y debajo "cliente / contrato" (lo que pone el layout).
-  const slug = path.match(/^\/contratos\/[0-9a-f-]{36}(?:\/([^/]+))?/i);
-  const section = slug ? CONTRACT_SECTIONS.find((s) => s.slug === (slug[1] ?? "")) : undefined;
+  const { active, path, to } = useActiveModule();
+  // Gastos cuelga de Pagos.
+  const section = contractSection(path.replace(/^(\/contratos\/[^/]+)\/gastos(?=\/|$)/, "$1/pagos"));
+  const sub = contractSubsection(path);
+  const base = path.match(/^\/contratos\/[0-9a-f-]{36}/i)?.[0] ?? "";
+    // Migas: módulo / sección / pantalla dentro de la sección (si la hay).
+  const crumbs = section ? (
+    <span>
+      <Link href={to("/contratos")} className="text-muted-foreground transition-colors hover:text-foreground">Procesos</Link>
+      <Chevron />
+      {sub ? (
+        <>
+          <Link href={to(`${base}${section.slug ? `/${section.slug}` : ""}`)} className="text-muted-foreground transition-colors hover:text-foreground">{section.title}</Link>
+          <Chevron />
+          <span aria-current="page" className="text-foreground">{sub}</span>
+        </>
+      ) : (
+        <span aria-current="page" className="text-foreground">{section.title}</span>
+      )}
+    </span>
+  ) : null;
+  // Con la columna de opciones oculta su tarjeta no se ve: arriba van cliente y proceso, y debajo las migas.
+  const showProcess = Boolean(section) && !panelOpen;
   return (
     <CellHeader
       // Por encima de las filas fijas de las pantallas (buscadores y pestañas, z-20) para que su sombra siempre se vea, y por
       // debajo de las columnas laterales y los cajones (z-30 y más).
       className="crosshair-start relative z-[25] shadow-bar print:hidden"
-      title={section ? section.title : (title ?? active.title)}
-      subtitle={section ? title : undefined}
+      title={showProcess ? title : (crumbs ?? title ?? active.title)}
+      subtitle={showProcess ? crumbs : undefined}
       leading={leading}
       action={<div ref={setSlot} className="flex items-center gap-1 self-stretch" />}
     />
@@ -44,8 +71,8 @@ export function Footer({
   setContextSlot,
   newLabel,
   account,
+  orgMenu,
   panelOpen,
-  onTogglePanel,
   pageShortcuts,
   pageFigures,
   pagePagination,
@@ -54,67 +81,40 @@ export function Footer({
   setContextSlot: (node: HTMLDivElement | null) => void;
   newLabel: string | null;
   account: React.ReactNode;
+  orgMenu: React.ReactNode;
   panelOpen: boolean;
-  onTogglePanel: () => void;
   pageShortcuts: PageShortcut[];
   pageFigures: PageFigure[];
   pagePagination: PagePaginationState | null;
 }) {
-  const mod = useModKey();
   // La columna de asignar tapa el borde derecho de la barra: se deja ese ancho libre y se ocultan las cifras.
   const rightOpen = useRightPanelOpen();
   return (
-    <div data-layout-footer className="absolute inset-x-0 bottom-0 z-[24] hidden h-(--footer-height) border-t print:hidden md:flex">
+    <div data-layout-footer className="absolute inset-x-0 bottom-0 z-[24] hidden h-(--footer-height) print:hidden md:flex">
       {/* La celda de la cuenta es la continuación de la columna de módulos: mismo fondo, mismo borde y el ícono con el
           color y el resalte de los demás íconos de la columna. */}
-      <div className="w-16 shrink-0 border-r bg-layer-1 [&_button]:size-full! [&_button]:rounded-none! [&_button]:bg-transparent! [&_button]:text-muted-foreground! [&_button]:transition-colors [&_button:hover]:bg-foreground/[0.08]! [&_button:hover]:text-foreground!">
+      <div className="w-16 shrink-0 border-t border-r border-foreground/10 bg-layer-1 [&_button]:size-full! [&_button]:rounded-none! [&_button]:bg-transparent! [&_button]:text-muted-foreground! [&_button]:transition-colors [&_button:hover]:bg-foreground/[0.08]! [&_button:hover]:text-foreground!">
         {account}
       </div>
-      {/* Bajo las opciones: el botón para plegarlas (y su atajo). Plegadas, la celda desaparece; para abrirlas se toca un
-          módulo del riel o se usa el atajo, que la barra recuerda a la derecha. */}
+      {/* Bajo las opciones: el selector de organización (el botón para plegarlas está en el encabezado de la columna).
+          Plegadas, la celda desaparece y el selector pasa al inicio de la barra (el botón para abrirlas está en el encabezado). */}
       <div
         inert={!panelOpen}
         className={cn(
-          "shrink-0 overflow-hidden bg-layer-2 transition-[width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
-          panelOpen ? "w-60 border-r" : "w-0",
+          "shrink-0 overflow-hidden border-t border-foreground/10 bg-layer-2 transition-[width] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
+          panelOpen ? "w-60 border-r" : "w-0 border-r-0",
         )}
       >
-        <button
-          type="button"
-          onClick={onTogglePanel}
-          aria-expanded={panelOpen}
-          aria-label={panelOpen ? "Ocultar opciones" : "Mostrar opciones"}
-          title={`${panelOpen ? "Ocultar" : "Mostrar"} opciones (${mod} B)`}
-          className="flex h-full w-60 items-center gap-2.5 px-[0.9375rem] text-sm text-muted-foreground transition-colors outline-none hover:bg-foreground/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        >
-          <HugeiconsIcon icon={panelOpen ? SidebarLeftIcon : SidebarRightIcon} className="size-[1.125rem] shrink-0" aria-hidden />
-          <span className="truncate">{panelOpen ? "Ocultar opciones" : "Mostrar opciones"}</span>
-          <span className="ml-auto flex shrink-0 gap-0.5 pr-4" aria-hidden>
-            <Kbd soft>{mod}</Kbd>
-            <Kbd soft>B</Kbd>
-          </span>
-        </button>
+        <div className="h-full w-60">{orgMenu}</div>
       </div>
-      <div className={cn("relative flex min-w-0 flex-1 transition-[padding] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none", rightOpen && "lg:pr-[32rem]")}>
+      <div className={cn("relative flex min-w-0 flex-1 border-t transition-[padding] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none", rightOpen && "lg:pr-[32rem]")}>
         {/* Cruz sobre el cruce de la línea del pie (y de 0 a 1) y la vertical de la columna anterior (x de -1 a 0). */}
         <span aria-hidden className="pointer-events-none absolute -top-[5px] -left-[6px] z-30 size-[11px]">
           <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-foreground" />
           <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-foreground" />
         </span>
         <ShortcutBar pageShortcuts={pageShortcuts} pageFigures={rightOpen ? [] : pageFigures} pagePagination={pagePagination} setActionsSlot={setActionsSlot} setContextSlot={setContextSlot} newLabel={newLabel} leading={panelOpen ? null : (
-          <button
-            type="button"
-            onClick={onTogglePanel}
-            aria-label="Mostrar opciones"
-            className="flex shrink-0 items-center gap-2 border-r px-4 text-sm font-medium text-foreground transition-colors outline-none hover:bg-foreground/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          >
-            <HugeiconsIcon icon={SidebarRightIcon} className="size-[1.125rem]" aria-hidden />
-            Mostrar opciones
-            <span className="flex gap-0.5" aria-hidden>
-              <Kbd soft>{mod}</Kbd>
-              <Kbd soft>B</Kbd>
-            </span>
-          </button>
+          <div className="w-52 shrink-0 border-r">{orgMenu}</div>
         )} />
       </div>
     </div>

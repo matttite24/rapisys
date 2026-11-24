@@ -8,21 +8,20 @@ import { NavBadge } from "@/components/nav-badges";
 import { Pending } from "@/components/nav-pending";
 import { CELL_ROW as ROW } from "@/components/cell-header";
 import { type NavModule } from "@/components/nav-config";
+import { type PanelCardParts } from "@/components/panel-slots";
 import { cn } from "@/lib/utils";
 import { useActiveModule, useContractNav } from "@/components/app-shell-nav";
 
-// Columna 2: opciones del módulo/pantalla. Su celda superior es el selector de organización.
+// Columna 2: opciones del módulo/pantalla, en un gris más claro que el riel (su línea de separación viaja con ella al plegarse). Su celda superior es el título del módulo ; dentro de un proceso lleva tipo y monto del proceso. El botón para plegarla está en el borde con el riel (lo pone el shell).
 export function Panel({
-  orgSwitcher,
-  panelTop,
+  card,
   onNavigate,
   preview,
 }: {
+  // Tarjeta del proceso abierto, sobre las opciones.
+  card?: PanelCardParts | null;
   // Módulo recién tocado en el riel: sus opciones se ven ya, sin esperar a que cargue la página.
   preview?: NavModule | null;
-  orgSwitcher: React.ReactNode;
-  // Si una pantalla aporta celda superior, reemplaza al selector de organización.
-  panelTop: React.ReactNode;
   onNavigate?: () => void;
 }) {
   const { path, active, to } = useActiveModule();
@@ -33,14 +32,24 @@ export function Panel({
   const current = activeNavigationHref(path.replace(/^(\/contratos\/[^/]+)\/gastos(?=\/|$)/, "$1/pagos"), groups.flatMap((g) => g.items.map((i) => i.href)), search);
 
   return (
-    <div className="flex w-60 shrink-0 flex-col border-r bg-layer-2">
-      <div className={ROW}>{panelTop ?? orgSwitcher}</div>
+    <div className="flex w-60 shrink-0 flex-col border-l border-foreground/10 bg-layer-2">
+      {/* Dentro de un proceso, la fila lleva tipo y monto (misma altura que el encabezado de contenido) y debajo va la
+          tarjeta con los demás datos. */}
+      <div className={cn(ROW, "border-foreground/10")}>
+        {card && !preview ? (
+          <div className="h-full min-w-0 flex-1">{card.head}</div>
+        ) : (
+          <h2 className="min-w-0 flex-1 truncate pl-5 text-base font-semibold">{(preview ?? active).title}</h2>
+        )}
+      </div>
+
+      {card && !preview && <div className="shrink-0">{card.body}</div>}
 
       <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-3">
         {groups.map((g, i) => (
           <div key={i} className="flex flex-col gap-0.5">
             {/* Entre grupos, una línea fina (sin encabezado). */}
-            {i > 0 && <div aria-hidden className="mx-5 mb-2 border-t" />}
+            {i > 0 && <div aria-hidden className="mx-5 mb-2 border-t border-foreground/10" />}
             {g.items.map((item) => (
               <Link
                 key={item.href}

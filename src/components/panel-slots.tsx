@@ -14,3 +14,19 @@ export function PanelTop({ children }: { children: React.ReactNode }) {
   }, [children, setTop]);
   return null;
 }
+
+// El proceso abierto en la columna de opciones: `head` va en la fila del encabezado y `body` (la tarjeta) debajo de ella.
+export type PanelCardParts = { head: React.ReactNode; body: React.ReactNode };
+
+// Setter de esas dos partes; lo provee el shell.
+export const PanelCardContext = createContext<(parts: PanelCardParts | null) => void>(() => {});
+
+// Muestra el proceso en la columna de opciones mientras la página está montada.
+export function PanelCard({ head, body }: PanelCardParts) {
+  const setCard = useContext(PanelCardContext);
+  useEffect(() => {
+    setCard({ head, body });
+    return () => setCard(null);
+  }, [head, body, setCard]);
+  return null;
+}

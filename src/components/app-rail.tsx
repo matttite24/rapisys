@@ -39,8 +39,8 @@ export function RailLink({
             }}
             data-rail-current={current ? "" : undefined}
             className={cn(
-              "grid aspect-square w-full place-items-center text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground has-[[data-navigation-pending]]:bg-foreground/[0.08] has-[[data-navigation-pending]]:text-foreground",
-              current && "text-foreground hover:bg-transparent",
+              "grid aspect-square w-full place-items-center text-muted-foreground/60 transition-colors hover:bg-foreground/[0.08] hover:text-foreground has-[[data-navigation-pending]]:bg-foreground/[0.08] has-[[data-navigation-pending]]:text-foreground",
+              current && "bg-foreground/[0.07] text-foreground hover:bg-foreground/[0.07]",
             )}
             aria-current={current ? "page" : undefined}
           />
@@ -55,8 +55,8 @@ export function RailLink({
   );
 }
 
-// Columna 1: módulos (solo íconos). Su celda superior es el ícono de la app,
-// con el logo de la organización. El filo del módulo activo es una sola barra que sube y baja entre módulos.
+// Columna 1: módulos (solo íconos). Comparte fondo con la columna de opciones (el borde exterior lo pone el contenedor).
+// Su celda superior es el logo de la app. El filo del módulo activo es una sola barra que sube y baja entre módulos.
 export function Rail({ onOpenPanel, preview }: { onOpenPanel?: (m: NavModule) => void; preview?: NavModule | null }) {
   const { active } = useActiveModule();
   const target = preview ?? active;
@@ -86,7 +86,7 @@ export function Rail({ onOpenPanel, preview }: { onOpenPanel?: (m: NavModule) =>
   }, [bar, animate]);
 
   return (
-    <div className="flex w-16 shrink-0 flex-col border-r bg-layer-1">
+    <div className="flex w-16 shrink-0 flex-col bg-layer-1">
       <div className={cn(ROW, "bg-brand text-brand-foreground")}>
         <OrgLogo />
       </div>

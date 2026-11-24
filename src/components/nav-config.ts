@@ -117,6 +117,25 @@ export const modules: NavModule[] = [
 ];
 
 // Partes de un proceso: la columna de opciones las muestra dentro de un proceso.
+// Sección de un proceso según la ruta (sin el prefijo de la organización): /contratos/{id}[/parte].
+export function contractSection(path: string) {
+  const m = path.match(/^\/contratos\/[0-9a-f-]{36}(?:\/([^/]+))?/i);
+  return m ? CONTRACT_SECTIONS.find((s) => s.slug === (m[1] ?? "")) : undefined;
+}
+
+// Pantalla dentro de una sección del proceso (compras/nueva, entregas/{id}/documento…), para las migas del encabezado.
+export function contractSubsection(path: string): string | undefined {
+  const m = path.match(/^\/contratos\/[0-9a-f-]{36}\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?/i);
+  if (!m) return undefined;
+  const [, a, b, c] = m;
+  if (a === "gastos") return "Gastos";
+  if (!b) return undefined;
+  if (b === "nueva") return "Nueva";
+  if (a === "compras") return c === "editar" ? "Editar" : "Factura";
+  if (a === "entregas") return c === "documento" ? "Documento" : "Entrega";
+  return undefined;
+}
+
 export const CONTRACT_SECTIONS = [
   { slug: "", title: "Detalle", icon: File01Icon },
   { slug: "items", title: "Listas", icon: LeftToRightListBulletIcon },

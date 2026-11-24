@@ -35,6 +35,17 @@ async function OrgShell({
             <UserMenu />
           </Suspense>
         }
+        orgMenu={
+          <Suspense
+            fallback={
+              <div className="px-4">
+                <OrgNameLabel slug={org} />
+              </div>
+            }
+          >
+            <OrgSwitcher org={org} side="top" />
+          </Suspense>
+        }
         orgSwitcher={
           <Suspense
             fallback={
