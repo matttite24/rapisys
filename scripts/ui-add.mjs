@@ -1,18 +1,18 @@
 // Envoltorio de `shadcn add`: no sobrescribe componentes existentes y corrige
 // el import de `cn` (el registro lo reescribe a un paquete npm ajeno).
-// Uso: npm run ui:add -- dialog table
+// Uso: pnpm ui:add dialog table
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const components = process.argv.slice(2);
 if (components.length === 0) {
-  console.error("Uso: npm run ui:add -- <componente> [...]");
+  console.error("Uso: pnpm ui:add <componente> [...]");
   process.exit(1);
 }
 
 // Responde "no" a cualquier pregunta de sobrescritura.
-spawnSync("npx", ["--yes", "shadcn@latest", "add", ...components], {
+spawnSync("pnpm", ["dlx", "shadcn@latest", "add", ...components], {
   input: "n\n".repeat(30),
   stdio: ["pipe", "inherit", "inherit"],
 });

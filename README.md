@@ -9,7 +9,7 @@ shadcn con Base UI · Hugeicons · DM Sans / DM Mono.
 
 ## Puesta en marcha
 
-1. Instala dependencias: `npm install`
+1. Instala dependencias con [pnpm](https://pnpm.io): `pnpm install`
 2. Crea `.env.local` con el proyecto de Supabase:
 
    ```
@@ -20,18 +20,18 @@ shadcn con Base UI · Hugeicons · DM Sans / DM Mono.
 3. Aplica las migraciones de `supabase/migrations/` **en orden** (SQL Editor de Supabase).
 4. En Supabase → Authentication → URL Configuration: Site URL `http://localhost:3000` y,
    en Redirect URLs, `http://localhost:3000/auth/callback**`.
-5. `npm run dev` y abre <http://localhost:3000>. El primer usuario crea la organización;
+5. `pnpm dev` y abre <http://localhost:3000>. El primer usuario crea la organización;
    el resto entra por invitación (Ajustes → Miembros).
 
 ## Comandos
 
 | Comando | Qué hace |
 |---|---|
-| `npm run dev` | Servidor de desarrollo |
-| `npm run build` | Construcción de producción |
-| `npm test` | Pruebas (Vitest) |
-| `npm run lint` | ESLint |
-| `npm run ui:add -- <componente>` | Agrega un componente de shadcn sin sobrescribir y corrige su import de `cn` |
+| `pnpm dev` | Servidor de desarrollo |
+| `pnpm build` | Construcción de producción |
+| `pnpm test` | Pruebas (Vitest) |
+| `pnpm lint` | ESLint |
+| `pnpm ui:add <componente>` | Agrega un componente de shadcn sin sobrescribir y corrige su import de `cn` |
 
 ## Reglas del proyecto
 
