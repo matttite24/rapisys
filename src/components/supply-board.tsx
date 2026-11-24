@@ -54,6 +54,14 @@ export type SupplyLine = {
 };
 
 const TH = TABLE_TH;
+// Lista de líneas: filas sueltas con esquinas redondeadas y un poco de aire entre ellas, en vez de una tabla de borde a borde.
+const LIST = "min-h-0 flex-1 overflow-auto px-3 pb-3";
+// El -mt-1.5 quita el hueco que border-spacing deja arriba: la cabecera queda pegada a la fila de filtros.
+const LIST_TABLE = "-mt-1.5 w-full border-separate border-spacing-y-1.5 text-sm";
+// Cabecera de columnas: barra suave de esquinas rectas y ancho completo (la sombra lateral cubre el margen de la lista); la sombra
+// del color de la página tapa el hueco bajo ella al desplazarse.
+const LIST_HEAD =
+  "sticky top-0 z-10 [&_th]:bg-surface-strong [&_th]:shadow-[0_6px_0_var(--background)] [&_th:first-child]:shadow-[-0.75rem_0_0_var(--surface-strong),0_6px_0_var(--background)] [&_th:last-child]:shadow-[0.75rem_0_0_var(--surface-strong),0_6px_0_var(--background)]";
 const TD = cn(TABLE_TD, "py-1.5 align-middle");
 // Fila de una línea del proceso: con más aire que las de sus productos asignados.
 const PTD = cn(TABLE_TD, "py-3 align-middle");
@@ -357,10 +365,10 @@ export function SupplyBoard({
                 <p className="p-6 text-muted-foreground">Esta lista no tiene líneas.</p>
               )
             ) : (
-              <div className="min-h-0 flex-1 overflow-auto">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 z-10 bg-surface-strong [&_th]:shadow-[inset_0_-1px_0_var(--border)]">
-                    <tr className="border-b">
+              <div className={LIST}>
+                <table className={LIST_TABLE}>
+                  <thead className={LIST_HEAD}>
+                    <tr>
                       <th scope="col" className={`${TH} w-px pr-0`}><SupplyColumnsMenu {...columns} /></th>
                       <th scope="col" className={`${TH} w-px pl-2 text-right`}>N.º</th>
                       <th scope="col" className={`${TH} ${PRODUCT_COL}`}>Producto</th>
@@ -391,9 +399,8 @@ export function SupplyBoard({
                           rc.show();
                         }}
                         className={cn(
-                          "cursor-pointer border-b transition-colors hover:[&>tr:first-child>td]:bg-accent [&>tr:not(:first-child)>td]:bg-foreground/[0.025] [&>tr+tr>td]:border-t [&>tr+tr>td]:border-border/50",
-                          total > LINES_PAGE_SIZE && "last:border-b-0",
-                          selectedId === l.id && "[&>tr:first-child>td]:bg-accent [&>tr:first-child>td:first-child]:shadow-[inset_3px_0_0_var(--primary)]",
+                          "cursor-pointer transition-colors [&>tr>td]:bg-foreground/[0.035] [&>tr>td:first-child]:rounded-l-lg [&>tr>td:last-child]:rounded-r-lg hover:[&>tr:first-child>td]:bg-foreground/[0.07] [&>tr:not(:first-child)>td]:bg-foreground/[0.02]",
+                          selectedId === l.id && "[&>tr:first-child>td]:bg-foreground/[0.09]",
                         )}
                       >
                         <tr
@@ -406,7 +413,7 @@ export function SupplyBoard({
                             e.preventDefault();
                             e.currentTarget.click();
                           }}
-                          className="outline-none focus-visible:[&>td]:bg-accent focus-visible:[&>td:first-child]:shadow-[inset_3px_0_0_var(--ring)]"
+                          className="outline-none focus-visible:[&>td]:bg-foreground/[0.09]"
                         >
                           <td className={cn(PTD, "w-px pr-0")}>
                             {children ? (
@@ -427,13 +434,17 @@ export function SupplyBoard({
                               <span className="block size-7" />
                             )}
                           </td>
-                          <td className={cn(PTD, "num pl-2 text-right text-muted-foreground")}>{l.n}</td>
+                          <td className={cn(PTD, "num pl-2 text-right text-muted-foreground")}>
+                            {/* La línea abierta en el panel se marca con su número sobre fondo oscuro. */}
+                            <span className={cn("inline-block min-w-6 rounded-md px-1.5 py-0.5 text-center transition-colors", selectedId === l.id && "bg-foreground font-medium text-background")}>{l.n}</span>
+                          </td>
                           <td className={cn(PTD, "break-words")}>
                             <ProductCell
                               description={l.description}
                               partNumber={l.partNumber}
                               internalCode={l.internalCode}
                               reference={l.reference}
+                              bold={selectedId === l.id}
                               extra={
                                 children ? (
                                   // Chip de los productos asignados: se ve sin desplegar y, al tocarlo, despliega o pliega.
@@ -496,8 +507,7 @@ export function SupplyBoard({
                           open &&
                           l.assigned.map((a, i) => (
                             <tr key={`${a.kind}-${a.code}-${i}`}>
-                              {/* Filo de 3 px con el color del origen: verde en bodega, azul si viene en una compra. */}
-                              <td className={TD} style={{ boxShadow: `inset 3px 0 0 var(--state-${a.kind === "compra" ? "arriving" : "stock"})` }} />
+                              <td className={TD} />
                               <td className={TD} />
                               <td className={cn(TD, "max-w-0 pl-8")}>
                                 <span className="block truncate text-[0.8125rem] text-foreground/85" title={a.name}>{a.name}</span>
@@ -566,10 +576,10 @@ const WIDTHS = ["w-4/5", "w-3/5", "w-11/12", "w-2/3", "w-3/4", "w-1/2"];
 
 function SupplyTableSkeleton({ rows = 6, cols = DEFAULT_SUPPLY_COLUMNS }: { rows?: number; cols?: Set<SupplyColumn> }) {
   return (
-    <div role="status" aria-label="Cargando líneas" aria-busy="true" className="min-h-0 flex-1 overflow-auto">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 z-10 bg-surface-strong">
-          <tr className="border-b">
+    <div role="status" aria-label="Cargando líneas" aria-busy="true" className={LIST}>
+      <table className={LIST_TABLE}>
+        <thead className={LIST_HEAD}>
+          <tr>
             <th scope="col" className={`${TH} w-px pr-0`}><span className="sr-only">Productos asignados</span></th>
             <th scope="col" className={`${TH} w-px pl-2 text-right`}>N.º</th>
             <th scope="col" className={`${TH} ${PRODUCT_COL}`}>Producto</th>
@@ -583,7 +593,7 @@ function SupplyTableSkeleton({ rows = 6, cols = DEFAULT_SUPPLY_COLUMNS }: { rows
         {/* Filas con la misma forma que las reales: descripción y códigos, números en un renglón, estado con su barra. */}
         <tbody>
           {Array.from({ length: rows }, (_, i) => (
-            <tr key={i} className="border-b last:border-b-0">
+            <tr key={i} className="[&>td]:bg-foreground/[0.035] [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg">
               <td className={cn(PTD, "w-px pr-0")}><span className="block size-7" /></td>
               <td className={cn(PTD, "w-px pl-2")}><Skeleton className="ml-auto h-4 w-5" /></td>
               <td className={PTD}>

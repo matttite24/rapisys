@@ -9,16 +9,19 @@ export function ProductCell({
   internalCode,
   reference,
   extra,
+  bold,
 }: {
   description: string;
   partNumber: string;
   internalCode: string;
   reference: string;
   extra?: React.ReactNode;
+  // Título con más peso (semibold) en lugar de medium.
+  bold?: boolean;
 }) {
   return (
     <>
-      <span className="block text-sm leading-snug font-medium text-foreground">{description}</span>
+      <span className={cn("block text-sm leading-snug text-foreground", bold ? "font-semibold" : "font-medium")}>{description}</span>
       <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
         <span className={cn("font-mono text-[0.8125rem]", partNumber && "text-foreground/65")}>{partNumber || "Sin n.º de parte"}</span>
         {internalCode && <CodeChip code={internalCode} />}
