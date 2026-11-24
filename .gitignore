@@ -24,6 +24,14 @@
 .DS_Store
 *.pem
 
+# claves privadas (SSH y certificados): su lugar es ~/.ssh, nunca el proyecto
+id_rsa*
+id_ed25519*
+id_ecdsa*
+id_dsa*
+*.ppk
+*.key
+
 # debug
 npm-debug.log*
 yarn-debug.log*
