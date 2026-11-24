@@ -21,7 +21,7 @@ async function OrgShell({
   const [{ org }, supabase] = await Promise.all([params, createClient()]);
   const { data } = await supabase
     .from("organizations")
-    .select("id")
+    .select("id, name")
     .eq("slug", org)
     .maybeSingle();
   if (!data) notFound();
@@ -39,7 +39,7 @@ async function OrgShell({
           <Suspense
             fallback={
               <div className="px-4">
-                <OrgNameLabel slug={org} />
+                <OrgNameLabel name={data.name} />
               </div>
             }
           >
@@ -50,7 +50,7 @@ async function OrgShell({
           <Suspense
             fallback={
               <div className="px-4">
-                <OrgNameLabel slug={org} />
+                <OrgNameLabel name={data.name} />
               </div>
             }
           >

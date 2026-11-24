@@ -35,7 +35,7 @@ export function OrgSwitcherMenu({ orgs, org, side = "bottom" }: { orgs: OrgOptio
         aria-label="Cambiar de organización"
         className="flex size-full items-center justify-between gap-2 px-4 text-left outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
-        <OrgNameLabel name={current?.name ?? org} slug={org} />
+        <OrgNameLabel name={current?.name ?? org} />
         <HugeiconsIcon
           icon={UnfoldMoreIcon}
           className="size-4 shrink-0 text-muted-foreground"
