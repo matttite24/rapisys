@@ -1,17 +1,20 @@
 "use client";
 
 import { startTransition, useState } from "react";
-import { Add01Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/date-picker";
 import { FormField } from "@/components/form-field";
 import { HeaderAction } from "@/components/header-action";
 import { MoneyInput } from "@/components/money-input";
 import { Button } from "@/components/ui/button";
-import { FieldError } from "@/components/ui/field";
+import { FormError } from "@/components/form-page";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CELL_ROW } from "@/components/cell-header";
+import { cn } from "@/lib/utils";
 import { todayEcuador } from "@/lib/dates";
 import { addSupplierAdvance, deleteSupplierAdvance, type PaymentResult } from "@/lib/payment-actions";
 import { PAY_METHODS, type BankOption } from "@/lib/payments";
@@ -27,10 +30,13 @@ export function AdvanceDialog({
     <>
       <HeaderAction icon={Add01Icon} label="Registrar anticipo" onClick={() => setOpen(true)} />
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>Registrar anticipo a un proveedor</SheetTitle>
-            <SheetDescription>Dinero entregado antes de tener la factura. Se aplica después a una o varias facturas del proveedor.</SheetDescription>
+        <SheetContent showCloseButton={false} className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
+          {/* Encabezado solo con el título (una línea, como los demás cajones); la explicación va en el cuerpo. */}
+          <SheetHeader className={cn(CELL_ROW, "flex-row justify-between gap-3 px-4 pr-4 shadow-bar")}>
+            <SheetTitle className="caps-md min-w-0 truncate font-medium">Registrar anticipo</SheetTitle>
+            <SheetClose render={<Button type="button" variant="ghost" size="icon" aria-label="Cerrar" />}>
+              <HugeiconsIcon icon={Cancel01Icon} className="size-5" />
+            </SheetClose>
           </SheetHeader>
           {open && <AdvanceForm org={org} contractId={contractId} suppliers={suppliers} banks={banks} onDone={() => setOpen(false)} />}
         </SheetContent>
@@ -52,7 +58,7 @@ function AdvanceForm({
   return (
     <form
       noValidate
-      className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6 [&_input]:bg-background"
+      className="flex min-h-0 flex-1 flex-col [&_input]:bg-background"
       onSubmit={(e) => {
         e.preventDefault();
         if (saving) return;
@@ -66,6 +72,11 @@ function AdvanceForm({
         });
       }}
     >
+      {/* Los campos se desplazan; el error y los botones se quedan fijos (el error no puede quedar fuera de vista). */}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+      <SheetDescription className="text-sm text-muted-foreground">
+        Dinero entregado a un proveedor antes de tener la factura. Se aplica después a una o varias facturas suyas.
+      </SheetDescription>
       <FormField name="supplier_id" label="Proveedor" error={errors.supplier_id}>
         {(a11y) => (
           <NativeSelect {...a11y} className="w-full" defaultValue="">
@@ -101,10 +112,12 @@ function AdvanceForm({
       <FormField name="notes" label="Notas (opcional)">
         {(a11y) => <Input {...a11y} maxLength={500} />}
       </FormField>
-      {state?.error && <FieldError>{state.error}</FieldError>}
-      <div className="flex gap-2">
+      </div>
+      <FormError error={state?.error} />
+      {/* Pie del cajón: misma altura que el pie de la pantalla; Cancelar y Guardar a la derecha. */}
+      <div className="flex h-(--footer-height) shrink-0 items-center justify-end gap-2 border-t bg-background px-6">
+        <Button type="button" variant="ghost" onClick={onDone}>Cancelar</Button>
         <Button type="submit" variant="brand" disabled={saving}>{saving ? "Guardando…" : "Guardar anticipo"}</Button>
-        <Button type="button" variant="outline" onClick={onDone}>Cancelar</Button>
       </div>
     </form>
   );

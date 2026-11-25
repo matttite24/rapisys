@@ -111,8 +111,8 @@ async function Profit({ params, searchParams }: { params: IdParams; searchParams
 
   const figures: { label: string; value: string; note?: string; strong?: boolean; negative?: boolean }[] = [
     credit
-      ? { label: "Valor final", value: formatCents(sum.reference), note: billing && billing.uncalculated > 0 ? `${billing.uncalculated} líneas por revisar` : "Suma de las entregas revisadas" }
-      : { label: "Precio ref.", value: formatCents(sum.reference), note: summary.contract_cents === null ? "Proceso a crédito" : `Contrato: ${formatCents(Number(summary.contract_cents))}` },
+      ? { label: "Valor final sin IVA", value: formatCents(sum.reference), note: billing && billing.uncalculated > 0 ? `${billing.uncalculated} líneas por revisar` : "Suma de las entregas revisadas" }
+      : { label: "Precio ref. sin IVA", value: formatCents(sum.reference), note: summary.contract_cents === null ? "Proceso a crédito" : `Contrato: ${formatCents(Number(summary.contract_cents))}` },
     { label: "Costo c/IVA", value: formatCents(sum.cost), note: "Lo realmente pagado" },
     { label: "Utilidad de items", value: formatCents(sum.itemsProfit), negative: sum.itemsProfit < 0 },
     { label: "Gastos", value: formatCents(sum.expenses) },
@@ -195,7 +195,7 @@ async function Profit({ params, searchParams }: { params: IdParams; searchParams
       // Con una entrega abierta se oculta el resumen del proceso: solo quedan las cifras de esa entrega, para no confundirlas.
       top={
         delivery || active === "consolidado" ? undefined : (
-        <PageSection label="Revisión de rentabilidad" meta="Sin IVA" className="p-0">
+        <PageSection className="p-0">
           <dl className="grid divide-x divide-y border-b sm:grid-cols-2 lg:grid-cols-5 lg:divide-y-0 [&>div]:p-4">
             {figures.map((f) => (
               <div key={f.label} className={cn("flex min-w-0 flex-col gap-1", f.strong && "bg-surface-strong")}>
