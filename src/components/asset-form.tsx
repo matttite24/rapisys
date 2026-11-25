@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { startTransition, useActionState, useEffect, useRef } from "react";
+import { startTransition, useActionState, useEffect, useId, useRef } from "react";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { FormError, FormPageActions } from "@/components/form-page";
 import { FormField } from "@/components/form-field";
+import { HeaderTitle } from "@/components/header-action";
 import { NumericInput } from "@/components/numeric-input";
+import { PageFooterActions } from "@/components/page-shortcuts";
 import { CellGrid, PageSection } from "@/components/page-section";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { deleteAsset, saveAsset } from "@/lib/asset-actions";
@@ -27,6 +27,7 @@ export type AssetData = {
   other: string | null;
 };
 
+// Mismo estilo que el formulario de items: título y acciones en el encabezado, secciones numeradas en celdas.
 export function AssetForm({
   org,
   asset,
@@ -38,6 +39,7 @@ export function AssetForm({
 }) {
   const [state, action, pending] = useActionState(saveAsset.bind(null, org, asset?.id ?? null), undefined);
   const formRef = useRef<HTMLFormElement>(null);
+  const formId = useId();
   const errors = state?.fields ?? {};
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export function AssetForm({
 
   return (
     <form
+      id={formId}
       ref={formRef}
       noValidate
       onSubmit={(e) => {
@@ -56,7 +59,11 @@ export function AssetForm({
         startTransition(() => action(data));
       }}
     >
-      <PageSection label="Datos del activo" className="p-0">
+      <HeaderTitle>{asset ? "Editar activo" : "Nuevo activo"}</HeaderTitle>
+      <FormPageActions formId={formId} cancelHref={`/${org}/bodega/activos`} pending={pending} />
+      <FormError error={state?.error} />
+
+      <PageSection index="01" label="Identificación" className="p-0">
         <CellGrid className="border-0 md:grid-cols-3">
           <FormField name="kind" label="Tipo" error={errors.kind}>
             {(a11y) => (
@@ -76,6 +83,11 @@ export function AssetForm({
           <FormField name="plate" label="Placa o código (opcional)">
             {(a11y) => <Input {...a11y} className="font-mono uppercase" defaultValue={asset?.plate ?? ""} />}
           </FormField>
+        </CellGrid>
+      </PageSection>
+
+      <PageSection index="02" label="Datos técnicos" className="p-0">
+        <CellGrid className="border-0 md:grid-cols-3">
           <FormField name="brand" label="Marca (opcional)">
             {(a11y) => <Input {...a11y} defaultValue={asset?.brand ?? ""} />}
           </FormField>
@@ -96,32 +108,21 @@ export function AssetForm({
           <FormField name="identifier" label="N.º de identificación (opcional)" error={errors.identifier}>
             {(a11y) => <Input {...a11y} className="font-mono" defaultValue={asset?.identifier ?? ""} />}
           </FormField>
-          <FormField name="other" label="Otro (opcional)" error={errors.other}>
+          <FormField name="other" label="Otro (opcional)" error={errors.other} className="md:col-span-3">
             {(a11y) => <Input {...a11y} maxLength={200} defaultValue={asset?.other ?? ""} />}
           </FormField>
         </CellGrid>
       </PageSection>
 
-      <div className="flex flex-col gap-4 p-6">
-        {state?.error && <FieldError>{state.error}</FieldError>}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" disabled={pending}>
-            {pending ? "Guardando…" : asset ? "Guardar cambios" : "Crear activo"}
-          </Button>
-          <Link
-            href={`/${org}/bodega/activos`}
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Cancelar
-          </Link>
-          {asset && canDelete && (
-            <ConfirmDelete
-              message="Se quitará también de los items compatibles. ¿Eliminar?"
-              onConfirm={() => deleteAsset(org, asset.id)}
-            />
-          )}
-        </div>
-      </div>
+      {asset && canDelete && (
+        <PageFooterActions>
+          <ConfirmDelete
+            label="Eliminar activo"
+            message="Se quitará también de los items compatibles. ¿Eliminar?"
+            onConfirm={() => deleteAsset(org, asset.id)}
+          />
+        </PageFooterActions>
+      )}
     </form>
   );
 }

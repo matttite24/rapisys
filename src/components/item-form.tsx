@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Add01Icon, Delete02Icon, FloppyDiskIcon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { FormField } from "@/components/form-field";
-import { HeaderSlot, HeaderTitle } from "@/components/header-action";
+import { HeaderTitle } from "@/components/header-action";
+import { FormError, FormPageActions } from "@/components/form-page";
 import { PageFigures, PageFooterActions } from "@/components/page-shortcuts";
 import { MoneyInput } from "@/components/money-input";
 import { NumericInput } from "@/components/numeric-input";
 import { CellGrid, PageSection } from "@/components/page-section";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -134,18 +135,8 @@ export function ItemForm({
     >
       <HeaderTitle>{item ? "Editar item" : "Nuevo item"}</HeaderTitle>
       <PageFigures figures={[{ label: "Existencias", value: String(onHand) }]} />
-      <HeaderSlot>
-        <div className="flex h-full items-stretch">
-          <Link href={`/${org}/bodega`} className={buttonVariants({ variant: "ghost" }) + " h-auto! self-stretch px-4"}>
-            Cancelar
-          </Link>
-          <Button type="submit" form={formId} disabled={pending} className="-mr-4 h-auto! gap-2 border-0! bg-clip-border! px-5">
-            <HugeiconsIcon icon={FloppyDiskIcon} className="size-4" />
-            {pending ? "Guardando…" : "Guardar"}
-          </Button>
-        </div>
-      </HeaderSlot>
-      {state?.error && <div role="alert" className="border-b border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{state.error}</div>}
+      <FormPageActions formId={formId} cancelHref={`/${org}/bodega`} pending={pending} />
+      <FormError error={state?.error} />
       <input type="hidden" name="specs" value={JSON.stringify(specs)} />
       <input type="hidden" name="prices" value={JSON.stringify(prices)} />
       <input type="hidden" name="asset_ids" value={JSON.stringify(assetIds)} />
@@ -275,7 +266,7 @@ export function ItemForm({
         {suppliers.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Aún no hay proveedores.{" "}
-            <Link href={`/${org}/proveedores/nuevo`} className="underline underline-offset-4">
+            <Link href={`/${org}/bodega/proveedores/nuevo`} className="underline underline-offset-4">
               Crea el primero
             </Link>{" "}
             para registrar costos.

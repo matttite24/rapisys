@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { PartyNewDialog } from "@/components/party-new-dialog";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { HeaderAction } from "@/components/header-action";
@@ -9,7 +8,7 @@ import { PageFigures, PageFooterActions, PagePagination } from "@/components/pag
 import { PageSection } from "@/components/page-section";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, NO_RESULTS_IMAGE } from "@/components/empty-state";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SearchInput } from "@/components/search-input";
 import { SearchBar } from "@/components/url-search";
 import { PageLoading } from "@/components/page-loading";
@@ -33,18 +32,17 @@ export function DirectoryBoard({ org, initial }: { org: string; initial: Directo
   const { scope, q, page, rows, total } = view;
   const managers = scope === "managers";
   const cfg = PARTIES[managers ? "managers" : "clients"];
-  const [newOpen, setNewOpen] = useState(false);
-  const kind = managers ? "managers" : "clients";
   const params = Object.fromEntries(directoryParams(scope, q));
+  // El alta es una página (mismo formulario que items y activos); en clientes lleva el tipo de la pestaña elegida.
+  const newHref = `/${org}/${cfg.path}/nuevo${!managers && scope ? `?tipo=${scope}` : ""}`;
   return <PageSection className="p-0">
     <h1 className="sr-only">Directorio · {managers ? "Responsables de contrato" : "Clientes"}</h1>
-    <HeaderAction icon={Add01Icon} label={cfg.newLabel} onClick={() => setNewOpen(true)} />
-    <PartyNewDialog org={org} kind={kind} defaultClientType={!managers && scope ? scope : undefined} open={newOpen} onOpenChange={setNewOpen} />
+    <HeaderAction icon={Add01Icon} label={cfg.newLabel} href={newHref} />
     <PageFigures figures={[]} />
     <PageFooterActions><span className="whitespace-nowrap text-sm text-muted-foreground"><span className="num">{loading || error ? "—" : total}</span> {total === 1 ? cfg.singular : cfg.plural}</span></PageFooterActions>
     <SearchBar><DirectorySearch key={managers ? "managers" : "clients"} q={q} managers={managers} onSearch={(text) => void select(scope, 1, text)} /></SearchBar>
     {loading ? <PageLoading /> : error ? <DirectoryError message={error} onRetry={() => void retry()} /> : rows.length === 0 ? (
-      <EmptyState fill image={q ? NO_RESULTS_IMAGE : "File Cabinet "} action={!q && <Button variant="brand" onClick={() => setNewOpen(true)}>{cfg.newLabel}</Button>}>
+      <EmptyState fill image={q ? NO_RESULTS_IMAGE : "File Cabinet "} action={!q && <Link href={newHref} className={buttonVariants({ variant: "brand" })}>{cfg.newLabel}</Link>}>
         {q ? `Ningún ${cfg.singular} coincide con la búsqueda.` : managers ? cfg.empty : scope ? `Todavía no hay ${CLIENT_TYPE_PLURAL[scope].toLowerCase()} registradas.` : "Todavía no hay clientes en el directorio."}
       </EmptyState>
     ) : (

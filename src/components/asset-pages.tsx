@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { AssetForm, type AssetData } from "@/components/asset-form";
-import { PageSection } from "@/components/page-section";
 import { getMyRole, getOrgId } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,9 +18,8 @@ async function NewForm({ params }: { params: Params }) {
 export function AssetNewPage({ params }: { params: Params }) {
   return (
     <>
-      <PageSection>
-        <h1 className="text-2xl font-semibold tracking-tight">Nuevo activo</h1>
-      </PageSection>
+      {/* El título lo pone el formulario en el encabezado; aquí solo queda para lectores de pantalla. */}
+      <h1 className="sr-only">Nuevo activo</h1>
       <Suspense>
         <NewForm params={params} />
       </Suspense>
@@ -51,9 +49,7 @@ async function EditForm({ params }: { params: IdParams }) {
 export function AssetEditPage({ params }: { params: IdParams }) {
   return (
     <>
-      <PageSection>
-        <h1 className="text-2xl font-semibold tracking-tight">Editar activo</h1>
-      </PageSection>
+      <h1 className="sr-only">Editar activo</h1>
       <Suspense>
         <EditForm params={params} />
       </Suspense>
