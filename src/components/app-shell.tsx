@@ -8,7 +8,7 @@ import { ArrowLeft01Icon, ArrowRight01Icon, Menu01Icon } from "@hugeicons/core-f
 import { NavBadgesContext, NavBadgesSetContext } from "@/components/nav-badges";
 import { usePanelOpen } from "@/components/use-panel-open";
 import { useNarrowScreen, useRightPanelOpen } from "@/components/use-side-panel";
-import { HeaderSlotContext, HeaderTitleContext } from "@/components/header-action";
+import { HeaderCrumbContext, HeaderSlotContext, HeaderTitleContext } from "@/components/header-action";
 import { type NavModule } from "@/components/nav-config";
 import { PanelCardContext, PanelTopContext, type PanelCardParts } from "@/components/panel-slots";
 import { useModKey, PageFiguresContext, FooterActionsContext, FooterContextContext, PageNewActionContext, PagePaginationContext, PageShortcutsContext, type PageFigure, type PagePaginationState, type PageShortcut } from "@/components/page-shortcuts";
@@ -71,6 +71,7 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const [title, setTitle] = useState<React.ReactNode>(null);
+  const [crumb, setCrumb] = useState<React.ReactNode>(null);
   const [panelTop, setPanelTop] = useState<React.ReactNode>(null);
   const [panelCard, setPanelCard] = useState<PanelCardParts | null>(null);
   const [pageShortcuts, setPageShortcuts] = useState<PageShortcut[]>([]);
@@ -86,6 +87,7 @@ export function AppShell({
     <OrgContext.Provider value={org}>
       <HeaderSlotContext.Provider value={slot}>
       <HeaderTitleContext.Provider value={setTitle}>
+      <HeaderCrumbContext.Provider value={setCrumb}>
       <PanelTopContext.Provider value={setPanelTop}>
       <PanelCardContext.Provider value={setPanelCard}>
       <PageShortcutsContext.Provider value={setPageShortcuts}>
@@ -138,6 +140,7 @@ export function AppShell({
           <SectionHeader
             setSlot={setSlot}
             title={title}
+            crumb={crumb}
             panelOpen={panelOpen}
             leading={
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -195,6 +198,7 @@ export function AppShell({
       </PageShortcutsContext.Provider>
       </PanelCardContext.Provider>
       </PanelTopContext.Provider>
+      </HeaderCrumbContext.Provider>
       </HeaderTitleContext.Provider>
       </HeaderSlotContext.Provider>
     </OrgContext.Provider>

@@ -6,14 +6,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageSection } from "@/components/page-section";
 import { PrintButton } from "@/components/print-button";
-import { Badge } from "@/components/ui/badge";
-import { HeaderAction } from "@/components/header-action";
+import { HeaderAction, HeaderCrumb } from "@/components/header-action";
 import { PageFigures } from "@/components/page-shortcuts";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DeliveryBoard } from "@/components/delivery-board";
 import { ArrowLeft01Icon, File01Icon } from "@hugeicons/core-free-icons";
-import { VoidDelivery } from "@/components/void-delivery";
-import { EditDelivery } from "@/components/edit-delivery";
-import { DeliveryPhotos, type DeliveryPhoto } from "@/components/delivery-photos";
+import type { DeliveryPhoto } from "@/components/delivery-photos";
 import { FILES_BUCKET } from "@/lib/files";
 import { buttonVariants } from "@/components/ui/button";
 import { getContract } from "@/lib/contract-data";
@@ -21,6 +18,7 @@ import { formatIso } from "@/lib/dates";
 import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
 import { assetsForLines } from "@/lib/line-assets";
 import { unitLabel } from "@/lib/units";
+import { loadLineProducts, type DeliveryProduct } from "@/lib/line-products";
 import { createClient } from "@/lib/supabase/server";
 
 type IdParams = Promise<{ org: string; id: string }>;
@@ -162,6 +160,10 @@ async function loadDelivery(params: DeliveryParams) {
     other: string | null;
   } | null;
   const totalUnits = items.reduce((s, i) => s + (qtyByItem.get(i.id) ?? 0), 0);
+  // Productos de la bodega que cubrieron cada línea. En una anulada las líneas volvieron a la bodega: ya no están asignadas.
+  const productsByLine = voided
+    ? new Map<string, DeliveryProduct[]>()
+    : await loadLineProducts(supabase, items.map((i) => i.id), () => new Error("No se pudieron cargar los productos de la entrega."));
 
   const info: [string, string | null | undefined][] = asset
     ? [
@@ -186,7 +188,7 @@ async function loadDelivery(params: DeliveryParams) {
     assetNames = [...new Set([...byLine.values()].flat())];
   }
 
-  return { org, id, deliveryId, found, c, d, list, voided, items, qtyByItem, totalUnits, info, assetNames, clientRes, managerRes, orgRes };
+  return { org, id, deliveryId, found, c, d, list, voided, items, qtyByItem, productsByLine, totalUnits, info, assetNames, clientRes, managerRes, orgRes };
 }
 
 // Documento de la entrega, listo para imprimir o guardar como PDF.
@@ -337,17 +339,19 @@ async function loadPhotos(contractId: string, deliveryId: string): Promise<Deliv
   return rows.map((r) => ({ id: r.id, name: r.name, createdAt: r.created_at, thumbUrl: (r.thumb_path && thumbUrl.get(r.thumb_path)) || undefined }));
 }
 
-// Vista de la entrega dentro de la app: datos, líneas entregadas y acciones. El documento para imprimir va aparte.
+// Vista de la entrega dentro de la app: pestañas (líneas y fotos), los datos y las acciones. Mismo estilo que Abastecimiento.
+// El documento para imprimir va aparte.
 async function View({ params }: { params: DeliveryParams }) {
   // Los datos de la entrega y sus fotos se piden a la vez.
   const { id: contractParam, deliveryId: deliveryParam } = await params;
   const [loaded, photos] = await Promise.all([loadDelivery(params), loadPhotos(contractParam, deliveryParam)]);
-  const { org, id, deliveryId, found, d, list, voided, items, qtyByItem, totalUnits, info } = loaded;
+  const { org, id, deliveryId, found, d, list, voided, items, qtyByItem, productsByLine, totalUnits, info } = loaded;
   const base = `/${org}/contratos/${id}`;
-  const canVoid = !voided && found.c.status === "in_progress";
 
   return (
     <>
+      {/* La última miga es el código de la entrega (ENT-001), no el nombre genérico de la pantalla. */}
+      <HeaderCrumb>{code(d.number)}</HeaderCrumb>
       <HeaderAction icon={ArrowLeft01Icon} label="Volver" href={`${base}/entregas`} secondary />
       <HeaderAction icon={File01Icon} label="Ver documento" href={`${base}/entregas/${deliveryId}/documento`} />
       <PageFigures figures={[
@@ -360,85 +364,22 @@ async function View({ params }: { params: DeliveryParams }) {
           {d.void_reason ? <> · {d.void_reason}</> : null}. Sus líneas volvieron a la bodega.
         </div>
       )}
-      <PageSection label={`Fotografías (${photos.length})`} className="p-0">
-        <DeliveryPhotos org={org} contractId={id} deliveryId={deliveryId} photos={photos} canEdit={!voided} />
-      </PageSection>
-
-      <PageSection label={`Entrega ${code(d.number)}`} meta={
-        <span className="flex items-center gap-2">
-          <Badge variant={voided ? "destructive" : "solid-stock"}>{voided ? "Anulada" : "Entregada"}</Badge>
-          {canVoid && (
-            <EditDelivery org={org} contractId={id} deliveryId={deliveryId} code={code(d.number)} date={d.delivered_on} receivedBy={d.received_by ?? ""} notes={d.notes ?? ""} />
-          )}
-        </span>
-      } className="p-0">
-        <dl className="grid grid-cols-2 gap-x-8 gap-y-4 px-4 py-4 lg:grid-cols-4">
-          <Field label="Fecha" value={<span className="num">{formatIso(d.delivered_on)}</span>} />
-          <Field label="Lista" value={list?.name ?? "—"} />
-          <Field label="Recibe" value={d.received_by ?? "—"} />
-          <Field label="Contrato" value={found.c.name} />
-          {d.notes && <div className="col-span-2 lg:col-span-4"><Field label="Notas" value={<span className="whitespace-pre-wrap">{d.notes}</span>} /></div>}
-        </dl>
-        {info.some(([, v]) => v) && (
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-4 border-t px-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
-            {info.filter(([, v]) => v).map(([k, v]) => (
-              <Field key={k} label={k} value={<span className="font-mono">{v}</span>} />
-            ))}
-          </dl>
-        )}
-      </PageSection>
-
-      <PageSection label="Líneas entregadas" className="p-0">
-        {items.length === 0 ? (
-          <p className="p-6 text-sm text-muted-foreground">Esta entrega no tiene líneas.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-transparent">
-                  <TableHead className="text-right">N.º</TableHead>
-                  <TableHead>N.º de parte</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead className="text-right">Cantidad</TableHead>
-                  <TableHead>Unidad</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((i) => (
-                  <TableRow key={i.id} className="border-b last:border-b-0">
-                    <TableCell className="num text-right text-muted-foreground">{i.n}</TableCell>
-                    <TableCell className="font-mono text-xs">{i.part_number ?? "—"}</TableCell>
-                    <TableCell className="min-w-56">{i.description}</TableCell>
-                    <TableCell className="num text-right">{qtyByItem.get(i.id)}</TableCell>
-                    <TableCell>{unitLabel(i.unit)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </PageSection>
-
-      {canVoid && (
-        <PageSection label="Anular" className="p-0">
-          <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4">
-            <p className="max-w-xl text-sm text-muted-foreground">
-              Si la entrega se registró por error, anúlala: sus líneas vuelven a la bodega y quedan otra vez listas para entregar.
-            </p>
-            <VoidDelivery org={org} contractId={id} deliveryId={deliveryId} code={code(d.number)} />
-          </div>
-        </PageSection>
-      )}
+      <DeliveryBoard
+        org={org}
+        contractId={id}
+        deliveryId={deliveryId}
+        code={code(d.number)}
+        voided={voided}
+        canVoid={!voided && found.c.status === "in_progress"}
+        date={d.delivered_on}
+        listName={list?.name ?? "—"}
+        receivedBy={d.received_by ?? ""}
+        notes={d.notes ?? ""}
+        facts={info.filter((f): f is [string, string] => Boolean(f[1]))}
+        lines={items.map((i) => ({ id: i.id, n: i.n, part_number: i.part_number, description: i.description, unit: i.unit, quantity: qtyByItem.get(i.id) ?? 0, products: productsByLine.get(i.id) ?? [] }))}
+        photos={photos}
+      />
     </>
-  );
-}
-
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <dt className="caps text-muted-foreground">{label}</dt>
-      <dd className="break-words text-sm">{value}</dd>
-    </div>
   );
 }
 

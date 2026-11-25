@@ -107,3 +107,16 @@ export function HeaderTitle({ children }: { children: React.ReactNode }) {
   }, [children, setTitle]);
   return null;
 }
+
+// Última miga del encabezado cuando la pantalla sabe cómo se llama lo que muestra (p. ej. el código de una entrega, ENT-001).
+// Sin ella, las migas usan el nombre genérico de la pantalla ("Entrega").
+export const HeaderCrumbContext = createContext<(crumb: React.ReactNode) => void>(() => {});
+
+export function HeaderCrumb({ children }: { children: React.ReactNode }) {
+  const setCrumb = useContext(HeaderCrumbContext);
+  useEffect(() => {
+    setCrumb(children);
+    return () => setCrumb(null);
+  }, [children, setCrumb]);
+  return null;
+}

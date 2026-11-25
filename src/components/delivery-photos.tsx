@@ -80,21 +80,20 @@ export function DeliveryPhotos({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-3 p-6">
       {canEdit && (
         <input ref={input} type="file" accept="image/*" multiple capture="environment" className="sr-only" tabIndex={-1} aria-label="Elegir fotos de la entrega"
           onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} />
       )}
-      {canEdit && <p className="text-sm text-muted-foreground">Registro fotográfico de la entrega. Desde el celular puedes usar la cámara.</p>}
       {!canEdit && photos.length === 0 && <p className="text-sm text-muted-foreground">No hay fotos de esta entrega.</p>}
-      <ul className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2">
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(7rem,9rem))] gap-2">
         {canEdit && (
           <li>
             <button
               type="button"
               disabled={!!progress}
               onClick={() => input.current?.click()}
-              className="flex aspect-square w-full flex-col items-center justify-center gap-1 border border-dashed bg-muted/40 px-1 text-center text-xs text-muted-foreground transition-colors hover:border-foreground/40 hover:bg-accent/50 hover:text-foreground disabled:opacity-60"
+              className="flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed bg-muted/40 px-1 text-center text-xs text-muted-foreground transition-colors hover:border-foreground/40 hover:bg-accent/50 hover:text-foreground disabled:opacity-60"
             >
               <HugeiconsIcon icon={progress ? ImageAdd01Icon : Camera01Icon} className="size-5" />
               {progress ? `Subiendo ${progress.done + 1}/${progress.total}…` : "Añadir foto"}
@@ -102,7 +101,7 @@ export function DeliveryPhotos({
           </li>
         )}
         {photos.map((p) => (
-          <li key={p.id} className="group relative aspect-square overflow-hidden border bg-muted">
+          <li key={p.id} className="group relative aspect-square overflow-hidden rounded-xl border bg-muted">
             <button type="button" aria-label={`Ver la foto ${p.name}`} onClick={() => void open(p.id)} className="block size-full">
               {p.thumbUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element

@@ -37,7 +37,7 @@ export function EditDelivery({
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={show}>
+      <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={show}>
         <HugeiconsIcon icon={Edit02Icon} className="size-4" />
         Editar
       </Button>

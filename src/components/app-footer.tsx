@@ -21,11 +21,14 @@ export function SectionHeader({
   leading,
   setSlot,
   title,
+  crumb,
   panelOpen,
 }: {
   leading: React.ReactNode;
   setSlot: (el: HTMLElement | null) => void;
   title: React.ReactNode;
+  // Última miga que pone la pantalla (el código de una entrega…); sin ella, el nombre genérico de la ruta.
+  crumb?: React.ReactNode;
   // Con la columna de opciones oculta, su tarjeta no se ve: el encabezado muestra cliente y proceso.
   panelOpen: boolean;
 }) {
@@ -33,7 +36,7 @@ export function SectionHeader({
   const currentItem = useCurrentNavItem();
   // Gastos cuelga de Pagos.
   const section = contractSection(path.replace(/^(\/contratos\/[^/]+)\/gastos(?=\/|$)/, "$1/pagos"));
-  const sub = contractSubsection(path);
+  const sub = crumb ?? contractSubsection(path);
   const base = path.match(/^\/contratos\/[0-9a-f-]{36}/i)?.[0] ?? "";
     // Migas: módulo / sección / pantalla dentro de la sección (si la hay).
   const crumbs = section ? (

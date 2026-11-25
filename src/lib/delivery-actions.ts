@@ -3,18 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { loadLineProducts, type DeliveryProduct } from "@/lib/line-products";
 import { SCHEMA_MESSAGE, isSchemaError, logDbError, type DbError } from "@/lib/db-error";
 
-export type DeliveryProduct = {
-  id: string;
-  name: string;
-  sku: string | null;
-  partNumbers: string[];
-  description: string | null;
-  line: string | null;
-  supplier: string;
-  quantity: number;
-};
+export type { DeliveryProduct };
 
 export type Deliverable = {
   id: string;
@@ -52,46 +44,7 @@ export async function getDeliverable(contractId: string, listId: string): Promis
     .filter((r) => Number(r.delivered) === 0 && Number(r.reserved) >= Number(r.quantity));
   if (!ready.length) return [];
 
-  // Consultas por lotes acotados para no exceder el tamaño de URL ni truncar los productos.
-  const batches = (ids: string[]) => Array.from({ length: Math.ceil(ids.length / 100) }, (_, i) => ids.slice(i * 100, (i + 1) * 100));
-  type Source = { id: string; contract_item_id: string; item_id: string; supplier_id: string | null; quantity: number };
-  const sourceBatches = await Promise.all(batches(ready.map((r) => r.id)).map(async (ids) => {
-    const rows: Source[] = [];
-    for (let offset = 0; ; offset += 1000) {
-      const result = await supabase.from("supply_sources")
-        .select("id, contract_item_id, item_id, supplier_id, quantity")
-        .in("contract_item_id", ids).eq("kind", "bodega")
-        .order("created_at").order("id").range(offset, offset + 999);
-      if (result.error) throw new Error(friendly(result.error));
-      rows.push(...(result.data ?? []));
-      if ((result.data?.length ?? 0) < 1000) break;
-    }
-    return rows;
-  }));
-  const sources = sourceBatches.flat();
-  const itemIds = [...new Set(sources.map((r) => r.item_id))];
-  const supplierIds = [...new Set(sources.map((r) => r.supplier_id).filter((id): id is string => !!id))];
-  const [itemResults, supplierResults] = await Promise.all([
-    Promise.all(batches(itemIds).map((ids) => supabase.from("items").select("id, name, sku, part_numbers, description, line").in("id", ids))),
-    Promise.all(batches(supplierIds).map((ids) => supabase.from("suppliers").select("id, name").in("id", ids))),
-  ]);
-  for (const result of [...itemResults, ...supplierResults]) {
-    if (result.error) throw new Error(friendly(result.error));
-  }
-  const itemById = new Map(itemResults.flatMap((result) => result.data ?? []).map((item) => [item.id, item]));
-  const supplierById = new Map(supplierResults.flatMap((result) => result.data ?? []).map((supplier) => [supplier.id, supplier.name]));
-  const productsByLine = new Map<string, DeliveryProduct[]>();
-  for (const source of sources) {
-    const item = itemById.get(source.item_id);
-    const products = productsByLine.get(source.contract_item_id) ?? [];
-    products.push({
-      id: source.id, name: item?.name ?? "Producto no disponible", sku: item?.sku ?? null,
-      partNumbers: item?.part_numbers ?? [], description: item?.description ?? null, line: item?.line ?? null,
-      supplier: source.supplier_id ? (supplierById.get(source.supplier_id) ?? "") : "",
-      quantity: Number(source.quantity),
-    });
-    productsByLine.set(source.contract_item_id, products);
-  }
+  const productsByLine = await loadLineProducts(supabase, ready.map((r) => r.id), (e) => new Error(friendly(e)));
   return ready.map((r) => ({
     id: r.id, n: Number(r.n), partNumber: r.part_number ?? "", description: r.description,
     unit: r.unit, quantity: Number(r.quantity), products: productsByLine.get(r.id) ?? [],
