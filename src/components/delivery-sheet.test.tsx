@@ -3,7 +3,6 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeliveryActions } from "./delivery-sheet";
-import { HeaderSlotContext } from "./header-action";
 import { createDelivery, getDeliverable, type Deliverable } from "@/lib/delivery-actions";
 
 const router = vi.hoisted(() => ({ push: vi.fn() }));
@@ -20,11 +19,10 @@ const rows: Deliverable[] = [{
     { id: "source-b", name: "Producto real B", sku: "SKU-B", partNumbers: ["PART-B"], description: null, line: null, supplier: "Proveedor B", quantity: 1 },
   ],
 }];
-let slot: HTMLDivElement;
-beforeEach(() => { vi.clearAllMocks(); slot = document.createElement("div"); document.body.append(slot); });
-afterEach(() => { cleanup(); slot.remove(); });
+beforeEach(() => { vi.clearAllMocks(); });
+afterEach(() => { cleanup(); });
 function openDelivery() {
-  render(<HeaderSlotContext.Provider value={slot}><DeliveryActions org="org" contractId="contract" listId="list" listName="Excavadora" canAct ready={1} /></HeaderSlotContext.Provider>);
+  render(<DeliveryActions org="org" contractId="contract" listId="list" listName="Excavadora" canAct ready={1} />);
   fireEvent.click(screen.getByRole("button", { name: /Generar entrega/ }));
 }
 
@@ -39,7 +37,7 @@ describe("revisión de productos antes de generar entrega", () => {
     expect(within(dialog).getByText("SKU-A")).toBeTruthy();
     expect(within(dialog).getByText("PART-A")).toBeTruthy();
     expect(within(dialog).getByText("Original de fábrica")).toBeTruthy();
-    expect(within(dialog).getByText("Proveedor: Proveedor B")).toBeTruthy();
+    expect(within(dialog).getByText("Proveedor B")).toBeTruthy();
     expect(within(dialog).getByLabelText("Cantidad de Producto real A: 1")).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "Entregar la línea 1" }));
     expect((within(dialog).getByRole("button", { name: "Generar entrega y reporte" }) as HTMLButtonElement).disabled).toBe(true);

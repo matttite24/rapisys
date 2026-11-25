@@ -25,7 +25,7 @@ export function AddLineButton({ open, onToggle, listName }: { open: boolean; onT
 
 export function SupplyAddLine({ org, contractId, listId }: { org: string; contractId: string; listId: string }) {
   return (
-    <div className="border-b px-4 pt-3 pb-3">
+    <div className="border-b px-6 pt-3 pb-3">
       <LineForm
         key={listId}
         org={org}

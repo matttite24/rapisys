@@ -109,11 +109,13 @@ export function ListTabs({
   counts,
   activeId,
   onSelect,
+  trailing,
 }: {
   lists: ListView[];
   counts: Record<string, number>;
   activeId: string | null;
   onSelect: (id: string) => void;
+  trailing?: React.ReactNode;
 }) {
   return (
     <FolderTabs
@@ -122,6 +124,7 @@ export function ListTabs({
       activeKey={activeId}
       onSelect={onSelect}
       leading={<AllLists lists={lists} counts={counts} activeId={activeId} onSelect={onSelect} />}
+      trailing={trailing}
     />
   );
 }

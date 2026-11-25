@@ -13,6 +13,7 @@ export function FolderTabs({
   onSelect,
   label,
   leading,
+  trailing,
 }: {
   tabs: FolderTab[];
   activeKey: string | null | undefined;
@@ -20,6 +21,8 @@ export function FolderTabs({
   label: string;
   // Lo que va antes de las pestañas (por ejemplo, el botón que abre todas las listas).
   leading?: React.ReactNode;
+  // Lo que va a la derecha de la fila (por ejemplo, una acción de la lista): se queda a la vista aunque haya muchas pestañas.
+  trailing?: React.ReactNode;
 }) {
   const active = tabs.some((t) => t.key === activeKey) ? activeKey : tabs[0]?.key;
 
@@ -62,6 +65,7 @@ export function FolderTabs({
           </button>
         );
       })}
+      {trailing && <div className="sticky right-0 ml-auto flex shrink-0 items-center self-stretch bg-layer-2 pb-px pl-3">{trailing}</div>}
     </div>
   );
 }

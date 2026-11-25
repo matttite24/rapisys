@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { DeliveryTruck01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { DatePicker, toIsoDate } from "@/components/date-picker";
-import { HeaderSlot } from "@/components/header-action";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
@@ -16,15 +15,18 @@ import { unitLabel } from "@/lib/units";
 import { createDelivery, getDeliverable, type Deliverable } from "@/lib/delivery-actions";
 import { cn } from "@/lib/utils";
 
-// Botones de entregas en la fila de la tabla: ver las hechas y generar una nueva.
+// Columnas de la lista de entrega: casilla, N.º, ítem (o producto), n.º de parte, SKU, proveedor y cantidad.
+const COLS = "2.25rem 2.5rem minmax(14rem, 2fr) minmax(8rem, 1fr) minmax(7rem, 1fr) minmax(8rem, 1fr) 6.5rem";
+const ROW = "grid gap-x-3";
+
+// Generar una entrega: botón discreto en la fila de pestañas de las listas, y el cajón donde se arma.
 export function DeliveryActions({
-  org,
   contractId,
+  org,
   listId,
   listName,
   canAct,
   ready,
-  hidden = false,
 }: {
   org: string;
   contractId: string;
@@ -33,32 +35,18 @@ export function DeliveryActions({
   canAct: boolean;
   // Líneas con su stock completo, listas para entregar.
   ready: number;
-  // Se oculta (con un fundido) mientras otra columna ocupa el encabezado, por ejemplo el panel de asignar.
-  hidden?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-    <HeaderSlot>
-    <div
-      inert={hidden}
-      className={cn(
-        // Se va rápido, antes de que el encabezado se desplace, y vuelve cuando ya terminó de regresar: así nunca se ve
-        // deslizarse de lado mientras se desvanece.
-        "flex h-full items-stretch gap-1 transition-opacity ease-out motion-reduce:transition-none",
-        hidden ? "pointer-events-none opacity-0 duration-75" : "opacity-100 delay-200 duration-150",
-      )}
-    >
       {canAct && (
-        <span className="self-stretch" title={ready === 0 ? "Aún ninguna línea tiene todo asignado de la bodega" : undefined}>
-          <Button className="-mr-4 h-full! border-0! bg-clip-border! gap-2 px-5" disabled={ready === 0} onClick={() => setOpen(true)}>
+        <span title={ready === 0 ? "Aún ninguna línea tiene todo asignado de la bodega" : undefined}>
+          <Button variant="ghost" size="sm" className="gap-2" disabled={ready === 0} onClick={() => setOpen(true)}>
             <HugeiconsIcon icon={DeliveryTruck01Icon} className="size-4" />
             Generar entrega{ready > 0 && <span className="num opacity-70">{ready}</span>}
           </Button>
         </span>
       )}
-    </div>
-    </HeaderSlot>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="bottom" className="data-[side=bottom]:h-[92svh] gap-0">
           <SheetHeader>
@@ -147,7 +135,7 @@ function DeliveryBody({
 
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="relative min-h-0 flex-1 overflow-y-auto">
         <div className="grid gap-4 border-b bg-surface-strong px-6 py-4 md:grid-cols-[12rem_1fr_2fr] [&_input]:bg-background">
           <FormField name="delivery_date" label="Fecha de entrega">
             {(a11y) => <DatePicker {...a11y} name="delivery_date" value={date} onChange={setDate} />}
@@ -176,82 +164,85 @@ function DeliveryBody({
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50 text-left caps font-bold">
-                  <th className="w-px px-4 py-3">
-                    <input
-                      disabled={saving}
-                      type="checkbox"
-                      aria-label="Elegir todas las líneas"
-                      className="size-4 accent-brand"
-                      checked={allPicked}
-                      onChange={() => setPicked(allPicked ? new Set() : new Set(rows.map((r) => r.id)))}
-                    />
-                  </th>
-                  <th className="w-px px-2 py-3 text-right">N.º</th>
-                  <th className="px-2 py-3">Part. num.</th>
-                  <th className="px-2 py-3">Ítem solicitado y productos a entregar</th>
-                  <th className="px-2 py-3 text-right">Cantidad</th>
-                </tr>
-              </thead>
-              <tbody>
+            {/* Misma forma que la lista de Abastecimiento: cabecera gris y, por línea, un bloque redondeado. Los datos van en
+                columnas que reparten el ancho de la pantalla (ítem, n.º de parte, SKU, proveedor y cantidad), no apilados. */}
+            <div role="table" aria-label="Líneas listas para entregar" className="min-w-[58rem] text-sm">
+              <div role="row" style={{ gridTemplateColumns: COLS }} className={cn(ROW, "sticky top-0 z-10 h-10 items-center bg-surface-strong px-6 text-xs font-medium text-muted-foreground")}>
+                <div role="columnheader">
+                  <input
+                    disabled={saving}
+                    type="checkbox"
+                    aria-label="Elegir todas las líneas"
+                    className="size-4 accent-brand"
+                    checked={allPicked}
+                    onChange={() => setPicked(allPicked ? new Set() : new Set(rows.map((r) => r.id)))}
+                  />
+                </div>
+                <div role="columnheader" className="text-right">N.º</div>
+                <div role="columnheader">Ítem solicitado y productos a entregar</div>
+                <div role="columnheader">N.º de parte</div>
+                <div role="columnheader">SKU</div>
+                <div role="columnheader">Proveedor</div>
+                <div role="columnheader" className="text-right">Cantidad</div>
+              </div>
+              <div role="rowgroup" className="flex flex-col gap-1.5 px-3 pt-1.5 pb-3">
                 {rows.map((r) => {
                   const on = picked.has(r.id);
+                  const unit = unitLabel(r.unit);
                   return (
-                    <tr key={r.id} className={cn("border-b last:border-b-0 align-top", !on && "text-muted-foreground")}>
-                      <td className="px-4 py-2">
-                        <input
-                          type="checkbox"
-                          disabled={saving}
-                          aria-label={`Entregar la línea ${r.n}`}
-                          className="size-4 accent-brand"
-                          checked={on}
-                          onChange={() => toggle(r)}
-                        />
-                      </td>
-                      <td className="num px-2 py-2 text-right">{r.n}</td>
-                      <td className="px-2 py-2 font-mono text-xs">{r.partNumber || "—"}</td>
-                      <td className="min-w-80 px-2 py-3">
-                        <p className="font-medium">{r.description}</p>
-                        <div className="mt-3 border-l-2 border-brand/50 pl-4">
-                          <p className="mb-2 text-xs font-medium text-muted-foreground">Productos a entregar</p>
-                          {r.products.length === 0 ? (
-                            <p className="text-xs text-destructive">No se encontraron productos asignados. Actualiza antes de entregar.</p>
-                          ) : (
-                            <ul className="divide-y">
-                              {r.products.map((product) => (
-                                <li key={product.id} className="flex items-start justify-between gap-6 py-3 first:pt-0 last:pb-0">
-                                  <div className="min-w-0 space-y-1">
-                                    <p className="break-words text-sm font-medium">{product.name}</p>
-                                    {(product.sku || product.partNumbers.length > 0) && (
-                                      <p className="break-words text-xs text-muted-foreground">
-                                        {product.sku && <span>SKU: <span className="font-mono">{product.sku}</span></span>}
-                                        {product.sku && product.partNumbers.length > 0 && " · "}
-                                        {product.partNumbers.length > 0 && <span>N.º de parte: <span className="font-mono">{product.partNumbers.join(" · ")}</span></span>}
-                                      </p>
-                                    )}
-                                    {product.description && <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{product.description}</p>}
-                                    {product.line && <p className="text-xs text-muted-foreground">Línea: {product.line}</p>}
-                                    <p className="text-xs text-muted-foreground">Proveedor: {product.supplier || "Sin proveedor"}</p>
-                                  </div>
-                                  <span className="num shrink-0 whitespace-nowrap text-sm" aria-label={`Cantidad de ${product.name}: ${product.quantity}`}>
-                                    {product.quantity} <span className="font-sans text-xs text-muted-foreground">{unitLabel(r.unit)}</span>
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                    <div key={r.id} role="rowgroup" className={cn("overflow-hidden rounded-xl bg-foreground/[0.035] transition-opacity", !on && "opacity-60")}>
+                      <div role="row" style={{ gridTemplateColumns: COLS }} className={cn(ROW, "items-start px-3 py-3")}>
+                        <div role="cell" className="pt-0.5">
+                          <input
+                            type="checkbox"
+                            disabled={saving}
+                            aria-label={`Entregar la línea ${r.n}`}
+                            className="size-4 accent-brand"
+                            checked={on}
+                            onChange={() => toggle(r)}
+                          />
                         </div>
-                      </td>
-                      <td className="num whitespace-nowrap px-2 py-2 text-right">
-                        {r.quantity} <span className="font-sans text-xs">{unitLabel(r.unit)}</span>
-                      </td>
-                    </tr>
+                        <div role="cell" className="num pt-0.5 text-right text-muted-foreground">{r.n}</div>
+                        <div role="cell" className="min-w-0 font-medium break-words">{r.description}</div>
+                        <div role="cell" className="font-mono text-xs break-words text-muted-foreground">{r.partNumber || "—"}</div>
+                        <div role="cell" />
+                        <div role="cell" />
+                        <div role="cell" className="num text-right font-medium whitespace-nowrap">
+                          {r.quantity} <span className="font-sans text-xs font-normal text-muted-foreground">{unit}</span>
+                        </div>
+                      </div>
+                      <div role="rowgroup" className="bg-background/50 py-1.5">
+                        {r.products.length === 0 ? (
+                          <div role="row" style={{ gridTemplateColumns: COLS }} className={cn(ROW, "px-3 py-2")}>
+                            <div role="cell" className="col-start-3 col-span-5 text-xs text-destructive">No se encontraron productos asignados. Actualiza antes de entregar.</div>
+                          </div>
+                        ) : (
+                          r.products.map((product) => (
+                            <div key={product.id} role="row" style={{ gridTemplateColumns: COLS }} className={cn(ROW, "items-start border-t border-border/50 px-3 py-2.5 first-of-type:border-t-0")}>
+                              <div role="cell" className="col-start-3 min-w-0">
+                                <p className="break-words text-sm font-medium">{product.name}</p>
+                                {product.description && <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{product.description}</p>}
+                                {product.line && <p className="text-xs text-muted-foreground">Línea: {product.line}</p>}
+                              </div>
+                              <div role="cell" className="font-mono text-xs break-words text-muted-foreground">
+                                {product.partNumbers.length > 0 ? product.partNumbers.join(" · ") : "—"}
+                              </div>
+                              <div role="cell" className="font-mono text-xs break-words text-muted-foreground">{product.sku || "—"}</div>
+                              <div role="cell" className={cn("text-xs break-words", product.supplier ? "text-muted-foreground" : "text-muted-foreground/60")}>
+                                {product.supplier || "Sin proveedor"}
+                              </div>
+                              <div role="cell" className="num text-right text-sm whitespace-nowrap" aria-label={`Cantidad de ${product.name}: ${product.quantity}`}>
+                                {product.quantity} <span className="font-sans text-xs text-muted-foreground">{unit}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -262,16 +253,19 @@ function DeliveryBody({
             <FieldError>{error}</FieldError>
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-3 p-4">
-          <Button className="h-9" disabled={saving || selected.length === 0 || selected.some((row) => row.products.length === 0)} onClick={submit}>
-            {saving ? "Generando…" : "Generar entrega y reporte"}
-          </Button>
-          <Button variant="outline" className="h-9" disabled={saving} onClick={onClose}>
-            Cancelar
-          </Button>
+        {/* El resumen a la izquierda y los botones a la derecha, con la acción principal al borde (como el pie del cajón de anticipos). */}
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
           <span className="num text-sm text-muted-foreground">
             {selected.length} {selected.length === 1 ? "línea" : "líneas"} · {units} unidades
           </span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" className="h-9" disabled={saving} onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button variant="brand" className="h-9" disabled={saving || selected.length === 0 || selected.some((row) => row.products.length === 0)} onClick={submit}>
+              {saving ? "Generando…" : "Generar entrega y reporte"}
+            </Button>
+          </div>
         </div>
       </div>
     </>
