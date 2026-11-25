@@ -24,17 +24,19 @@ type Props = {
   secondary?: boolean;
   // El enlace descarga un archivo (no navega dentro de la app).
   download?: boolean;
+  // Una acción principal responde por defecto a Alt + N. Con `false` no (la pantalla tiene su propio atajo, como Ctrl + P al imprimir).
+  newShortcut?: boolean;
 };
 
 // Uso desde cualquier página: <HeaderAction icon={Add01Icon} label="Nuevo" href="…" />
 // Se muestra en el encabezado de la sección como una celda al borde derecho: alto
 // completo, pegada a la línea (anula el padding del encabezado). En móvil queda
 // como un cuadrado con solo el ícono; el texto sigue disponible para lectores de pantalla.
-export function HeaderAction({ icon, label, href, onClick, disabled, title, secondary, download }: Props) {
+export function HeaderAction({ icon, label, href, onClick, disabled, title, secondary, download, newShortcut = true }: Props) {
   const slot = useContext(HeaderSlotContext);
   const router = useRouter();
   const registerNew = useContext(PageNewActionContext);
-  const usable = !disabled && !secondary && (Boolean(href) || Boolean(onClick));
+  const usable = !disabled && !secondary && newShortcut && (Boolean(href) || Boolean(onClick));
 
   // Atajo general para crear: Alt + N (y Ctrl/⌘ + N donde el navegador lo deje pasar; Chrome, Safari y Firefox lo
   // reservan para "nueva ventana", así que Alt + N es el que siempre funciona).

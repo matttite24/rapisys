@@ -2,17 +2,15 @@ import { DeliveryList } from "@/components/delivery-list";
 import { PageLoading } from "@/components/page-loading";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageSection } from "@/components/page-section";
-import { PrintButton } from "@/components/print-button";
+import { PrintAction } from "@/components/print-button";
 import { HeaderAction, HeaderCrumb } from "@/components/header-action";
 import { PageFigures } from "@/components/page-shortcuts";
 import { DeliveryBoard } from "@/components/delivery-board";
 import { ArrowLeft01Icon, File01Icon } from "@hugeicons/core-free-icons";
 import type { DeliveryPhoto } from "@/components/delivery-photos";
 import { FILES_BUCKET } from "@/lib/files";
-import { buttonVariants } from "@/components/ui/button";
 import { getContract } from "@/lib/contract-data";
 import { formatIso } from "@/lib/dates";
 import { ASSET_KIND_LABEL, type AssetKind } from "@/lib/items";
@@ -196,12 +194,10 @@ async function Report({ params }: { params: DeliveryParams }) {
   const { org, id, deliveryId, d, voided, items, qtyByItem, totalUnits, info, assetNames, clientRes, managerRes, orgRes } = await loadDelivery(params);
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-3 print:hidden">
-        <Link href={`/${org}/contratos/${id}/entregas/${deliveryId}`} className={buttonVariants({ variant: "outline" })}>
-          ← Entrega {code(d.number)}
-        </Link>
-        <PrintButton />
-      </div>
+      {/* El encabezado lleva el nombre del documento y las acciones: volver a la entrega e imprimir. */}
+      <HeaderCrumb>{`Reporte de entrega ${code(d.number)}${voided ? " (anulada)" : ""}`}</HeaderCrumb>
+      <HeaderAction icon={ArrowLeft01Icon} label="Volver" title="Volver a la entrega" href={`/${org}/contratos/${id}/entregas/${deliveryId}`} secondary />
+      <PrintAction />
       {voided && (
         <div role="status" className="border-b border-destructive/30 bg-destructive/5 px-6 py-3 text-sm text-destructive print:border-2 print:border-foreground print:bg-transparent print:text-foreground">
           <strong>Entrega anulada</strong> el {formatIso(String(d.voided_at).slice(0, 10))}
