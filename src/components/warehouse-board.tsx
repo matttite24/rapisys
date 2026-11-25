@@ -16,14 +16,20 @@ import { AssetImport } from "@/components/asset-import";
 import { ItemImport } from "@/components/item-import";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useWarehouseView } from "@/components/use-warehouse-view";
-import { WarehouseAssetsTable, WarehouseItemsTable } from "@/components/warehouse-tables";
+import { WarehouseAssetsTable, WarehouseItemsTable, WarehouseSuppliersTable } from "@/components/warehouse-tables";
 import type { WarehouseKind, WarehouseView } from "@/lib/warehouse";
+
+// Textos de cada catálogo de la bodega.
+const COPY = {
+  items: { search: "Buscar items", placeholder: "Buscar por nombre, SKU o número de parte", noun: "item", plural: "items", title: "Items de bodega", newLabel: "Nuevo item", newPath: "nuevo", image: "Dolly", empty: "Todavía no hay items en la bodega.", figure: ["Item", "Items"] },
+  activos: { search: "Buscar activos", placeholder: "Buscar por nombre, marca, modelo, serie, placa o identificación", noun: "activo", plural: "activos", title: "Activos", newLabel: "Nuevo activo", newPath: "activos/nuevo", image: "Forklift", empty: "Todavía no hay activos. Registra los vehículos y la maquinaria a los que sirven tus items.", figure: ["Activo", "Activos"] },
+  proveedores: { search: "Buscar proveedores", placeholder: "Buscar por nombre, RUC, cédula o dirección", noun: "proveedor", plural: "proveedores", title: "Proveedores", newLabel: "Nuevo proveedor", newPath: "proveedores/nuevo", image: "File Cabinet ", empty: "Todavía no hay proveedores.", figure: ["Proveedor", "Proveedores"] },
+} as const;
 
 function WarehouseSearch({ kind, q, onSearch }: { kind: WarehouseKind; q: string; onSearch: (text: string) => void }) {
   const [draft, setDraft] = useState({ q, text: q });
   if (draft.q !== q) setDraft({ q, text: q });
-  return <SearchInput label={kind === "items" ? "Buscar items" : "Buscar activos"}
-    placeholder={kind === "items" ? "Buscar por nombre, SKU o número de parte" : "Buscar por nombre, marca, modelo, serie, placa o identificación"}
+  return <SearchInput label={COPY[kind].search} placeholder={COPY[kind].placeholder}
     value={draft.q === q ? draft.text : q} onChange={(text) => setDraft({ q, text })} onSearch={onSearch} />;
 }
 export function WarehouseError({ message, onRetry }: { message: string; onRetry?: () => void }) {
@@ -33,25 +39,25 @@ export function WarehouseError({ message, onRetry }: { message: string; onRetry?
 export function WarehouseBoard({ org, initial }: { org: string; initial: WarehouseView }) {
   const { view, loading, error, select, retry } = useWarehouseView(org, initial);
   const { kind, q, total, page } = view;
-  const assets = kind === "activos", noun = assets ? "activo" : "item";
-  const newHref = assets ? `/${org}/bodega/activos/nuevo` : `/${org}/bodega/nuevo`;
-  const params = { ...(q ? { q } : {}), ...(assets ? { vista: "activos" } : {}) };
+  const copy = COPY[kind], noun = copy.noun;
+  const newHref = `/${org}/bodega/${copy.newPath}`;
+  const params = { ...(q ? { q } : {}), ...(kind !== "items" ? { vista: kind } : {}) };
   const shownTotal = loading || error ? 0 : total;
   return <>
-    <h1 className="sr-only">{assets ? "Activos" : "Items de bodega"}</h1>
-    {assets ? <AssetImport org={org} /> : <ItemImport org={org} />}
-    <HeaderAction icon={Add01Icon} label={assets ? "Nuevo activo" : "Nuevo item"} href={newHref} />
-    <PageFigures figures={[{ label: assets ? (total === 1 ? "Activo" : "Activos") : (total === 1 ? "Item" : "Items"), value: loading || error ? "—" : String(total), ...(q ? { note: "Resultados de búsqueda" } : {}) }]} />
+    <h1 className="sr-only">{copy.title}</h1>
+    {kind === "activos" ? <AssetImport org={org} /> : kind === "items" ? <ItemImport org={org} /> : null}
+    <HeaderAction icon={Add01Icon} label={copy.newLabel} href={newHref} />
+    <PageFigures figures={[{ label: total === 1 ? copy.figure[0] : copy.figure[1], value: loading || error ? "—" : String(total), ...(q ? { note: "Resultados de búsqueda" } : {}) }]} />
     <SearchBar><WarehouseSearch key={kind} kind={kind} q={q} onSearch={(text) => void select(kind, 1, text)} /></SearchBar>
     <PageSection className="p-0">
       {loading ? <PageLoading /> : error ? <WarehouseError message={error} onRetry={() => void retry()} /> : view.rows.length === 0 ? (
-        <EmptyState fill image={q ? NO_RESULTS_IMAGE : assets ? "Forklift" : "Dolly"}
+        <EmptyState fill image={q ? NO_RESULTS_IMAGE : copy.image}
           action={!q && <Link href={newHref} className={buttonVariants({ variant: "brand" })}>Crear el primero</Link>}>
-          {q ? `Ningún ${noun} coincide con la búsqueda.` : assets ? "Todavía no hay activos. Registra los vehículos y la maquinaria a los que sirven tus items." : "Todavía no hay items en la bodega."}
+          {q ? `Ningún ${noun} coincide con la búsqueda.` : copy.empty}
         </EmptyState>
-      ) : view.kind === "items" ? <WarehouseItemsTable org={org} rows={view.rows} /> : <WarehouseAssetsTable org={org} rows={view.rows} />}
+      ) : view.kind === "items" ? <WarehouseItemsTable org={org} rows={view.rows} /> : view.kind === "activos" ? <WarehouseAssetsTable org={org} rows={view.rows} /> : <WarehouseSuppliersTable org={org} rows={view.rows} />}
       <PagePagination basePath={`/${org}/bodega`} page={page} total={shownTotal} params={params} />
-      {!loading && !error && <p className="border-t px-6 py-3 caps-md text-muted-foreground md:hidden">{total} {total === 1 ? noun : `${noun}s`}{q ? " · Resultados de búsqueda" : ""}</p>}
+      {!loading && !error && <p className="border-t px-6 py-3 caps-md text-muted-foreground md:hidden">{total} {total === 1 ? noun : copy.plural}{q ? " · Resultados de búsqueda" : ""}</p>}
       <Pager basePath={`/${org}/bodega`} page={page} total={shownTotal} params={params} className="md:hidden" />
     </PageSection>
   </>;

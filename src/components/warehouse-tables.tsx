@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ASSET_KIND_LABEL } from "@/lib/items";
 import { formatCents, salePriceCents } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import type { WarehouseItem, WarehouseAsset } from "@/lib/warehouse";
+import type { WarehouseItem, WarehouseAsset, WarehouseSupplier } from "@/lib/warehouse";
 
 export function WarehouseItemsTable({ org, rows }: { org: string; rows: WarehouseItem[] }) {
   return (
@@ -90,5 +90,33 @@ export function WarehouseAssetsTable({ org, rows }: { org: string; rows: Warehou
             </TableBody>
           </Table>
         </div>
+  );
+}
+export function WarehouseSuppliersTable({ org, rows }: { org: string; rows: WarehouseSupplier[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50 hover:bg-transparent">
+            <TableHead>Nombre</TableHead>
+            <TableHead>RUC / cédula</TableHead>
+            <TableHead>Dirección</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow key={r.id} className="border-b last:border-b-0 hover:bg-accent/60">
+              <TableCell className="p-0">
+                <Link href={`/${org}/bodega/proveedores/${r.id}`} className="block px-4 py-3 font-medium underline-offset-4 hover:underline">
+                  {r.name}
+                </Link>
+              </TableCell>
+              <TableCell className="num">{r.ruc ?? "—"}</TableCell>
+              <TableCell>{r.address ?? "—"}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

@@ -67,3 +67,14 @@ it("restaura Atrás y descarta caché al recibir datos actualizados", async () =
   rerender({ ...items, rows: [], total: 0 });
   expect(result.current.view.total).toBe(0);
 });
+it("cambia a Proveedores sin salir de la pantalla, pone vista en la dirección y lo reutiliza al volver", async () => {
+  const suppliers: WarehouseView = { kind: "proveedores", q: "", page: 1, total: 1, rows: [{ id: "s", name: "Repuestos SA", ruc: null, address: null }] };
+  vi.mocked(loadWarehouse).mockResolvedValue({ view: suppliers });
+  const { result } = renderHook(() => useWarehouseView("org", items));
+  await act(async () => { await result.current.select("proveedores"); });
+  expect(result.current.view.kind).toBe("proveedores");
+  expect(window.location.search).toBe("?vista=proveedores");
+  await act(async () => { await result.current.select("items"); });
+  await act(async () => { await result.current.select("proveedores"); });
+  expect(loadWarehouse).toHaveBeenCalledOnce();
+});

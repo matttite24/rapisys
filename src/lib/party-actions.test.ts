@@ -35,7 +35,7 @@ it("responsables y proveedores no reciben campo de tipo de cliente", async () =>
   await expect(saveParty("managers", "org", null, undefined, form())).rejects.toThrow("redirect:/org/directorio?grupo=responsables");
   expect(state.table).toBe("contract_managers");
   expect(state.payload).not.toHaveProperty("client_type");
-  await expect(saveParty("suppliers", "org", null, undefined, form())).rejects.toThrow("redirect:/org/proveedores");
+  await expect(saveParty("suppliers", "org", null, undefined, form())).rejects.toThrow("redirect:/org/bodega?vista=proveedores");
   expect(state.payload).not.toHaveProperty("client_type");
 });
 it("sigue impidiendo eliminar registros con procesos asociados", async () => {

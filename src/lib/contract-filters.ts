@@ -17,6 +17,6 @@ export type ContractListView = { rows: ContractRow[]; total: number; filter: Con
 export function activeNavigationHref(path: string, hrefs: string[], search: { get: (key: string) => string | null }) {
   return hrefs.filter((href) => {
     const [base, query] = href.split("?");
-    return (path === base || path.startsWith(`${base}/`)) && [...new URLSearchParams(query)].every(([key, value]) => (key === "vista" && value === "activos" && base === "/bodega" && (path === "/bodega/activos" || path.startsWith("/bodega/activos/"))) || (key === "grupo" && value === "responsables" && base === "/directorio" && path.startsWith("/directorio/responsables/")) || search.get(key) === value);
+    return (path === base || path.startsWith(`${base}/`)) && [...new URLSearchParams(query)].every(([key, value]) => (key === "vista" && (value === "activos" || value === "proveedores") && base === "/bodega" && (path === `/bodega/${value}` || path.startsWith(`/bodega/${value}/`))) || (key === "grupo" && value === "responsables" && base === "/directorio" && path.startsWith("/directorio/responsables/")) || search.get(key) === value);
   }).sort((a, b) => b.length - a.length)[0];
 }

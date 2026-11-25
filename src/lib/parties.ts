@@ -11,7 +11,7 @@ export const PARTIES = {
   },
   suppliers: {
     table: "suppliers",
-    path: "proveedores",
+    path: "bodega/proveedores",
     singular: "proveedor",
     plural: "proveedores",
     heading: "Proveedores",
@@ -46,7 +46,7 @@ export const CLIENT_TYPE_PLURAL = { company: "Empresas", institution: "Instituci
 export type ClientType = keyof typeof CLIENT_TYPES;
 export const isClientType = (value: string): value is ClientType => Object.hasOwn(CLIENT_TYPES, value);
 export function partyListHref(org: string, kind: PartyKind, type?: ClientType) {
-  if (kind === "suppliers") return `/${org}/proveedores`;
+  if (kind === "suppliers") return `/${org}/bodega?vista=proveedores`;
   if (kind === "managers") return `/${org}/directorio?grupo=responsables`;
   return `/${org}/directorio${type ? `?tipo=${type}` : ""}`;
 }

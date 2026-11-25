@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cleanSearch } from "@/lib/search";
 import { pageRange } from "@/lib/pagination";
 import { isSchemaError, logDbError, SCHEMA_MESSAGE, type DbError } from "@/lib/db-error";
-import { warehouseKind, type WarehouseView, type WarehouseItem, type WarehouseAsset } from "@/lib/warehouse";
+import { warehouseKind, type WarehouseView, type WarehouseItem, type WarehouseAsset, type WarehouseSupplier } from "@/lib/warehouse";
 
 function message(error: DbError) { logDbError("bodega", error); return isSchemaError(error) ? SCHEMA_MESSAGE : "No se pudo cargar el catálogo. Inténtalo de nuevo."; }
 export async function loadWarehouse(org: string, selected: string, search: string, requestedPage = 1): Promise<{ view?: WarehouseView; error?: string }> {
@@ -19,6 +19,14 @@ export async function loadWarehouse(org: string, selected: string, search: strin
   const db = await createClient();
   const kind = warehouseKind(selected), q = cleanSearch(search).slice(0, 200);
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 && requestedPage <= 100000 ? requestedPage : 1;
+  if (kind === "proveedores") {
+    let query = db.from("suppliers").select("id, name, ruc, address", { count: "exact" })
+      .eq("organization_id", orgId).order("name").order("id").range(...pageRange(page));
+    if (q) query = query.or(`name.ilike.%${q}%,ruc.ilike.%${q}%,address.ilike.%${q}%`);
+    const { data, count, error } = await query;
+    if (error) return { error: message(error) };
+    return { view: { kind, q, page, total: count ?? 0, rows: (data ?? []) as WarehouseSupplier[] } };
+  }
   if (kind === "activos") {
     let query = db.from("assets").select("id, kind, name, brand, model, year, plate, serial, identifier", { count: "exact" })
       .eq("organization_id", orgId).order("kind").order("name").order("id").range(...pageRange(page));

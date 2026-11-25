@@ -26,7 +26,7 @@ export function useWarehouseView(org: string, initial: WarehouseView) {
     const request = ++sequence.current;
     if (updateUrl) {
       const params = new URLSearchParams(q ? { q } : {});
-      if (kind === "activos") params.set("vista", kind);
+      if (kind !== "items") params.set("vista", kind);
       if (page > 1) params.set("page", String(page));
       const href = `${path}${params.size ? `?${params}` : ""}`;
       if (window.location.pathname + window.location.search !== href) window.history.pushState(null, "", href);
@@ -36,7 +36,7 @@ export function useWarehouseView(org: string, initial: WarehouseView) {
     if (!cached && !retry && complete && complete.total === complete.rows.length && page === 1) cached = filterWarehouse(complete, q);
     if (cached) { setSelection({ source, view: cached, loading: false, error: "" }); return; }
     // Cambia de catálogo inmediatamente, sin presentar filas del catálogo anterior.
-    const view: WarehouseView = kind === "items" ? { kind, rows: [], q, page, total: 0 } : { kind, rows: [], q, page, total: 0 };
+    const view = { kind, rows: [], q, page, total: 0 } as WarehouseView;
     setSelection({ source, view, loading: true, error: "" });
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {

@@ -37,3 +37,11 @@ it("distingue errores de listado vacío y rechaza organizaciones no disponibles"
   vi.mocked(getOrgId).mockResolvedValue(null);
   expect((await loadWarehouse("other", "items", "")).error).toBeTruthy();
 });
+it("lee Proveedores como catálogo propio, acotado a la organización y a la página", async () => {
+  state.results.suppliers = { data: [{ id: "s", name: "Repuestos SA", ruc: "1790000000001", address: null }], count: 60, error: null };
+  const result = await loadWarehouse("org", "proveedores", "Repuestos", 2);
+  expect(result.view).toMatchObject({ kind: "proveedores", total: 60, page: 2, rows: [{ id: "s", name: "Repuestos SA" }] });
+  expect(state.calls.map((c) => c.table)).toEqual(["suppliers"]);
+  expect(state.calls[0].eq).toContainEqual(["organization_id", "org-id"]);
+  expect(state.calls[0].range).toContainEqual([50, 99]);
+});

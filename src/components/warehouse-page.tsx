@@ -15,7 +15,7 @@ async function List({ params, searchParams }: Props) {
   if (!result.view) return <WarehouseError message={result.error ?? "No se pudo cargar el catálogo."} />;
   const view = result.view;
   if (view.page > pageCount(view.total, PAGE_SIZE)) {
-    const params = new URLSearchParams({ ...(view.q ? { q: view.q } : {}), ...(view.kind === "activos" ? { vista: "activos" } : {}), page: String(pageCount(view.total, PAGE_SIZE)) });
+    const params = new URLSearchParams({ ...(view.q ? { q: view.q } : {}), ...(view.kind !== "items" ? { vista: view.kind } : {}), page: String(pageCount(view.total, PAGE_SIZE)) });
     redirect(`/${org}/bodega?${params}`);
   }
   return <WarehouseBoard org={org} initial={view} />;

@@ -68,6 +68,7 @@ export const modules: NavModule[] = [
         items: [
           { title: "Items", href: "/bodega", icon: Package01Icon },
           { title: "Activos", href: "/bodega?vista=activos", icon: Car01Icon },
+          { title: "Proveedores", href: "/bodega?vista=proveedores", icon: BriefcaseBusinessIcon },
         ],
       },
     ],
@@ -87,12 +88,6 @@ export const modules: NavModule[] = [
         { title: "Responsables de contrato", href: "/directorio?grupo=responsables", icon: UserCheck01Icon },
       ] },
     ],
-  },
-  {
-    title: "Proveedores",
-    href: "/proveedores",
-    icon: BriefcaseBusinessIcon,
-    groups: [{ items: [{ title: "Listado", href: "/proveedores", icon: BriefcaseBusinessIcon }] }],
   },
   {
     title: "Bancos",
